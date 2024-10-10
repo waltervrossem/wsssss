@@ -1,2 +1,2 @@
 # wssss
-Walter's set of scripts for stellar simulations
+Walter's set of scripts for studying stars.
