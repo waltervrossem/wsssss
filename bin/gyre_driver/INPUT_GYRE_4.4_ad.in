@@ -1,0 +1,30 @@
+!version 9/05/2014
+&constants
+/
+&osc
+    outer_bound = 'ZERO'
+    variables_set = 'DZIEM'
+    inertia_norm = 'BOTH'
+/
+&num
+   ivp_solver = 'COLLOC_GL2'
+/
+&shoot_grid
+/
+&shoot_grid
+   op_type = 'RESAMP_DISPERSION'	! Resample the grid based on the local dispersion relation
+   alpha_osc = 5			! At least 5 points per oscillatory wavelength
+   alpha_exp = 1			! At least 1 point per exponential 'wavelength'
+/
+&shoot_grid
+   op_type = 'RESAMP_CENTER'	! Resample the grid at the center
+   n = 100				! At least 10 points in the evanescent region
+/
+&recon_grid
+/
+&recon_grid
+   op_type = 'RESAMP_DISPERSION'	! Resample the grid based on the local dispersion relation
+   alpha_osc = 5			! At least 5 points per oscillatory wavelength
+   alpha_exp = 1			! At least 1 point per exponential 'wavelength'
+/
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -1,0 +1,19 @@
+!version 23/04/2021
+&constants
+/
+&osc
+    outer_bound = 'VACUUM'
+    variables_set = 'DZIEM'
+    inertia_norm = 'BOTH'
+/
+&num
+   diff_scheme = 'COLLOC_GL2'
+/
+&grid
+   w_osc = 5			! At least 5 points per oscillatory wavelength
+   w_exp = 1			! At least 1 point per exponential 'wavelength'
+   w_ctr = 20			! At least 10 points in the evanescent region
+/
+&rot
+/
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

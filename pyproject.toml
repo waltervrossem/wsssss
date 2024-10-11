@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wssss"
+version = "0.0.1"
+authors = [
+  { name="Walter van Rossem", email="walter_v_rossem@hotmail.com" },
+]
+description = "Walter's set of scripts for studying stars."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scipy",
+    "f90nml",
+    "dill",
+    "matplotlib",
+    "setproctitle",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+license = {file = "LICENSE"}
+
+[project.scripts]
+gyre-driver = "bin.gyre_driver:gyre_driver.run"
+mesa-go = "bin:mesa_go.run"
+check-grid = "bin:check_grid.run"
+
+[project.urls]
+Homepage = "https://github.com/waltervrossem/wssss"
+Issues = "https://github.com/waltervrossem/wssss/issues"
+Source = "https://github.com/waltervrossem/wssss"
