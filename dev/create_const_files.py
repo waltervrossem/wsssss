@@ -29,6 +29,7 @@ lines = [_ for _ in lines if 'logical' not in _]
 lines = [_ for _ in lines if 'intent' not in _]
 lines = [_ for _ in lines if 'selected_' not in _]
 lines = [_.split('::')[1].strip() for _ in lines]
+lines = [_.replace('_dp ', ' ') for _ in lines]
 lines = [_.replace('! =', ' =').replace('!', '#').replace(';', '#') for _ in lines]
 
 for i, line in enumerate(lines):

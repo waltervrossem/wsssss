@@ -11,9 +11,9 @@ eulercon = 0.577215664901532861E0
 eulernum = 2.71828182845904523536028747135266249E0
 ln2 = 6.9314718055994529E-01  # = log(2d0)
 ln3 = 1.0986122886681096E+00  # = log(3d0)
-lnpi = 1.14472988584940017414343_dp  # = log(pi)
-ln10 = 2.3025850929940455_dp  # = log(10d0)
-iln10 = 0.43429448190325187_dp  # = 1d0/log(10d0)
+lnpi = 1.14472988584940017414343  # = log(pi)
+ln10 = 2.3025850929940455  # = log(10d0)
+iln10 = 0.43429448190325187  # = 1d0/log(10d0)
 a2rad = pi/180.0E0 # angle to radians
 rad2a = 180.0E0/pi # radians to angle
 one_third = 1E0/3E0
@@ -68,7 +68,7 @@ msun = mu_sun / standard_cgrav # solar mass (g)# gravitational mass, not baryoni
 rsun = 6.957E10 # solar radius (cm), IAU 2015 Resolution B3
 lsun = 3.828E33 # solar luminosity (erg s^-1), IAU 2015 Resolution B3
 teffsun = 5772.0E0# solar effective temperature (K), IAU 2015 Resolution B3
-loggsun = 4.4380676273031332_dp # log10(mu_sun/(Rsun*Rsun)), can't call log10 because we don't have math_lib at this point
+loggsun = 4.4380676273031332 # log10(mu_sun/(Rsun*Rsun)), can't call log10 because we don't have math_lib at this point
 mbolsun = 4.74E0  # Bolometric magnitude of the Sun, IAU 2015 Resolution B2
 m_earth = mu_earth/standard_cgrav# earth mass (g)
 r_earth = 6.3781E8 # earth equatorial radius (cm)
