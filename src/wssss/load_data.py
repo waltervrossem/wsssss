@@ -167,7 +167,7 @@ class _Data:
                         self.columns = self.keep_columns
                         self.data = _discard_columns_rec_array(self.data, self.columns)
                     self.loaded = True
-                except:
+                except Exception:
                     if verbose:
                         print("Failed to load dill from: \n{}".format(self.dill_path))
                     header, columns, first_row = _read_data_file_header_columns(self.path)

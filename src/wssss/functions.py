@@ -955,7 +955,7 @@ def load_meshdat(base_dir):
         unsmoothed = np.loadtxt(f'{base_dir}/unsmoothed.dat')
         smoothed = np.loadtxt(f'{base_dir}/smoothed.dat')
         meshed = np.loadtxt(f'{base_dir}/smoothed_meshed.dat')
-    except:
+    except Exception:
         base_dir = f'{base_dir}/../'
         unsmoothed = np.loadtxt(f'{base_dir}/unsmoothed.dat')
         smoothed = np.loadtxt(f'{base_dir}/smoothed.dat')
@@ -1009,7 +1009,7 @@ def load_meshdat2(base_dir, oldstyle=False):
             meshed = np.loadtxt(f'{base_dir}/meshed.dat')
         except OSError:
             meshed = np.loadtxt(f'{base_dir}/smoothed_meshed.dat')
-    except:
+    except Exception:
         base_dir = f'{base_dir}/../'
         unsmoothed = np.loadtxt(f'{base_dir}/unsmoothed.dat')
         if oldstyle:
@@ -1350,7 +1350,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
         y_P = y_P[i_sort]
         try:
             P_poly = np.polyfit(x, y_P, 2, w=w)
-        except:
+        except Exception:
             P_poly = np.array([np.nan]*3)
         P_poly = np.poly1d(P_poly)
         P_f = P_poly(hist.get(xname)[mask])
