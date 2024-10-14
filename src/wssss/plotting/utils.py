@@ -1,0 +1,455 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import matplotlib as mpl
+import numpy as np
+from astropy import constants as c, units as u
+from matplotlib import cm, pyplot as plt, patheffects, colors
+from matplotlib import colors
+from matplotlib import pyplot as plt
+from matplotlib import transforms
+from matplotlib.collections import LineCollection
+from matplotlib.lines import Line2D
+from matplotlib.legend_handler import HandlerLineCollection, HandlerTuple
+from matplotlib import patheffects
+from matplotlib import animation
+from scipy.interpolate import interp1d
+
+
+class HandlerDashedLines(HandlerLineCollection):
+    """
+    Custom Handler for LineCollection instances.
+    """
+    # From https://matplotlib.org/stable/gallery/text_labels_and_annotations/legend_demo.html
+    def create_artists(self, legend, orig_handle,
+                       xdescent, ydescent, width, height, fontsize, trans):
+        # figure out how many lines there are
+        numlines = len(orig_handle.get_segments())
+        xdata, xdata_marker = self.get_xdata(legend, xdescent, ydescent,
+                                             width, height, fontsize)
+        leglines = []
+        # divide the vertical space where the lines will go
+        # into equal parts based on the number of lines
+        ydata = np.full_like(xdata, height / (numlines + 1))
+        # for each line, create the line at the proper location
+        # and set the dash pattern
+        for i in range(numlines):
+            legline = Line2D(xdata, ydata * (numlines - i) - ydescent)
+            self.update_prop(legline, orig_handle, legend)
+            # set color, dash pattern, and linewidth to that
+            # of the lines in linecollection
+            try:
+                color = orig_handle.get_colors()[i]
+            except IndexError:
+                color = orig_handle.get_colors()[0]
+            try:
+                dashes = orig_handle.get_dashes()[i]
+            except IndexError:
+                dashes = orig_handle.get_dashes()[0]
+            try:
+                lw = orig_handle.get_linewidths()[i]
+            except IndexError:
+                lw = orig_handle.get_linewidths()[0]
+            if dashes[1] is not None:
+                legline.set_dashes(dashes[1])
+            else:
+                legline.set_linestyle(orig_handle.get_linestyle()[i])
+            legline.set_color(color)
+            legline.set_transform(trans)
+            legline.set_linewidth(lw)
+            leglines.append(legline)
+        return leglines
+
+
+def get_figure(ax):
+    if ax is None:
+        f, ax = plt.subplots()
+    else:
+        f = ax.get_figure()
+    return f, ax
+
+
+def top_legend(ax, ncol=2, **kwargs):
+    return ax.legend(ncol=ncol, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, mode='expand', borderaxespad=0., **kwargs)
+
+
+def top_figure_legend(f, ncol, top=0.9, **kwargs):
+    fig_size = f.bbox.corners()[3]
+    plt.subplots_adjust(top=top)
+    corners = np.array([ax.bbox.corners() for ax in f.axes])
+    top_left = corners[0,1]/fig_size
+    top_right = corners[1,3]/fig_size
+    legend = f.legend(loc='upper center', ncol=ncol, mode='expand', borderaxespad=0.,
+                    bbox_to_anchor=(top_left[0], top_right[1] , top_right[0]-top_left[0], 1-top_left[1] - 0.02),
+                    **kwargs)
+    return legend
+
+
+def colored_line(f, ax, xdat, ydat, cdat, norm=None, cmap='viridis', lw=2, add_cbar=True, do_lims=False, **kwargs):
+    points = np.asarray([xdat, ydat]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    lc = LineCollection(segments, cmap=plt.get_cmap(cmap), zorder=5, lw=1, norm=norm, **kwargs)
+    lc.set_array(cdat)
+    lc.set_linewidth(lw)
+    ax.add_collection(lc)
+    if add_cbar:
+        f.colorbar(lc, ax=ax)
+
+    if do_lims:
+        # Use automatic x and ylimits
+        xmin = min(xdat)
+        xmax = max(xdat)
+        ymin = min(ydat)
+        ymax = max(ydat)
+
+        ax.plot([xmin, ymin], [xmax, ymax], lw=0)
+        ax.set_prop_cycle(None)
+    return lc
+
+
+def hrd_const_rad(ax, fontsize=8, radii=None):
+    angle = None
+    xlim1 = ax.get_xlim()
+    ylim1 = ax.get_ylim()
+    xw = xlim1[0] - xlim1[1]
+    yw = ylim1[1] - ylim1[0]
+
+    xfactor = 0.07 / 4*yw/xw
+
+    const = (4 * np.pi * c.sigma_sb.to(u.Lsun / (u.Rsun ** 2 * u.K ** 4))).value
+    log_const = np.log10(const)
+    logTs = np.linspace(0, 6, 2)
+    if radii is None:
+        radii = np.logspace(-1, 6, 8)
+
+    radii = np.unique(radii)
+    radii = radii[radii > 0]
+    _radii = []
+    for rad in radii:
+        # Do number string formatting first so calculated and displayed radii are equal
+        if max(radii) < 10:
+            nr_string = f'{rad:.1f}'
+        else:
+            if rad < 1:
+                nr_string = f'{rad:.1f}'
+            else:
+                nr_string = f'{rad:.0f}'
+        rad = float(nr_string)
+        if (rad in _radii) or (rad <= 0):
+            continue
+        _radii.append(rad)
+
+        logR = np.log10(rad)
+        logLs = 2 * logR + 4 * logTs + log_const
+        ax.plot(logTs, logLs, 'grey', linestyle='--', zorder=-10, lw=1)
+
+        xleft = np.interp(ylim1[1], logLs, logTs)
+        xright = np.interp(ylim1[0], logLs, logTs)
+        xleft = min(xleft, xlim1[0])
+        xright = max(xright, xlim1[1])
+
+        yleft = np.interp(xleft, logTs, logLs)
+        yright = np.interp(xright, logTs, logLs)
+
+        is_top = (xleft < xlim1[0])
+        is_bottom = (xright > xlim1[1])
+        textxs = []
+
+        if is_top:
+            textxs.append(xleft - xfactor * xw)
+            textxs.append(xright + 0.07 * xw)
+        elif is_bottom:
+            textxs.append(xright + xfactor * xw)
+            textxs.append(xleft - 0.07 * xw)
+        else:
+            textxs.append(xleft - 0.07 * xw)
+            textxs.append(xright + 0.07 * xw)
+
+        frac_x_sep = abs(np.diff(textxs))/xw
+        if frac_x_sep < 0.1:
+            textxs.pop(0)
+
+        for i, textx in enumerate(textxs):
+
+            if angle is None:
+                # Have to reset xylims due to the plotting the lines of constant radius, otherwise get wrong angles.
+                ax.set_ylim(ylim1)
+                ax.set_xlim(xlim1)
+                screen_dx, screen_dy = ax.transData.transform((logTs[0], logLs[0])) - ax.transData.transform(
+                    (logTs[-1], logLs[-1]))
+                angle = (np.degrees(np.arctan2(screen_dy, screen_dx)) + 90) % 180 - 90
+            texty = np.interp(textx, logTs, logLs)
+            text = ax.text(textx, texty, r"${}\;\mathrm{{R}}_{{\odot}}$".format(nr_string), color='k', zorder=-9,
+                           rotation=angle, size=fontsize, va='center', ha='center', clip_on=True, bbox=dict(facecolor='white',linewidth=0,pad=0))
+            text.set_path_effects(
+                [patheffects.Stroke(linewidth=3, foreground=ax.get_facecolor()), patheffects.Normal()])
+
+    ax.set_ylim(ylim1)
+    ax.set_xlim(xlim1)
+
+
+def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
+    if isinstance(xname, list) or isinstance(xname, tuple):
+        x, xname = xname
+        label = xname
+    elif xname.lower().replace('_', '') in ['radius', 'r', 'rsol', 'rsun']:
+        x = uf.get_radius(p, 'Rsol')
+        label = r'Radius $(R_\odot)$'
+    elif xname in ['radius_cm', 'r_cm']:
+        x = uf.get_radius(p)
+        label = r'Radius (cm)'
+    elif xname in ('x', 'radius_dimless'):
+        x = uf.get_radius(p) / max(uf.get_radius(p))
+        label = r'Fractional radius $x$ $( r /\mathrm{R}_\star)$'
+    elif xname == 'logR':
+        x = uf.get_radius(p) / c.R_sun.to(u.cm).value
+        label = r'Radius $(r/\mathrm{R}_\odot)$'
+    elif xname == 'mass':
+        x = p.data.mass
+        label = r'Mass coordinate $m/\mathrm{M}_\odot$'
+    elif xname in ['q', 'mass_dimless']:
+        x = p.data.mass
+        x = x / x[0]
+        label = r'Fractional mass $q$ $( m /\mathrm{M}_\star)$'
+    elif xname in ['zone', 'zone_number']:
+        x = np.arange(len(p.data)) + 1
+        label = 'Zone Number'
+    elif xname == 's':
+        if hist is None:
+            raise ValueError("Need History for xname='s'.")
+        i_hist = uf.prof2i_hist(p, hist)[0][0]
+        r1 = hist.data.r_1[i_hist]
+        r2 = hist.data.r_2[i_hist]
+        r0 = np.sqrt(r1 * r2)
+        x = np.log(p.data.radius/r0)
+        label = '$s$'
+    else:
+        x = p.get(xname)
+        label = xname.replace('_', ' ')
+    if ax is not None:
+        ax.set_xlabel(label)
+
+    if func_on_xaxis is not None:
+        x = func_on_xaxis(x)
+    return x
+
+
+def get_mix_dict(profile):
+    mesa_ver = str(profile.header.get('version_number'))
+    if mesa_ver >= '15140':
+        prefix = 'post'
+    else:
+        prefix = 'pre'
+    mix_dict = kipp.mix_dict[f'{prefix}15140']
+    return mix_dict
+
+
+def get_mixing(profile, min_width):
+    """
+
+    :param profile:
+    :param min_width:
+    :return:
+    """
+    mix_dict = get_mix_dict(profile)
+
+    mixing = profile.get('mixing_type')
+    regions = {}
+    for i, name in mix_dict.items():
+        # if i == 0:
+        #    continue
+        good_zones = np.where(mixing == i)[0]
+        changes = np.where(np.diff(good_zones) != 1)[0]
+
+        starts = []
+        ends = []
+        if len(good_zones) > 1:
+            starts.append(good_zones[0])
+            for change in changes:
+                ends.append(good_zones[change]+1)  # Add one to include final cell
+                starts.append(good_zones[change + 1])
+            ends.append(good_zones[-1])
+        pairs = zip(starts, ends)
+        regions[name] = [pair for pair in pairs if pair[1] - pair[0] >= min_width]
+    return regions
+
+
+def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, add_legend=True, func_on_xaxis=None):
+    """
+    """
+    # mixing_type:[color, hatching, hatch width]
+    fills = {'convective_mixing': ["Chartreuse", "//", 1],
+             'overshoot_mixing': ["purple", 'x', 1],
+             'semiconvective_mixing': ["red", "\\\\", 1],
+             'thermohaline_mixing': ["Gold", "||", 1],
+             'rotation_mixing': ["brown", "*", 1],
+             'minimum_mixing': ['cyan', '-', 1],
+             'anonymous_mixing': ["white", None, 0]
+             }
+
+    x = get_x_and_set_xlabel(profile, xname, func_on_xaxis=func_on_xaxis)
+
+    mix_dict = get_mix_dict(profile)
+    all_regions = get_mixing(profile, min_width)
+    for _, name in mix_dict.items():
+        regions = all_regions[name]
+        if len(regions) == 0:
+            continue
+        if name not in fills.keys():
+            continue
+
+        color, hatch, line = fills[name]
+        for region in regions:
+            start, end = region
+            xstart = x[start]
+            xend = x[end]
+
+            if add_legend:
+                ax.axvspan(xstart, xend, ymin, ymax, hatch=hatch, edgecolor=color, linewidth=line,
+                           facecolor='none', label=name, zorder=-1, alpha=alpha)
+            else:
+                ax.axvspan(xstart, xend, ymin, ymax, hatch=hatch, edgecolor=color, linewidth=line,
+                           facecolor='none', zorder=-1, alpha=alpha)
+
+
+def add_burning(ax, profile, xname='mass', ymin=0, ymax=1, num_levels=None, vmin=-2, vmax=8, add_cbar=True,
+                kind='net_nuclear_energy', norm=None, kipp_scaling=True, func_on_xaxis=None):
+    """
+    """
+    x = get_x_and_set_xlabel(profile, xname, func_on_xaxis=func_on_xaxis)
+
+    if kind == 'eps_nuc':
+        log_z = np.log10(profile.get('eps_nuc'))
+        cbar_label = r'$\log_{10} \; \epsilon_{\mathrm{nuc}}$'
+    elif kind == 'net_nuclear_energy':
+        log_z = profile.get('net_nuclear_energy')
+        if kipp_scaling:
+            log_z = np.sign(log_z) * np.ceil(np.abs(log_z))
+        cbar_label = r'$\mathrm{sign}(\epsilon_\mathrm{net}) \; \log_{10} \; \max(1, \lceil|\epsilon_\mathrm{net}|\rceil)/(\mathrm{erg}/g/s)$'
+    else:
+        raise ValueError('`eps_nuc` or `net_nuclear_energy` must be a column in profile.')
+    # log_z[log_z < vmin] = vmin
+    if num_levels is None:
+        num_levels = int(vmax - vmin + 1)
+
+    if (kind == 'net_nuclear_energy') and (vmin < 0):
+        levels = np.linspace(vmin-0.5, vmax+0.5, num_levels+1)
+        cmap = plt.cm.RdBu
+        if norm is None:
+            norm = kipp.MidpointBoundaryNorm(levels, cmap.N, midpoint=0, singular_midpoint=True)
+    else:
+        levels = np.linspace(vmin, vmax, num_levels)
+        cmap = plt.cm.Blues
+        if norm is None:
+            norm = colors.BoundaryNorm(levels, cmap.N)
+
+    log_z_disc = norm(log_z)
+    i_max = len(log_z_disc) - 1
+    pairs = []
+    for level in levels:
+        mask = log_z_disc == norm(level)
+        diff = np.diff(mask.astype(int))
+        transitions = list(np.where(diff != 0)[0])
+        if len(transitions) == 0:
+            continue
+
+        if mask[0]:
+            transitions = [0] + transitions
+        if mask[-1]:
+            transitions = transitions + [i_max]
+        for i in range(len(transitions) // 2):
+            i_left = transitions[2 * i]
+            i_right = transitions[2 * i + 1]
+            pairs.append((level, (i_left, i_right)))
+
+    for level, (i_left, i_right) in pairs:
+        ax.axvspan(x[i_left], x[i_right], ymin, ymax, color=cmap(norm(level)), ec=None, zorder=-2)
+
+    if add_cbar:
+        f = ax.get_figure()
+        f.colorbar(cm.ScalarMappable(cmap=cmap, norm=norm), ticks=np.linspace(vmin, vmax, num_levels)[1::2], ax=ax)
+        cbax = f.axes[-1]
+        cbax.set_ylabel(cbar_label)
+
+    return cm.ScalarMappable(cmap=cmap, norm=norm), cbar_label
+
+
+def add_hrd_instabilities(ax, classic=True, sdB=True, ):
+    xlims = ax.get_xlim()
+    ylims = ax.get_ylim()
+
+    if classic:
+        ax.plot((3.95, 3.9, 3.8), (1, 1.8, 4.5), 'k--')
+        ax.plot((3.85, 3.8, 3.7), (0.8, 1.6, 4.5), 'k--')
+    if sdB:
+        sdBVr_logTeff = (4.55, 4.45)
+        sdBVr_logL = (1, 1.8)
+        patch_sdBVr = mpl.patches.Rectangle((sdBVr_logTeff[0], sdBVr_logL[0]),
+                                            width=np.diff(sdBVr_logTeff), height=np.diff(sdBVr_logL),
+                                            fill=False, edgecolor='b', hatch='\\')
+        ax.add_patch(patch_sdBVr)
+
+        sdBVs_logTeff = (4.5, 4.35)
+        sdBVs_logL = (1.4, 1.8)
+        patch_sdBVr = mpl.patches.Rectangle((sdBVs_logTeff[0], sdBVs_logL[0]),
+                                            width=np.diff(sdBVs_logTeff), height=np.diff(sdBVs_logL),
+                                            fill=False, edgecolor='b', hatch='/')
+        ax.add_patch(patch_sdBVr)
+
+    ax.set_xlim(xlims)
+    ax.set_ylim(ylims)
+
+
+def calc_inertia_marker_size(gs, l, freq_units='uHz'):
+    mask = gs.data.l == 0
+    E_l0 = gs.get('E_norm')[mask]
+    nu_all = uf.get_freq(gs, freq_units)
+    nu_l0 = nu_all[mask]
+    # interpolate over log10 inertia for better behaviour
+    try:
+        log_f_El0 = interp1d(nu_l0, np.log10(E_l0), kind='cubic', bounds_error=True)
+    except ValueError:
+        log_f_El0 = interp1d(nu_l0, np.log10(E_l0), kind='linear', bounds_error=True)
+    mask = gs.data.l == l
+    nu = uf.get_freq(gs, freq_units)[mask]
+    # x = np.log10(gs.data.E_norm[mask]) - log_f_El0(nu_all[mask])
+    # ms = 2.5 * 10 ** (2 * (1 - x))
+    xmin = min(E_l0)
+    x = np.log10(gs.data.E_norm[mask] / xmin)
+    ms = 25 - 2 * x**3
+    ms = np.minimum(25, ms)
+    ms = np.maximum(1, ms)
+    return ms
+
+
+def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=None, background_width=3):
+    xmin, xmax = ax.get_xlim()
+    x_range = xmax - xmin
+    line_label_x = np.linspace(xmin + edge_space * x_range, xmax - edge_space * x_range, num=num_line_label)
+    if background is None:
+        background = ax.get_facecolor()
+    # Partially based on https://github.com/cphyc/matplotlib-label-lines
+    for line in ax.get_lines():
+        label = line.get_label()
+        xdata = line.get_xdata()
+        ydata = line.get_ydata()
+
+        for x in line_label_x:
+            idxs = np.where(np.diff(np.sign(xdata - x)) != 0)[0] + 1
+            for idx in idxs:
+                # Data ordered from surface to core
+                x_left = xdata[idx]
+                x_right = xdata[idx - 1]
+                y_left = ydata[idx]
+                y_right = ydata[idx - 1]
+                y = np.interp(x, (x_left, x_right), (y_left, y_right))
+
+                screen_dx, screen_dy = ax.transData.transform((x_left, y_left)) - ax.transData.transform(
+                    (x_right, y_right))
+                rotation = (np.degrees(np.arctan2(screen_dy, screen_dx)) + 90) % 180 - 90
+
+                text = ax.text(x, y, label, rotation=rotation, color=line.get_color(), ha='center', va='center',
+                               clip_on=True, size=fontsize, bbox={'alpha': 0})
+                text.set_path_effects(
+                    [patheffects.Stroke(linewidth=background_width, foreground=background),
+                     patheffects.Normal()])
