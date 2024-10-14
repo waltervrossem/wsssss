@@ -6,7 +6,8 @@ build-backend = "setuptools.build_meta"
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["bin", "src/wssss"]
+where = ['src']
+include = ["bin", "src/wssss/*"]
 exclude = ["docs*", "tests*", "dev"]
 
 [project]
