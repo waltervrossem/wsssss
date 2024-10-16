@@ -51,8 +51,6 @@ def get_parser():
                         help='Command to run after the grid is finished. Can be a file.')
     parser.add_argument('--verbose', '-v', action='store_const', const=True, default=False,
                         help='Print info about what the script is doing.')
-    parser.add_argument('--no-tee', '-nt', action='store_const', const=True, default=False,
-                        help='If set, use pipe to file instead of tee for MESA output.')
     parser.add_argument('--num-mesa', '-n', type=int, default=1,
                         help='Number of instances of MESA to run at once.')
     parser.add_argument('--OMP_NUM_THREADS', '-j', type=int, default=env_OMP_NUM_THREADS,
