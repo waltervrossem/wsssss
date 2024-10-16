@@ -14,6 +14,11 @@ from scipy import stats
 from scipy.optimize import newton
 
 
+def get_mesa_version(mesa_dir):
+    with open(f'{mesa_dir}/data/version_number', 'r') as handle:
+        version = handle.read().strip()
+    return version
+
 # Mixing type codes for pre and post 15140
 mix_dict = {'pre15140': {0: 'no_mixing',
                          1: 'convective_mixing',
@@ -58,10 +63,6 @@ def cell2face(val, dm, dm_is_m=False, m_center=0):
     face[0] = val[0]
     face[1:] = (val[:-1]*dm[1:] + val[1:]*dm[:-1]) / (dm[1:] + dm[:-1])
     return face
-
-
-def parse_inlist(path):
-    pass
 
 
 def dlog10y_dlog10x(y, x):
