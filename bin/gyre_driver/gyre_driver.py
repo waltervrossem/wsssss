@@ -700,8 +700,6 @@ def get_parser():
                         help='Directory in which to save inlist files.')
     parser.add_argument('--base-in', type=str, default='',
                         help='Path to the base inlist to use.')
-    # parser.add_argument('--sort', action='store_const', const=True, default=False,
-    #                     help='Sort the input models by length of file name before running.')
     parser.add_argument('--no-merge', '-m', action='store_const', const=True, default=False,
                         help="Don't merge the final summary files into a single file.")
     parser.add_argument('--batch', type=int, default=None,
