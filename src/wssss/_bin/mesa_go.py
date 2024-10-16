@@ -207,7 +207,7 @@ def run_cmd(cmd, capture_output=False, split=False, to_file='', file_mode='w', *
 
 
 def check_dir(args, dirpath):
-    for fname in ['rn', 're', 'clean']:
+    for fname in ['rn', 're', 'clean', args.cmd_main]:
         fpath = os.path.join(dirpath, fname)
         if not os.path.isfile(fpath):
             raise FileNotFoundError(f'File `{fname}` does not exist at the expected location:\n'
