@@ -6,12 +6,13 @@ import os
 import dill
 import numpy as np
 import multiprocessing as mp
-from astropy import constants as c
-from astropy import units as u
 from scipy import integrate as ig
 from scipy import interpolate as ip
 from scipy import stats
 from scipy.optimize import newton
+
+from wssss.constants import post15140
+from wssss.constants import pre15140
 
 
 def get_mesa_version(mesa_dir):
@@ -121,14 +122,10 @@ def get_logTeffL(hist, mask=None):
 
 def get_radius(p, unit='cm'):
     version = p.header['version_number']
-    if isinstance(version, int):
-        if int(p.header['version_number']) < 15140:
-            R_sun = 6.9598e10
-        else:
-            raise NotImplementedError('R_sun for mesa15140 not yet implemented')
+    if str(version) < '15140':
+        R_sun = pre15140.rsun
     else:
-        if p.header['version_number'].startswith('r22'):
-            R_sun = 6.957e10
+        R_sun = post15140.rsun
 
     if 'radius' in p.columns:
         radius = p.get('radius') * R_sun
@@ -443,14 +440,17 @@ mask_functions = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_bum
 mask_names = ['PMS', 'MS', 'SGB', 'RGB', 'RGBb', 'RGB tip', 'He flashes', 'CHeB', 'RC', 'post-CHeB']
 
 def calc_dimless_to_Hz(gs):
-    G = 6.67428e-8 * u.cm**3 / (u.g * u.s**2)
+    if gyre_version < '6':
+        G = pre15140.standard_cgrav
+    else:
+        G = post15140.standard_cgrav
     if 'M_star' in gs.header.keys():
         M_star = gs.header['M_star']
         R_star = gs.header['R_star']
     else:
         M_star = gs.get('M_star')[0]
         R_star = gs.get('R_star')[0]
-    return 1.0 / (2 * np.pi) * ((G * M_star * u.g / (R_star * u.cm) ** 3).to(u.Hz ** 2) ** 0.5).value
+    return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
 
 
 def get_freq(gs, freq_units='uHz', kind='summary'):
