@@ -155,14 +155,14 @@ class _Data:
                 try:
                     if os.path.getmtime(self.dill_path) < os.path.getmtime(self.path):
                         if verbose:
-                            print('.dill file is older than history file! Reloading.')
+                            print('.dill file is older than loaded file! Reloading.')
                         self.save_dill = True
                         raise ValueError()
                     tmp = dill.load(handle)
                     self.header = tmp.header
                     self.columns = tmp.columns
                     self.data = tmp.data
-                    self.first_row = tmp.first_row
+                    self._first_row = tmp.first_row
                     if self.keep_columns != 'all':
                         self.columns = self.keep_columns
                         self.data = _discard_columns_rec_array(self.data, self.columns)
@@ -173,13 +173,13 @@ class _Data:
                     header, columns, first_row = _read_data_file_header_columns(self.path)
                     self.header = header
                     self.columns = columns
-                    self.first_row = first_row
+                    self._first_row = first_row
 
         else:
             header, columns, first_row = _read_data_file_header_columns(self.path)
             self.header = header
             self.columns = columns
-            self.first_row = first_row
+            self._first_row = first_row
 
         if self.keep_columns != 'all':
             for col_keep in self.keep_columns:  # Check if columns present
@@ -203,6 +203,41 @@ class _Data:
             new_self.index = self.index[idx_mask]
         return new_self
 
+
+    @LazyProperty
+    def data(self):
+        header, columns, data = _read_data_file(self.path)
+
+        if self.nanclip is not None:
+            for col in columns:
+                if data[col].dtype == np.float64:
+                    data[col][data[col] <= self.nanclip[0]] = np.nan
+                    data[col][data[col] >= self.nanclip[1]] = np.nan
+
+        if self.nanval is not None:
+            for col in columns:
+                if data[col].dtype == np.float64:
+                    data[col][data[col] == self.nanval] = np.nan
+
+        self.data = data
+        if isinstance(self, History):
+            data = self._scrub_hist()
+
+        self.data = data
+        self.loaded = True
+
+        if self.save_dill:
+            with open(self.dill_path, 'wb') as handle:
+                dill.dump(self, handle)
+
+        if self.keep_columns != 'all':
+            self.columns = self.keep_columns
+            self.data = _discard_columns_rec_array(self.data, self.columns)
+            data = self.data
+
+        return data
+
+
     def dump(self, path_to_dump):
         with open(path_to_dump, 'wb') as handle:
             dill.dump(self, handle)
@@ -223,9 +258,8 @@ class _Data:
 
 
 class _Mesa(_Data):
-    def __init__(self, *args, index_name='profiles.index', kind=None, **kwargs):
+    def __init__(self, *args, index_name='profiles.index', **kwargs):
         super().__init__(*args, **kwargs)
-        self.kind = kind
         self.LOGS = self.directory
         if os.path.isfile(index_name):
             self.index_path = os.path.abspath(index_name)
@@ -240,8 +274,8 @@ class _Mesa(_Data):
             # Scrub index of backups and retries
             max_model = index[-1, 0]
             index = index[index[:, 0] <= max_model]
-            if self.kind == 'history':
-                min_model = self.first_row.model_number
+            if isinstance(self, History):
+                min_model = self._first_row.model_number
                 index = index[index[:, 0] >= min_model]
             u, i = np.unique(index[:, 0][::-1], return_index=True)
             index = index[::-1][i]
@@ -252,57 +286,15 @@ class _Mesa(_Data):
 
         self.index = index
 
-    def _scrub_hist(self):
-        """Scrub history data for backups and retries."""
-        max_model = self.data['model_number'][-1]
-        scrubbed = self.data[self.data['model_number'] <= max_model]
-
-        u, i = np.unique(scrubbed['model_number'][::-1], return_index=True)
-        scrubbed = scrubbed[::-1][i]
-
-        return scrubbed
-
-    @LazyProperty
-    def data(self):
-        header, columns, data = _read_data_file(self.path)
-
-        if self.nanclip is not None:
-            for col in columns:
-                if data[col].dtype == np.float64:
-                    data[col][data[col] <= self.nanclip[0]] = np.nan
-                    data[col][data[col] >= self.nanclip[1]] = np.nan
-
-        if self.nanval is not None:
-            for col in columns:
-                if data[col].dtype == np.float64:
-                    data[col][data[col] == self.nanval] = np.nan
-
-        self.data = data
-        if self.kind == 'history':
-            data = self._scrub_hist()
-
-        self.data = data
-        self.loaded = True
-
-        if self.save_dill:
-            with open(self.dill_path, 'wb') as handle:
-                dill.dump(self, handle)
-
-        if self.keep_columns != 'all':
-            self.columns = self.keep_columns
-            self.data = _discard_columns_rec_array(self.data, self.columns)
-            data = self.data
-
-        return data
 
 class History(_Mesa):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, kind='history', **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __repr__(self):
-        initial_model = self.first_row['model_number']
-        initial_mass = self.first_row['star_mass']
-        initial_age = self.first_row['star_age']
+        initial_model = self._first_row['model_number']
+        initial_mass = self._first_row['star_mass']
+        initial_age = self._first_row['star_age']
         star_info = f'Initial model={initial_model}, mass={initial_mass:.2f}, age={initial_age}'
         return 'MESA history data file at {}'.format(self.path) + '\n' + star_info
 
@@ -341,7 +333,7 @@ class History(_Mesa):
     def get_model_num(self, profile_nums):
         """Returns the profile number, model number, and model index"""
         if hasattr(profile_nums, '__len__'):
-            if isinstance(profile_nums, Profile):  # single instance of MesaData
+            if isinstance(profile_nums, Profile):
                 profile_nums = [profile_nums]
         else:
             profile_nums = [profile_nums]
@@ -353,8 +345,18 @@ class History(_Mesa):
         return np.array(list(zip(profile_nums, model_nums, data_idx)), dtype=int)
 
 
+    def _scrub_hist(self):
+        """Scrub history data for backups and retries."""
+        max_model = self.data['model_number'][-1]
+        scrubbed = self.data[self.data['model_number'] <= max_model]
+
+        u, i = np.unique(scrubbed['model_number'][::-1], return_index=True)
+        scrubbed = scrubbed[::-1][i]
+
+        return scrubbed
+
 class Profile(_Mesa):
-    def __init__(self, *args, kind='profile', load_GyreProfile=False, **kwargs):
+    def __init__(self, *args, load_GyreProfile=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.LOGS = self.directory
 
@@ -371,6 +373,25 @@ class Profile(_Mesa):
         return 'MESA profile data file at {}'.format(self.path) + '\n' + str(
             {key: self.header[key] for key in try_to_get})
 
+
+class GyreSummary(_Data):
+    def __init__(self, *args, gyre_version='6', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.gyre_version = gyre_version
+
+
+    def __repr__(self):
+        return f'GyreSummary loaded from {self.path}'
+
+
+class GyreMode(_Data):
+    def __init__(self, *args, gyre_version='6', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.gyre_version = gyre_version
+
+
+    def __repr__(self):
+        return f'GyreMode loadedd from {self.path}'
 
 def load_profs(hist, prefix='profile', suffix='.data', only_RC=False, save_dill=False, mask=None, mask_kwargs={}):
     if hist.index is None:
@@ -398,7 +419,7 @@ def load_profs(hist, prefix='profile', suffix='.data', only_RC=False, save_dill=
                 prof = GyreProfile(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)))
                 profs.append(prof)
             else:
-                prof = MesaData(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)), save_dill=save_dill)
+                prof = Profile(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)), save_dill=save_dill)
                 profs.append(prof)
         except IndexError:
             print(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)) +
@@ -432,7 +453,7 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
     gss = []
     for pnum in pnums:
         fname = '{}{}{}'.format(gyre_summary_prefix, pnum, gyre_summary_suffix)
-        gss.append(MesaData(os.path.join(dirpath, fname), filetype='gyre'))
+        gss.append(GyreSummary(os.path.join(dirpath, fname)))
     
     if return_pnums:
         return list(zip(gss, np.array(pnums)))
@@ -450,7 +471,7 @@ def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode
     for fname in fnames:
         if fname.startswith(mode_prefix):
             if fname.endswith(mode_suffix):
-                modes.append(MesaData(os.path.join(dirpath, fname)))
+                modes.append(GyreMode(os.path.join(dirpath, fname)))
     return modes
 
 
@@ -468,7 +489,7 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
         else:
             fname = ''
 
-    gs = MesaData(os.path.join(dirpath, fname), filetype='gyre')
+    gs = GyreSummary(os.path.join(dirpath, fname))
     return gs
 
 
@@ -490,7 +511,7 @@ def load_modes(hist, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile',
         pnum = int(fname[len(prefix_parts[0]):fname.index(prefix_parts[1])])
         mode_prefix_pnum = mode_prefix.format(pnum)
         if fname.startswith(mode_prefix_pnum) and fname.endswith(mode_suffix):
-            md = MesaData(os.path.join(dirpath, fname))
+            md = GyreMode(os.path.join(dirpath, fname))
             nu = uf.get_freq(md, kind='mode')
             l = md.header['l']
             order_names = ['n_p', 'n_g', 'n_pg']
@@ -516,28 +537,6 @@ def load_modes(hist, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile',
                 
             else:
                 raise ValueError('Not enough information in header to determine n_p, n_g, and n_pg.')
-                # orders = dict(zip(order_names, [None] * 3))
-                # order_avail = order_names[np.in1d(order_names, list(md.header.keys()))]
-                # freq = uf.get_freq(md, kind='mode')
-                # #n_pg = md.header['n_pg']
-                #
-                # gs = gss[np.where(pnums == pnum)[0][0]]
-                #
-                # mask = gs.data.l == l
-                # # mask = np.logical_and(mask, gs.data.n_pg == n_pg)
-                # if not np.any(mask):
-                #     raise ValueError("Cannot determine `n_p` and `n_g` for {}".format(os.path.join(dirpath, fname)))
-                #
-                # gs_freq = uf.get_freq(gs)[mask]
-                # closest = gs_freq[np.argmin(np.abs(gs_freq - freq))]
-                #
-                # mask = np.logical_and(mask, uf.get_freq(gs) == closest)
-                #
-                # if np.sum(mask) != 1:
-                #     raise ValueError("Cannot determine `n_p` and `n_g` for {}".format(os.path.join(dirpath, fname)))
-                #
-                # n_p = gs.data.n_p[mask][0]
-                # n_g = gs.data.n_g[mask][0]
             
             md.header['profile_number'] = pnum
             
