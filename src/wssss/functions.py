@@ -1034,7 +1034,7 @@ def calc_fCZ(r1, r2, r_bCZ):
     return f_CZ
 
 def get_coupling(hist, f=0.2):
-    f_CZ = calc_fCZ_from_hist(hist)
+    f_CZ = calc_f_CZ_from_hist(hist)
     
     mask_f = f_CZ < f
     mask_1mf = f_CZ > 1 - f

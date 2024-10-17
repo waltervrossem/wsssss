@@ -198,7 +198,10 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
     brunt_N2[brunt_N2 < 0] = 0
 
     lamb2 = uf.get_lamb2(p)
-    
+
+    if hist is not None:
+        i_hist = uf.prof2i_hist(p, hist)[0][0]
+
     if 'scale_height' in p.columns:
         H = p.data.scale_height * c.rsun
         cs2H2 = (csound / (4 * np.pi * H)) ** 2
@@ -216,7 +219,6 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
         if hist is None:
             raise ValueError("Need History for xname='s'.")
         else:
-            i_hist = uf.prof2i_hist(p, hist)[0][0]
             r1 = hist.data.r_1[i_hist]
             r2 = hist.data.r_2[i_hist]
         r0 = np.sqrt(r1 * r2)
@@ -251,10 +253,9 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
         ax.plot(x[x_skip:], 1E6 * nu_c2**0.5, label=r'$\nu_c$')
         ax.plot(x, 1E6 * (csound / (4 * np.pi * H)), ls='--', label=r'$\nu_\mathrm{ac}$ approx')
         if hist is not None:
-            ax.hlines(hist.data.acoustic_cutoff[hist_i]/(2*np.pi), x[0], x[-1], label=r'$\nu_\mathrm{ac}$')
+            ax.hlines(hist.data.acoustic_cutoff[i_hist]/(2*np.pi), x[0], x[-1], label=r'$\nu_\mathrm{ac}$')
 
     if do_numax and (hist is not None):
-        i_hist = uf.prof2i_hist(p, hist)[0][0]
         numax = hist.get('nu_max')[i_hist]
         xmin = np.nanmin(x)
         xmax = np.nanmax(x)
@@ -394,23 +395,23 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
     if not only_reduced:  # Also plot normal N and S
         S2 = (1E6 / (2 * np.pi))**2 * lamb2
         N2 = (1E6 / (2 * np.pi))**2 * brunt_N2
-        ax.plot(x, S2, label=r'$S_{\ell=1}$')
-        ax.plot(x, N2, label='$N$')
+        ax.plot(x, S2, label=r'$S^2_{\ell=1}$')
+        ax.plot(x, N2, label='$N^2$')
 
-    ax.axhline(hist.get('nu_max')[hist_i]**2, c='k', zorder=-1, label=r'$\nu_\mathrm{max}$')
+    ax.axhline(hist.get('nu_max')[hist_i]**2, c='k', zorder=-1, label=r'$\nu^2_\mathrm{max}$')
 
     if do_reduced:  # Add N_red and S_red
         J = 1 - 1 / 3 * np.gradient(np.log(p.data.mass), np.log(radius))
         S2_red = (1E6 / (2 * np.pi) * J)**2 * lamb2
         N2_red = (1E6 / (2 * np.pi) / J)**2 * brunt_N2
 
-        ax.plot(x, S2_red, label='$\\tilde{S}_{\\ell=1}$')
-        ax.plot(x, N2_red, label='$\\tilde{N}$')
+        ax.plot(x, S2_red, label='$\\tilde{S}^2_{\\ell=1}$')
+        ax.plot(x, N2_red, label='$\\tilde{N}^2$')
 
     if not only_NS and not only_reduced:  # Add Acoustic cutouff
-        ax.plot(x[x_skip:], 1E6 * nu_c2 ** 0.5, label=r'$\nu_\mathrm{ac}$')
-        ax.plot(x, 1E6 * (csound / (4 * np.pi * H)), ls='--', label=r'$\nu_\mathrm{ac}$ approx')
-        ax.hlines(hist.data.acoustic_cutoff[hist_i] / (2 * np.pi), x[0], x[-1], label=r'$\nu_\mathrm{ac}$')
+        ax.plot(x[x_skip:], 1e12 * nu_c2, label=r'$\nu^2_\mathrm{ac}$')
+        ax.plot(x, 1e12 * (csound / (4 * np.pi * H))**2, ls='--', label=r'$\nu^2_\mathrm{ac}$ approx')
+        ax.hlines((hist.data.acoustic_cutoff[hist_i] / (2 * np.pi))**2, x[0], x[-1], label=r'$\nu^2_\mathrm{ac}$')
 
     ax.set_ylim(1e12 * np.min(lamb2) / 2, 1e12 * np.max(lamb2) * 2)
     ax.set_ylabel(r'Frequency$^2$ ($\mu$Hz$^2$)')
@@ -594,32 +595,32 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
 
     return f, ax
 
-
-def make_period_echelle(gs, hist, ax=None,
-                 prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz', legend_loc='upper right'):
-    f, ax = get_figure(ax)
-    
-    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_model_num(pnum)[0][2]
-    nu_all = uf.get_freq(gs, freq_units)
-    dPi1 = hist.get('delta_Pg')[hist_i]
-    
-    ms = calc_inertia_marker_size(gs, l=1, freq_units=freq_units)
-    
-    nu = uf.get_freq(gs, 'Hz')
-    
-    # mask = None
-    # ax.scatter(1/nu[mask] % dPi1, nu, ms, color='C1', label=fr'$\ell=1$')
-
-    freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
-    ax.set_xlabel(r'$1/\nu \; \mathrm{mod} \; \Delta \Pi_1$')
-    ax.set_ylabel(f'Frequency (${freq_unit}$Hz)')
-    
-    if legend_loc != '':
-        ax.legend(loc=legend_loc, ncol=len(l_list))
-    ax.scatter((1 / nu % dPi1) - dPi1, nu, ms, color='C1')
-    ax.axvline(0, 0, 1, ls='--', color='k', zorder=-3)
-    return f, ax
+#
+# def make_period_echelle(gs, hist, ax=None,
+#                  prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz', legend_loc='upper right'):
+#     f, ax = get_figure(ax)
+#
+#     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
+#     hist_i = hist.get_model_num(pnum)[0][2]
+#     nu_all = gs.get_frequencies(freq_units)
+#     dPi1 = hist.get('delta_Pg')[hist_i]
+#
+#     ms = calc_inertia_marker_size(gs, l=1, freq_units=freq_units)
+#
+#     nu = uf.get_freq(gs, 'Hz')
+#
+#     # mask = None
+#     # ax.scatter(1/nu[mask] % dPi1, nu, ms, color='C1', label=fr'$\ell=1$')
+#
+#     freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
+#     ax.set_xlabel(r'$1/\nu \; \mathrm{mod} \; \Delta \Pi_1$')
+#     ax.set_ylabel(f'Frequency (${freq_unit}$Hz)')
+#
+#     if legend_loc != '':
+#         ax.legend(loc=legend_loc, ncol=len(l_list))
+#     ax.scatter((1 / nu % dPi1) - dPi1, nu, ms, color='C1')
+#     ax.axvline(0, 0, 1, ls='--', color='k', zorder=-3)
+#     return f, ax
 
 
 def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, legend_loc='upper right', scale_marker=False):

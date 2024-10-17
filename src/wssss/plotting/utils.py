@@ -64,6 +64,139 @@ class HandlerDashedLines(HandlerLineCollection):
         return leglines
 
 
+class MidpointBoundaryNorm(colors.BoundaryNorm):
+    """
+    Generate a colormap index based on discrete intervals.
+
+    Unlike :class:`Normalize` or :class:`LogNorm`,
+    :class:`MidpointBoundaryNorm` maps values to integers instead of to the
+    interval 0-1.
+
+    Mapping to the 0-1 interval could have been done via
+    piece-wise linear interpolation, but using integers seems
+    simpler, and reduces the number of conversions back and forth
+    between integer and floating point.
+    """
+
+    def __init__(self, boundaries, ncolors, midpoint, clip=False, away_from_midpoint=True, singular_midpoint=True):
+        """
+        Parameters
+        ----------
+        boundaries : array-like
+            Monotonically increasing sequence of boundaries.
+        ncolors : int
+            Number of colors in the colormap to be used.
+        midpoint : scalar
+            Value to assign the middle color to.
+        clip : bool, optional
+            If clip is ``True``, out of range values are mapped to 0 if they
+            are below ``boundaries[0]`` or mapped to ncolors - 1 if they are
+            above ``boundaries[-1]``.
+
+            If clip is ``False``, out of range values are mapped to -1 if
+            they are below ``boundaries[0]`` or mapped to ncolors if they are
+            above ``boundaries[-1]``. These are then converted to valid indices
+            by :meth:`Colormap.__call__`.
+        away_from_midpoint : bool, optional
+            If away_from_midpoint is ``True``, determine colors away from
+            the midpoint value instead of all in one direction.
+        singular_midpoint : bool, optional
+            If singular_midpoint is ``True``, only values which equal midpoint
+            are set to that color. Only used when away_from_midpoint is ``True``.
+
+        Notes
+        -----
+        *boundaries* defines the edges of bins, and data falling within a bin
+        is mapped to the color with the same index.
+
+        If the number of bins doesn't equal *ncolors*, the color is chosen
+        by linear interpolation of the bin number onto color numbers.
+        """
+        super().__init__(boundaries, ncolors, clip)
+        self.away_from_midpoint = away_from_midpoint
+        self.singular_midpoint = singular_midpoint
+        self.clip = clip
+        self.vmin = boundaries[0]
+        self.vmax = boundaries[-1]
+        self.midpoint = midpoint
+        self.boundaries = np.asarray(boundaries)
+
+        self.N = len(self.boundaries)
+        self.Ncmap = ncolors
+        if self.N - 1 == self.Ncmap:
+            self._interp = False
+        else:
+            self._interp = True
+
+    def __call__(self, value, clip=None):
+        if clip is None:
+            clip = self.clip
+
+        xx, is_scalar = self.process_value(value)
+        mask = np.ma.getmaskarray(xx)
+        xx = np.atleast_1d(xx.filled(self.vmax + 1))
+        if clip:
+            np.clip(xx, self.vmin, self.vmax, out=xx)
+            max_col = self.Ncmap - 1
+        else:
+            max_col = self.Ncmap
+        imid = np.argmin(np.abs(self.boundaries - self.midpoint))
+        iret = np.zeros(xx.shape, dtype=np.int16)
+        if self.away_from_midpoint:
+            if self.singular_midpoint:
+                left = xx < self.midpoint
+                iret[left] = np.digitize(xx[left], self.boundaries) - 1
+                right = xx > self.midpoint
+                iret[right] = np.digitize(xx[right], self.boundaries, True)
+                iret[~(left | right)] = imid  # Exactly equal to midpoint
+            else:
+                for i, b in enumerate(self.boundaries[::-1]):
+                    if b <= self.midpoint:
+                        iret[xx <= b] = self.N - 1 - i
+                for i, b in enumerate(self.boundaries):
+                    if b >= self.midpoint:
+                        iret[xx >= b] = i
+        else:
+            for i, b in enumerate(self.boundaries):
+                iret[xx >= b] = i
+        if self._interp:
+            if self.away_from_midpoint & self.singular_midpoint:
+                scalefac_l = self.Ncmap / 2 / imid
+                scalefac_r = self.Ncmap / 2 / (self.N - imid + 1)
+                imid = int(self.Ncmap / 2)
+                iret[left] = (iret[left] * scalefac_l).astype(np.int16)
+                iret[right] = (imid + iret[right] * scalefac_r).astype(np.int16)
+                iret[~(left | right)] = imid
+            else:
+                scalefac = (self.Ncmap - 1) / (self.N - 2)
+                iret = (iret * scalefac).astype(np.int16)
+                imid = int(imid * scalefac)
+
+        if not (self._interp & self.away_from_midpoint & self.singular_midpoint):
+            imask = xx < self.midpoint
+            iret[imask] = iret[imask] / imid * 0.5 * (self.Ncmap - 1)
+            imask = xx >= self.midpoint
+            iret[imask] = (iret[imask] - imid) / (self.Ncmap - imid) * 0.5 * (self.Ncmap - 1) + 0.5 * (self.Ncmap - 1)
+            iret = iret.astype(np.int16)
+
+        iret[xx < self.vmin] = -1
+        iret[xx >= self.vmax] = max_col
+        ret = np.ma.array(iret, mask=mask)
+        if is_scalar:
+            ret = int(ret[0])  # assume python scalar
+        return ret
+
+    def inverse(self, value):
+        """
+        Raises
+        ------
+        ValueError
+            MidpointBoundaryNorm is not invertible, so calling this method will always
+            raise an error
+        """
+        return ValueError("MidpointBoundaryNorm is not invertible")
+
+
 def get_figure(ax):
     if ax is None:
         f, ax = plt.subplots()
@@ -339,7 +472,7 @@ def add_burning(ax, profile, xname='mass', ymin=0, ymax=1, num_levels=None, vmin
         levels = np.linspace(vmin-0.5, vmax+0.5, num_levels+1)
         cmap = plt.cm.RdBu
         if norm is None:
-            norm = kipp.MidpointBoundaryNorm(levels, cmap.N, midpoint=0, singular_midpoint=True)
+            norm = MidpointBoundaryNorm(levels, cmap.N, midpoint=0, singular_midpoint=True)
     else:
         levels = np.linspace(vmin, vmax, num_levels)
         cmap = plt.cm.Blues

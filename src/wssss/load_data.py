@@ -156,7 +156,7 @@ class _Data:
             with open(self.dill_path, 'rb') as handle:
                 try:
                     if os.path.getmtime(self.dill_path) < os.path.getmtime(self.path):
-                        if verbose:
+                        if self.verbose:
                             print('.dill file is older than loaded file! Reloading.')
                         self.save_dill = True
                         raise ValueError()
@@ -170,7 +170,7 @@ class _Data:
                         self.data = _discard_columns_rec_array(self.data, self.columns)
                     self.loaded = True
                 except Exception:
-                    if verbose:
+                    if self.verbose:
                         print("Failed to load dill from: \n{}".format(self.dill_path))
                     header, columns, first_row = _read_data_file_header_columns(self.path)
                     self.header = header
@@ -282,7 +282,7 @@ class _Mesa(_Data):
             u, i = np.unique(index[:, 0][::-1], return_index=True)
             index = index[::-1][i]
         except OSError:
-            if verbose:
+            if self.verbose:
                 print('Index file not found, expected path {}'.format(self.index_path))
             index = None
 
@@ -646,7 +646,7 @@ class GyreProfile:
 
     @LazyProperty
     def data(self):
-        header, columns, data = _load_gyre_profile(self.path)
+        header, columns, data = self._load_gyre_profile(self.path)
         self.data = data
         self.loaded = True
         return data
