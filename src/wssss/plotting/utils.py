@@ -3,7 +3,6 @@
 
 import matplotlib as mpl
 import numpy as np
-from astropy import constants as c, units as u
 from matplotlib import cm, pyplot as plt, patheffects, colors
 from matplotlib import colors
 from matplotlib import pyplot as plt
@@ -15,6 +14,10 @@ from matplotlib import patheffects
 from matplotlib import animation
 from scipy.interpolate import interp1d
 
+from ..constants import post15140
+from ..constants import pre15140
+
+import wssss.functions as uf
 
 class HandlerDashedLines(HandlerLineCollection):
     """
@@ -107,8 +110,7 @@ def colored_line(f, ax, xdat, ydat, cdat, norm=None, cmap='viridis', lw=2, add_c
     return lc
 
 
-def hrd_const_rad(ax, fontsize=8, radii=None):
-    angle = None
+def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
     xlim1 = ax.get_xlim()
     ylim1 = ax.get_ylim()
     xw = xlim1[0] - xlim1[1]
@@ -116,7 +118,7 @@ def hrd_const_rad(ax, fontsize=8, radii=None):
 
     xfactor = 0.07 / 4*yw/xw
 
-    const = (4 * np.pi * c.sigma_sb.to(u.Lsun / (u.Rsun ** 2 * u.K ** 4))).value
+    const = 4 * np.pi * post15140.boltz_sigma / post15140.lsun * post15140.rsun**2
     log_const = np.log10(const)
     logTs = np.linspace(0, 6, 2)
     if radii is None:
@@ -199,10 +201,11 @@ def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
         x = uf.get_radius(p)
         label = r'Radius (cm)'
     elif xname in ('x', 'radius_dimless'):
-        x = uf.get_radius(p) / max(uf.get_radius(p))
+        x = uf.get_radius(p)
+        x = x / max(x)
         label = r'Fractional radius $x$ $( r /\mathrm{R}_\star)$'
     elif xname == 'logR':
-        x = uf.get_radius(p) / c.R_sun.to(u.cm).value
+        x = uf.get_radius(p, 'Rsol')
         label = r'Radius $(r/\mathrm{R}_\odot)$'
     elif xname == 'mass':
         x = p.data.mass

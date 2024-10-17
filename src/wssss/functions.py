@@ -20,6 +20,16 @@ def get_mesa_version(mesa_dir):
         version = handle.read().strip()
     return version
 
+
+def get_constants(p_or_hist):
+    if 'version' in p_or_hist.header.keys():
+        version = str(p_or_hist.header['version'])
+
+    if version < '15140':
+        return pre15140
+    else:
+        return post15140
+
 # Mixing type codes for pre and post 15140
 mix_dict = {'pre15140': {0: 'no_mixing',
                          1: 'convective_mixing',
@@ -121,16 +131,12 @@ def get_logTeffL(hist, mask=None):
 
 
 def get_radius(p, unit='cm'):
-    version = p.header['version_number']
-    if str(version) < '15140':
-        R_sun = pre15140.rsun
-    else:
-        R_sun = post15140.rsun
+    c = get_constants(p)
 
     if 'radius' in p.columns:
-        radius = p.get('radius') * R_sun
+        radius = p.get('radius') * c.rsun
     elif 'logR' in p.columns:
-        radius = 10 ** p.get('logR') * R_sun
+        radius = 10 ** p.get('logR') * c.rsun
     elif 'radius_cm' in p.columns:
         radius = p.get('radius_cm')
     else:
@@ -139,7 +145,7 @@ def get_radius(p, unit='cm'):
     if unit == 'log':
         radius = np.log10(radius)
     elif unit.lower().replace('_', '') in ['rsun', 'rsol']:
-        radius = radius/R_sun
+        radius = radius/c.rsun
     return radius
 
 

@@ -1,8 +1,7 @@
 import os
 import copy
 import numpy as np
-from astropy import constants as c
-from astropy import units as u
+
 import matplotlib as mpl
 from matplotlib import colors
 from matplotlib import pyplot as plt
@@ -188,7 +187,9 @@ def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=Non
 
 def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduced=True, only_reduced=False,
                      add_legend=True, n_col_legend=3, fill_cavity=False, show_burn_level=0, do_numax=True):
-    
+
+    c = uf.get_constants(p)
+
     f, ax = get_figure(ax)
     radius = uf.get_radius(p)
 
@@ -199,7 +200,7 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
     lamb2 = uf.get_lamb2(p)
     
     if 'scale_height' in p.columns:
-        H = p.data.scale_height * c.R_sun.to(u.cm).value
+        H = p.data.scale_height * c.rsun
         cs2H2 = (csound / (4 * np.pi * H)) ** 2
         nu_c2 = cs2H2[1:] * (1 - 2*np.diff(H)/np.diff(radius))
         x_skip = 1
@@ -346,6 +347,8 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
 
 def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduced=True, only_reduced=False,
                      add_legend=True, fill_cavity=False, show_burn_level=0):
+    c = uf.get_constants(p)
+
     f, ax = get_figure(ax)
 
     hist_i = hist.get_model_num(p.profile_num)[0][2]
@@ -359,7 +362,7 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
     lamb2 = uf.get_lamb2(p)
 
     if 'scale_height' in p.columns:
-        H = p.data.scale_height * c.R_sun.to(u.cm).value
+        H = p.data.scale_height * c.rsun
         cs2H2 = (csound / (4 * np.pi * H)) ** 2
         nu_c2 = cs2H2[1:] * (1 - 2 * np.diff(H) / np.diff(radius))
         x_skip = 1
@@ -371,32 +374,22 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
         nu_c2 = cs2H2[1:] * (1 - 2 * np.diff(H) / np.diff(radius)[1:])
         x_skip = 2
 
-    if xname.lower() in ['radius', 'r']:
-        x = radius / c.R_sun.to(u.cm).value
-        ax.set_xlabel(r'Radius $(R_\odot)$')
-    elif xname == ['radius_cm', 'r_cm']:
-        x = radius * c.R_sun.cgs.value
-        ax.set_xlabel(r'Radius (cm)')
-    elif xname in ('x', 'radius_dimless'):
-        x = radius / max(radius)
-        ax.set_xlabel(r'Fractional radius $x$ $( r /R_\star)$')
-    elif xname == 'logR':
-        x = radius / c.R_sun.to(u.cm).value
-        ax.set_xlabel(r'Radius $(R_\odot)$')
-    elif xname == 'mass':
-        x = p.data.mass
-        ax.set_xlabel(r'Mass $(M_\odot)$')
-    elif xname in ['q', 'mass_dimless']:
-        x = p.data.mass
-        x = x / x[0]
-        ax.set_xlabel(r'Fractional mass $q$ $( m /M_\star)$')
-    elif isinstance(xname, list) or isinstance(xname, tuple):
-        x, xname = xname
-        ax.set_xlabel(xname)
+    if xname == 's':
+        if hist is None:
+            raise ValueError("Need History for xname='s'.")
+        else:
+            i_hist = uf.prof2i_hist(p, hist)[0][0]
+            r1 = hist.data.r_1[i_hist]
+            r2 = hist.data.r_2[i_hist]
+        r0 = np.sqrt(r1 * r2)
+        x = np.log(radius / r0)
+        s0 = np.log(r1 / r2) / 2
+        ax.set_xlabel('$s$')
+        ax.set_xlim(-1.5*abs(s0), 1.5*abs(s0))
+        smin, smax = ax.get_xlim()
+        x[(x < smin) | (x > smax)] = np.nan
     else:
-        print('Using xname=mass.')
-        x = p.data.mass
-        ax.set_xlabel(r'Mass $(M_\odot)$')
+        x = get_x_and_set_xlabel(p, xname, ax, hist=hist)
 
     if not only_reduced:  # Also plot normal N and S
         S2 = (1E6 / (2 * np.pi))**2 * lamb2
@@ -479,7 +472,7 @@ def make_propagation_CouplingData(cd, p=None, ax=None, add_legend=True, show_app
             print(f'profile model {p.header["model_number"]} number does not match CouplingData model number {cd.model_number}.')
 
     ax.axhline(cd.nu_max, color='k', label='$\\nu_{max}$')
-    x = cd.r/c.R_sun.to(u.cm).value
+    x = cd.r/6.9598e10
     
     if cd.remove_spike:
         rad2uHz = 1e6/(2*np.pi)
@@ -508,11 +501,6 @@ def make_propagation_CouplingData(cd, p=None, ax=None, add_legend=True, show_app
     ax.set_ylabel(r'Frequency ($\mu$Hz)')
     
     return f, ax
-
-# mixing_names = ['no_mixing', 'convective_mixing', 'softened_convective_mixing',
-#                 'overshoot_mixing', 'semiconvective_mixing',
-#                 'thermohaline_mixing', 'rotation_mixing',
-#                 'rayleigh_taylor_mixing', 'minimum_mixing', 'anonymous_mixing']
 
 
 def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='median',
