@@ -380,6 +380,15 @@ class _Gyre(_Data):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+class GyreSummary(_Gyre):
+    def __init__(self, *args, gyre_version='6', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.gyre_version = gyre_version
+
+
+    def __repr__(self):
+        return f'GyreSummary loaded from {self.path}'
+
 
     def _dimless_to_Hz(self):
         if 'M_star' in self.header.keys():
@@ -389,17 +398,8 @@ class _Gyre(_Data):
         else:
             M_star = self.get('M_star')[0]
             R_star = self.get('R_star')[0]
-            G = post15140.standard_cgrav
+            G = post15140.standard_cgrav  # This changed in version 6.
         return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
-
-class GyreSummary(_Gyre):
-    def __init__(self, *args, gyre_version='6', **kwargs):
-        super().__init__(*args, **kwargs)
-        self.gyre_version = gyre_version
-
-
-    def __repr__(self):
-        return f'GyreSummary loaded from {self.path}'
 
 
     def get_frequencies(self, freq_units):
@@ -414,13 +414,22 @@ class GyreSummary(_Gyre):
         return self.data[freq_name] * dimless_to_Hz
 
 class GyreMode(_Gyre):
-    def __init__(self, *args, gyre_version='6', **kwargs):
+    def __init__(self, *args, gyre_version, **kwargs):
         super().__init__(*args, **kwargs)
         self.gyre_version = gyre_version
 
 
     def __repr__(self):
-        return f'GyreMode loadedd from {self.path}'
+        return f'GyreMode loaded from {self.path}'
+
+    def _dimless_to_Hz(self):
+        M_star = self.header['M_star']
+        R_star = self.header['R_star']
+        if self.gyre_version < '6':
+            G = pre15140.standard_cgrav
+        else:
+            G = post15140.standard_cgrav
+        return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
 
 
     def get_frequencies(self, freq_units):
@@ -502,7 +511,7 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
     return gss
 
 
-def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode_suffix='.mgyre'):
+def load_modes_from_profile(prof, gyre_version, gyre_data_dir='gyre_out', mode_prefix='', mode_suffix='.mgyre'):
     dirpath = os.path.abspath(os.path.join(prof.LOGS, '..', gyre_data_dir))
     fnames = os.listdir(dirpath)
 
@@ -513,7 +522,7 @@ def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode
     for fname in fnames:
         if fname.startswith(mode_prefix):
             if fname.endswith(mode_suffix):
-                modes.append(GyreMode(os.path.join(dirpath, fname)))
+                modes.append(GyreMode(os.path.join(dirpath, fname), gyre_version))
     return modes
 
 
@@ -535,7 +544,7 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
     return gs
 
 
-def load_modes(hist, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile',
+def load_modes(hist, gyre_version, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile',
                gyre_summary_suffix='.data.GYRE.sgyre_l', mode_dir='gyre_out/detail',
                mode_prefix='profile{}.', mode_suffix='.mgyre'):
     gss, pnums = load_gss(hist, gyre_summary_dir, gyre_summary_prefix, gyre_summary_suffix, return_pnums=True)
@@ -553,7 +562,7 @@ def load_modes(hist, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile',
         pnum = int(fname[len(prefix_parts[0]):fname.index(prefix_parts[1])])
         mode_prefix_pnum = mode_prefix.format(pnum)
         if fname.startswith(mode_prefix_pnum) and fname.endswith(mode_suffix):
-            md = GyreMode(os.path.join(dirpath, fname))
+            md = GyreMode(os.path.join(dirpath, fname), gyre_version)
             nu = uf.get_freq(md, kind='mode')
             l = md.header['l']
             order_names = ['n_p', 'n_g', 'n_pg']
