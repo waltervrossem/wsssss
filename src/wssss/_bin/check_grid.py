@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import ast
+import glob
 import os
 import sys
-import glob
-import numpy as np
-import ast
-
 from argparse import ArgumentParser
 from collections import Counter
 from collections import defaultdict
 from datetime import datetime
 
-from wssss import load_data as ld
+import numpy as np
 
 
 def get_parser():
@@ -67,8 +65,8 @@ def read_prof_header(fpath):
     lines = []
     with open(fpath, 'r') as f:
         for i in range(3):
-         lines.append(f.readline().split())
-    
+            lines.append(f.readline().split())
+
     formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in lines[2]]
     return np.rec.array((lines[2],), dtype={'names': lines[1], 'formats': formats})
 
@@ -81,7 +79,7 @@ def get_termination_code(lines):
         if 'termination code' in line:
             term_code = line.split(':')[1].strip()
             break
-    
+
     if term_code == 'Running':  # Didn't find normal termination code
         for line in lines:
             if ('adjust_mesh_failed' in line) or ('mesh_plan problem') in line:
@@ -101,30 +99,30 @@ def get_termination_code(lines):
             if 'stopping because of problems' in line:
                 term_code = line.split('--')[-1].strip()
                 break
-    
+
     return term_code
 
 
 def get_timedelta(lines):
     first = lines[0].strip()
     last = lines[-1].strip()
-    
+
     dts = []
     for timestamp in (first, last):
         try:
             _, day, month, hms, tz, year = timestamp.split()
         except ValueError:
             return dts[0] - dts[0]
-        
+
         day = int(day)
         month = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
                  'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}[month]
         year = int(year)
-        
+
         hour, minute, second = (int(_) for _ in hms.split(':'))
         dts.append(datetime(year, month, day, hour, minute, second))
     timedelta = (dts[1] - dts[0])
-    
+
     return timedelta
 
 
@@ -133,14 +131,14 @@ def get_mesa_termcode(sub_dir):
     if os.path.exists(out_file):
         with open(out_file, 'r') as handle:
             out_file_lines = handle.readlines()
-        
+
         # slurm_stats_file = os.path.join(args.grid_dir, sub_dir, args.slurm_stats_file).format(sub_dir)
-        
+
         term_code = get_termination_code(out_file_lines)
         # walltime = get_timedelta(out_file_lines)
     else:
         term_code = 'NotRun'
-    
+
     return sub_dir, term_code
 
 
@@ -156,7 +154,7 @@ def get_slurm_stats(stats_lines):
         info_dict['walltime_required'] = '24:0:0'
         info_dict['reason'] = 'None'
         return info_dict
-    
+
     for line in stats_lines:
         if 'Identity jobid' in line:
             _, _, _, _jobid, _, _jobname = line.split()
@@ -199,11 +197,11 @@ def get_cheb_mask(data):
     :param data:
     :return:
     """
-    
+
     mask = data.center_he4 > 1e-6
     mask = np.logical_and(mask, data.mass_conv_core > 0)
     mask = np.logical_and(mask, data.center_h1 < 1e-6)
-    
+
     return mask
 
 
@@ -222,28 +220,30 @@ def count_in_dict(info_dict, key, filter_mainkeys=None):
 def invert_dict(dct, reference_key, filter_dct_keys=None, reverse_filter=False, sort=False):
     if filter_dct_keys is None:
         filter_dct_keys = []
-    
+
     out_dict = defaultdict(list)
     for key, value in dct.items():
         if (key in filter_dct_keys) != reverse_filter:  # xor
             continue
         out_dict[value[reference_key]].append(key)
-    
+
     if sort:
         for key in sorted(out_dict):
             out_dict[key] = sorted(out_dict[key])
     return out_dict
 
+
 def run():
     args = " ".join(sys.argv[1:])
     os.system(f'{__file__} {args}')
 
+
 if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
-    
+
     args.grid_dir = os.path.abspath(args.grid_dir)
-    
+
     # Expand items in args.exclude.
     _ = []
     for exclude in args.exclude:
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     slurm_stats_files = []
     if not args.no_slurm:
         if args.slurm_stats_dir == 'LOGS':
-    
+
             for subdir in args.subdirs:
                 for fname in os.listdir(os.path.join(args.grid_dir, subdir)):
                     if fname.endswith('.stats'):
@@ -300,20 +300,20 @@ if __name__ == "__main__":
 
         if subdir is None:
             subdir = f'{taskid:>04}'
-        
+
         if subdir in run_info:
             if int(run_info[subdir]['jobid']) < int(jobid):  # Take more recent run.
                 run_info[subdir] = _
         else:
             run_info[subdir] = _
-        
+
         jobid2task[jobid] = (taskjob, taskid)
         if taskid not in task2jobid:
             task2jobid[taskid] = jobid
         else:
             print(f'Key `{taskid}` already in `task2jobid` dictionary with value {task2jobid[taskid]} '
                   f'when inserting value {jobid}.')
-        
+
     for subdir in args.subdirs:
         hist_path = os.path.join(args.grid_dir, subdir, f'LOGS/{args.history_file.format(subdir, subdir)}')
         mesa_termcode = get_mesa_termcode(subdir)[1]
@@ -325,7 +325,8 @@ if __name__ == "__main__":
             run_info[subdir]['CHeX'] = ['pre-CHeX', 'post-CHeX'][int(data.center_he4[-1] < 1e-6)]
             run_info[subdir]['CHX'] = ['pre-CHX', 'post-CHX'][int(data.center_h1[-1] < 1e-6)]
             _ = run_info[subdir]['walltime_required'].split(':')
-            run_info[subdir]['short_runtime'] = ['', 'short_runtime'][int((3600*int(_[0]) + 60*int(_[1]) + int(_[0])) < 60)]
+            run_info[subdir]['short_runtime'] = ['', 'short_runtime'][
+                int((3600 * int(_[0]) + 60 * int(_[1]) + int(_[0])) < 60)]
 
             run_data[subdir] = data
         else:
@@ -338,7 +339,7 @@ if __name__ == "__main__":
             run_data[subdir] = mesa_termcode
 
     cnt_term_codes_mesa, dct_term_codes_mesa = count_in_dict(run_info, key='mesa_termcode')
-    
+
     # Make output string.
     part_len = 44
     string_separator = '-' * part_len + '\n'
@@ -358,11 +359,11 @@ if __name__ == "__main__":
                     start_part = ' └ '
                 part = start_part + part
                 status_str += part
-                
+
                 # For each sub section count pre CHeX and post CHeX
                 cnt_, dct_ = \
                     count_in_dict(run_info, key='CHeX', filter_mainkeys=dct_term_codes_slurm[slurm_tc])
-                
+
                 for j, key in enumerate(sorted(cnt_)):
                     part = f'{key:<26}{cnt_[key]:>6}\n'
                     start_part = '    ├ '
@@ -393,7 +394,7 @@ if __name__ == "__main__":
             status_str += f'{subdir:<16} {run_info[subdir]["CHeX"]:>10} {run_info[subdir]["mesa_last_model"]:>7} {run_info[subdir]["mesa_termcode"]:<12}\n'
         status_str += string_separator
     print(status_str)
-    
+
     if args.make_restart_file:
         restart_reason = {}  # last photo, redoRC, etc
         for subdir in args.subdirs:
@@ -419,15 +420,15 @@ if __name__ == "__main__":
             elif mesa_termcode in (['logQ_min_limit', 'FileNotFound', 'NotRun']):
                 reason = info['mesa_termcode']
                 photo = 'full_restart'
-        
+
             restart_reason[subdir] = (photo, reason)
-        
+
         grid_restart_photos = []
         for subdir, (photo, reason) in restart_reason.items():
             photodir = os.path.join(args.grid_dir, subdir, 'photos')
             photos = sorted(os.listdir(photodir))
             photo_modelnum = np.array([int(_.replace('x', '')) for _ in photos])
-            
+
             if args.make_restart_file == 'pre-CHeX':
                 info = run_info[subdir]
                 if info['CHeX'] == 'post-CHeX':
@@ -447,9 +448,9 @@ if __name__ == "__main__":
                     except UnicodeDecodeError as exc:
                         with open(f'{histpath}', 'rb') as handle:
                             lines = handle.readlines()
-    
+
                         expected_len = len(lines[6])
-    
+
                         bad_lines = []
                         for i, line in enumerate(lines):
                             if line.startswith(b'\x00'):
@@ -479,10 +480,10 @@ if __name__ == "__main__":
                 restart_photo = 'full_restart'
             if args.verbose:
                 print(subdir, restart_photo)
-            
+
             if restart_photo == '':
                 print(f'Empty restart_photo for {subdir}!')
             grid_restart_photos.append((subdir, restart_photo))
-    
+
         with open(os.path.join(args.grid_dir, 'grid_restart'), 'w') as f:
-            f.writelines((' '.join(line)+'\n' for line in grid_restart_photos))
+            f.writelines((' '.join(line) + '\n' for line in grid_restart_photos))

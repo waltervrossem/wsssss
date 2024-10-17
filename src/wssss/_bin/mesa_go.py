@@ -2,16 +2,13 @@
 # -*- coding: utf-8 -*-
 """MESA grid overseer."""
 
-
+import itertools
+import multiprocessing as mp
 import os
+import signal
 import subprocess
 import sys
 import time
-import signal
-import itertools
-
-import multiprocessing as mp
-
 from argparse import ArgumentParser
 
 
@@ -26,7 +23,7 @@ def get_parser():
     except KeyError:
         print('Environment variable OMP_NUM_THREADS not set, using `nproc`.')
         env_OMP_NUM_THREADS = mp.cpu_count()
-    
+
     parser.add_argument('grid_dir', type=str, default='.', nargs='?',
                         help='The directory which contains each run for MESA to run in a separate sub-directory.')
     parser.add_argument('--sub-dirs', '-d', nargs='*', type=str, default='',
@@ -75,7 +72,7 @@ def check_cores(args):
     """Check and process args."""
     nproc = os.cpu_count()
     req_cores = args.num_mesa * args.OMP_NUM_THREADS
-    
+
     if req_cores > nproc:
         raise ValueError(f'Number or required cores ({req_cores}) larger than available cores ({nproc}).')
     return req_cores, nproc
@@ -83,6 +80,7 @@ def check_cores(args):
 
 def process_args(args):
     """"""
+
     def expand_path(path):
         return os.path.abspath(os.path.expandvars(path))
 
@@ -91,11 +89,11 @@ def process_args(args):
 
     if args.source != '':
         args.source = expand_path(args.source)
-    
+
     if args.log_path != '':
         if not (('WORK_DIR' in args.log_path) or ('RUN_NAME' in args.log_path)):  #
             raise ValueError('log-path must contain one or both of WORK_DIR or RUN_NAME in its path.')
-    
+
     if args.skip_if_file_exists != '':
         if not (('WORK_DIR' in args.log_path) or ('RUN_NAME' in args.log_path)):  #
             raise ValueError('skip-if-file-exists must contain one or both of WORK_DIR or RUN_NAME in its path.')
@@ -104,37 +102,37 @@ def process_args(args):
 
 
 def start_mesa(args, run_name):
-    
     logger.info(f'Starting {run_name}')
-    
+
     os.chdir(os.path.join(args.grid_dir, run_name))
     if args.verbose:
         logger.info('Current directory:')
         logger.info(os.getcwd())
-    
+
     if args.log_path == '':
-        log_file = os.path.join(args.grid_dir, 'out_'+run_name)
+        log_file = os.path.join(args.grid_dir, 'out_' + run_name)
     else:
-        log_file = os.path.join(args.grid_dir, args.log_path).\
+        log_file = os.path.join(args.grid_dir, args.log_path). \
             replace('WORK_DIR', run_name).replace('RUN_NAME', run_name)
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
-    
+
     if args.skip_if_file_exists:
         if args.skip_if_file_exists == 'MESAGO_LOG_FILE':
             skip_check_fpath = log_file
         else:
-            skip_check_fpath = os.path.join(args.grid_dir, args.skip_if_file_exists).replace('WORK_DIR', run_name).\
+            skip_check_fpath = os.path.join(args.grid_dir, args.skip_if_file_exists).replace('WORK_DIR', run_name). \
                 replace('RUN_NAME', run_name)
-        
+
         if os.path.exists(skip_check_fpath):
             logger.info(f'Skipping {run_name}, skip file found {skip_check_fpath}.')
             return run_name, 'Skip file found.'
-    
-    with open(log_file, 'w') as handle:  # Create file so other processes can find it before someting actually writes to it
+
+    with open(log_file,
+              'w') as handle:  # Create file so other processes can find it before someting actually writes to it
         handle.write('')
         handle.flush()
         os.fsync(handle)
-    
+
     pre_cmd_str = f'export OMP_NUM_THREADS={args.OMP_NUM_THREADS}; '
     if args.source != '':
         pre_cmd_str = f'. {args.source}; ' + pre_cmd_str
@@ -158,7 +156,7 @@ def start_mesa(args, run_name):
     photos.sort()
     if args.restart and len(photos) > 0:
         photo = photos[-1]
-        
+
         cmd = pre_cmd_str + f'./re {photo} >> {log_file} 2>&1'
         if args.verbose:
             logger.info(run_name)
@@ -170,27 +168,26 @@ def start_mesa(args, run_name):
             logger.info(run_name)
             logger.info(cmd)
         out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
-    
+
     if args.cmd_post_each != '':
         run_cmd(args.cmd_post_each, shell=True)
 
     logger.info(f'Finished {run_name}')
-    
+
     return run_name, out
 
 
 def run_cmd(cmd, capture_output=False, split=False, to_file='', file_mode='w', **kwargs):
-    
     if file_mode not in ['a', '-a', 'w']:
         raise ValueError('`file_mode` must be one of `a`, `-a`, or `w`.')
-    
+
     if capture_output and to_file != '':
         logger.warning('Cannot simultaneously capture output and write to file if `split=True`, setting to False.')
         split = False
-    
+
     if split:
         cmd = cmd.split()
-        
+
     if to_file != '' and not capture_output:
         with open(to_file, file_mode) as f:
             return subprocess.run(cmd, stdout=f, stdin=f, **kwargs)
@@ -217,7 +214,6 @@ def check_dir(args, dirpath):
 
 
 def get_subdirs(args):
-    
     if args.sub_dirs != '':
         sub_dirs = args.sub_dirs
     else:
@@ -231,28 +227,27 @@ def get_subdirs(args):
 
 
 def main(args):
-    
     # TODO: include walltime?
-    
+
     if args.verbose:
         print('Parsed inputs:')
         for key, value in args.__dict__.items():
             print(f'{key:<16}= {value}')
         print('')
-    
+
     check_cores(args)
     check_dir(args, args.base_work_dir)
-    
+
     if args.cmd_pre != '':
         run_cmd(args.cmd_pre, shell=True)
-    
+
     sub_dirs = get_subdirs(args)
     if args.verbose:
         print('Sub-directories:')
         for subdir in sub_dirs:
             print(subdir)
         print('')
-    
+
     pool = mp.Pool(args.num_mesa)
     arguments = list(zip(itertools.repeat(args), sub_dirs))
     if args.task_share:
@@ -271,38 +266,41 @@ def main(args):
         task_id = 0
     results = pool.starmap(start_mesa, arguments[task_id::n_tasks])
     print(results)
-    
+
     if args.cmd_post != '':
         run_cmd(args.cmd_post, shell=True)
-    
+
+
 def run():
     args = " ".join(sys.argv[1:])
     os.system(f'{__file__} {args}')
 
+
 if __name__ == "__main__":
     try:
         import setproctitle
+
         setproctitle.setproctitle('MESAgo')
     except ModuleNotFoundError:
         print('Module setproctitle not found, will not set process name.')
         pass
-    
+
     signal.signal(signal.SIGTERM, signal.default_int_handler)
     signal.signal(signal.SIGINT, signal.default_int_handler)
-    
+
     t_start = time.time()
-    
+
     parser = get_parser()
     args = parser.parse_args()
-    
+
     args = process_args(args)
 
     logger = mp.get_logger()
-    
+
     if args.debug:
         args.verbose = True
         logger.setLevel('DEBUG')
     else:
         logger.setLevel('INFO')
-        
+
     main(args)

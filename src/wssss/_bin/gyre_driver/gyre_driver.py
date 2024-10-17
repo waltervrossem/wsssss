@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import pathlib
 import shutil
 import subprocess
+import sys
 import time
 from argparse import ArgumentParser
 
@@ -61,18 +61,18 @@ def _load_gyre_profile(path):
 # noinspection PyPep8Naming
 def get_nu_max_dnu_dp(args, fpath, l):
     """Calculate nu_max, Delta_nu, and Delta_P for a model."""
-    
+
     if args.filetype == 'MESA':
         header, columns, data = _load_gyre_profile(fpath)
-        
+
         M_star = header['star_mass'] / Msun
         R_star = header['star_radius']
         L_star = header['star_luminosity']
-        Teff_star = (L_star / (4*pi * R_star**2 * sigma_b))**0.25
+        Teff_star = (L_star / (4 * pi * R_star ** 2 * sigma_b)) ** 0.25
         R_star = R_star / Rsun
-    
+
         r = data['radius']
-        
+
         N = np.sqrt(data['brunt_N2'])
 
     elif args.filetype == 'FGONG':
@@ -89,28 +89,28 @@ def get_nu_max_dnu_dp(args, fpath, l):
         # gamma1[gamma1 < 0] = 0
         #
         # N = np.sqrt((G * m / r**3) * gamma1)
-        
+
     elif args.filetype == 'LOSC':
         with open(fpath, 'r') as handle:
             lines = handle.readlines()
-        
+
         markers = []
         for i, line in enumerate(lines):
             if line.startswith('%'):
                 markers.append(i)
-        
+
         start_data = markers[-2] + 1
         phot_r_cgs, mass_cgs, G_cgs = map(float, lines[start_data].split())
-        
+
         R_star = phot_r_cgs / Rsun
         M_star = mass_cgs / Msun
-        
-        num_zones = int(lines[start_data+1].strip())
+
+        num_zones = int(lines[start_data + 1].strip())
         zone_dat = []
         for i in range(num_zones):
             zone_start = start_data + 2 + i
             zone_dat.append(tuple(map(int, lines[zone_start].split())))
-            
+
         num_mesh_points = int(lines[zone_start + 1])
         skip_rows = zone_start + 2
         print(fpath)
@@ -118,15 +118,15 @@ def get_nu_max_dnu_dp(args, fpath, l):
                                                           comments='%').T
         if len(r) != num_mesh_points:
             raise ValueError(f'Loading of {fpath} failed, not enough meshpoints loaded.')
-        
+
         m_h = 1.67353276e-24
         k_B = 1.38064852e-16
-        mu = 1.25   # Assume not very ionized and approx solar composition.
+        mu = 1.25  # Assume not very ionized and approx solar composition.
         Teff_star = (P * mu * m_h / (rho * k_B))[-1]
-        
+
         N_div_r = np.sqrt(-G_cgs * m_div_r3 * A_div_r)
         N = N_div_r * r
-        
+
     else:
         raise ValueError('Invalid filetype.')
 
@@ -139,7 +139,7 @@ def get_nu_max_dnu_dp(args, fpath, l):
 
     DP = np.abs(trapz(N_div_r, r))
     DP = 2 * pi ** 2 * (1 / DP) / np.sqrt(l * (l + 1))
-    
+
     if args.verbose:
         print(f'M_star          = {M_star}')
         print(f'R_star          = {R_star}')
@@ -149,13 +149,13 @@ def get_nu_max_dnu_dp(args, fpath, l):
         if l > 0:
             print(f'DP              = {DP}')
         print()
-    
+
     return nu_max, Dnu, DP
 
 
 def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, freq_min, freq_max, n_freq, args):
     """Create the gyre inlist."""
-    
+
     reduced_name = model_name.name
     gyre_adin = gyre_adin_template + reduced_name + f'_l{l}' + suffix
     summary_file = summary_path(model_name, l, suffix, args)
@@ -163,12 +163,12 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         mode_name_base = model_name
     else:
         mode_name_base = pathlib.Path(args.out_dir) / f'{reduced_name}'
-    
+
     if type(n_freq) in [int, np.int64]:
         single_scan = True
     else:
         single_scan = False
-        
+
     if args.verbose:
         print(f'gyre_adin       = {gyre_adin}')
         print(f'l               = {l}')
@@ -184,7 +184,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
             print(f'freq_max        = {freq_max:}')
             print(f'n_freq          = {n_freq}')
         print()
-    
+
     if args.base_in == '':
         if args.gyre == 'G5':
             base_in = _this_dir / 'INPUT_GYRE_5.2_ad.in'
@@ -205,9 +205,9 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         base_in_exists = base_in.exists()
     if not base_in_exists:
         raise FileNotFoundError('Cannot find a base inlist for gyre.')
-    
+
     shutil.copy2(base_in, gyre_adin)
-    
+
     if save_modes:
         if file_type == 'LOSC':
             mode_item_list = 'l,n_pg,n_p,freq,E_norm,x,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K'
@@ -220,14 +220,14 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         if args.gyre in ['G5', 'G6', 'G7']:
             # Gyre 5 uses capital P for pressure and the normalized rotation kernel changed to unnormalized.
             mode_item_list = mode_item_list.replace(',p,', ',P,').replace(',K', ',dbeta_dx')
-        
+
         mode_output = (f"   mode_template = '{mode_name_base}_l%l_%J_npg%N.mgyre'\n"
                        f"   mode_file_format = 'TXT'\n"
                        f"   mode_item_list = '{mode_item_list}'"
                        f"/")
     else:
         mode_output = '/'
-    
+
     freq_units = "freq_units = 'UHZ'"
     ad_ = ''
     nad_output = ''
@@ -237,7 +237,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         ad_ = 'ad_'
         nad_output = ('&nad_output\n'
                       '/')
-    
+
     if single_scan:
         scan_str = (f"&scan\n"
                     f"   grid_type = '{grid_type}'\n"
@@ -260,7 +260,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
                          f"   freq_max =   {freq_max_i}\n"
                          f"   n_freq =     {n_freq_i}\n"
                          f"/\n")
-    
+
     s = (f"\n"
          f"! Generated by py_gyre_driver {_version}.\n\n"
          f"&model\n"
@@ -279,10 +279,10 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
          f"&mode\n"
          f"   l = {l}\n"
          f"/\n")
-    
+
     with open(gyre_adin, 'a') as handle:
         handle.write(s)
-    
+
     return
 
 
@@ -291,16 +291,16 @@ def run_gyre(model_name, l, suffix, args):
     reduced_name = model_name.name
     gyre_adin = gyre_adin_template + reduced_name + f'_l{l}' + suffix
     summary_file = summary_path(model_name, l, suffix, args)
-    
+
     gyre_exec = get_gyre(args, True)[0]
-    
+
     if args.verbose:
         print(os.getcwd())
         print(f'Calling {gyre_exec} {gyre_adin}\n')
-    
+
     if os.path.exists(summary_file):
         os.remove(summary_file)
-    
+
     if not args.skip_calc or (args.skip_calc and l == 0):
         if args.source != '':
             output = subprocess.run(f'source {args.source}; {gyre_exec} {gyre_adin}',
@@ -308,47 +308,47 @@ def run_gyre(model_name, l, suffix, args):
         else:
             output = subprocess.run(f'{gyre_exec} {gyre_adin}',
                                     shell=True, executable="/bin/bash", stderr=subprocess.PIPE)
-    
+
         if not output.stderr == b'':
             if "ASSERT 'k == k_chk' failed at line 303" in output.stderr.decode():
                 raise ValueError(f"Gyre 4.4 does not support the version of MESA used to generate {model_name}")
-                
+
             raise ChildProcessError(f'The following command encountered an error:\n.'
                                     f'{output.args}\n\n'
                                     f'{output.stderr.decode()}\n')
     else:
         output = f'skipped {gyre_exec} {gyre_adin}'
-        
+
     return output
- 
-    
+
+
 def get_gyre(args, check, print_warning=False):
     """Get the path to the gyre executable and check if it is the correct version."""
     version = args.gyre
     environ = os.environ
-    
+
     if f'GYRE_DIR_{version}' in environ:
         path = pathlib.Path(environ[f'GYRE_DIR_{version}'])
     else:
         path = pathlib.Path(environ['GYRE_DIR'])
-        
+
         if check:  # Check in $GYRE_DIR/src/common/gyre_version.fpp what version of gyre is found.
             version_file = path / 'src' / 'common' / 'gyre_version.fpp'
-            
+
             with open(version_file, 'r') as handle:
                 lines = handle.readlines()
-            
+
             version_str = ''
             for line in lines:
                 if 'VERSION = ' in line.upper():
                     line = line.upper()
                     version_str = line.split('VERSION =')[1].strip().replace("'", '').replace('(', '').replace(')', '')
                     break
-            
+
             if version_str == '':
                 raise ValueError(f'Could not find gyre version of $GYRE_DIR in file\n'
                                  f'{version_file}')
-            
+
             if not version[1] == version_str[0]:
                 if args.lenient:
                     if print_warning:
@@ -361,18 +361,18 @@ def get_gyre(args, check, print_warning=False):
                 else:
                     raise ValueError(f'Could not find the required gyre version `{version}` in $GYRE_DIR.\n'
                                      f'Found gyre version {version_str} in `{path}`.')
-                
+
     if version in ['G4']:
         path = path / 'bin' / 'gyre_ad'
     else:
         path = path / 'bin' / 'gyre'
-    
+
     return path, version
-        
+
 
 def merge_summary_parts(model_name, l, num_scan, keep_files=False):
     """Append all partial runs for a single `l` into one summary file."""
-    
+
     all_lines = []
     summary_files = []
     set_header = False
@@ -381,22 +381,22 @@ def merge_summary_parts(model_name, l, num_scan, keep_files=False):
         summary_file = summary_path(model_name, l, suffix, args)
         if not summary_file.exists():  # Skip summary files which found no modes.
             continue
-        
+
         summary_files.append(summary_file)
         with open(summary_file, 'r') as handle:
             lines = handle.readlines()
-        
+
         if not set_header:
             all_lines += lines
             set_header = True
         else:
             all_lines += lines[6:]
-        
+
     new_summary_file = summary_path(model_name, l, '', args)
-    
+
     with open(new_summary_file, 'w') as handle:
         handle.writelines(all_lines)
-    
+
     if not keep_files:
         for summary_file in summary_files:
             os.remove(summary_file)
@@ -404,7 +404,7 @@ def merge_summary_parts(model_name, l, num_scan, keep_files=False):
 
 def merge_summary_l(model_name, args, keep_files=False):
     """Append all runs for all `l` into one summary file."""
-    
+
     all_lines = []
     summary_files = []
     set_header = False
@@ -412,51 +412,50 @@ def merge_summary_l(model_name, args, keep_files=False):
         summary_file = summary_path(model_name, l, '', args)
         if not summary_file.exists():  # Skip summary files which found no modes.
             continue
-            
+
         summary_files.append(summary_file)
         with open(summary_file, 'r') as handle:
             lines = handle.readlines()
-        
+
         if not set_header:
             all_lines += lines
             set_header = True
         else:
             all_lines += lines[6:]
-    
+
     new_summary_file = summary_path(model_name, '', '', args)
 
     with open(new_summary_file, 'w') as handle:
         handle.writelines(all_lines)
-    
+
     if not keep_files:
         for summary_file in summary_files:
             os.remove(summary_file)
 
 
 def summary_path(model_name, l, suffix, args):
-    
     reduced_name = model_name.name
-    
+
     if args.out_dir == '':
         summary_file = pathlib.Path(f'{model_name}.sgyre_l{l}{suffix}')
     else:
         summary_file = pathlib.Path(args.out_dir) / f'{reduced_name}.sgyre_l{l}{suffix}'
-    
+
     return summary_file
 
 
 # noinspection PyPep8Naming
 def calc_scan(model_name, l, args):
     nu_max, Dnu, DP = get_nu_max_dnu_dp(args, model_name, l)
-    
+
     fmid = nu_max
     fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
-    
+
     fmin = max(1e-4, fmid - 2 * fsig)
     fmax = fmid + 2 * fsig
-    
+
     n_freqDnu = int(np.ceil((fmax - fmin) / Dnu))
-    
+
     if l == 0:
         n_freq = 3 * n_freqDnu
         num_scan = 1
@@ -471,44 +470,43 @@ def calc_scan(model_name, l, args):
         freqs_l0 = np.loadtxt(l0_summary_file, skiprows=6, usecols=i_freq)
         fmin = freqs_l0[0]
         fmax = freqs_l0[-1]
-        
+
         n_freqDP = np.ceil((fmax - fmin) / (1e6 / (1e6 / fmin - DP) - fmin)).astype(int)
-        
+
         if n_freqDnu > n_freqDP:
             n_freqDnu = np.ceil((fmax - fmin) / Dnu)
             n_freq = int(5 * n_freqDnu)
             num_scan = 1
-        
+
         else:
             fmin = freqs_l0[:-1]
             fmax = freqs_l0[1:]
-            
+
             if args.pmode:
                 # See figure 4 in https://arxiv.org/abs/1108.4777 for origin of 0.13.
                 if l % 2 == 0:  # even l
                     fmid = fmax - 0.13 * (fmax - fmin)
                 if l % 2 == 1:  # odd l
                     fmid = np.mean([fmin, fmax], axis=0)
-                    
+
                 fsig = np.maximum(0.15, np.minimum(0.5 * (fmax - fmin), nmode * (1e6 / (1e6 / fmid - DP) - fmid)))
                 fmin = fmid - fsig
                 fmax = fmid + fsig
-                
+
                 # Don't search outside l=0 mode frequencies
                 fmin = np.maximum(fmin, freqs_l0[0])
                 fmax = np.minimum(fmax, freqs_l0[-1])
-            
-            n_freq = 5 * np.ceil((fmax - fmin) / (1e6 / (1e6 / fmin - DP) - fmin)).astype(int)
-            
-            num_scan = len(fmin)
-            
-    return fmin, fmax, n_freq, num_scan
-    
-    
-def split_scan(fmin, fmax, n_freq, grid_type, args):
 
+            n_freq = 5 * np.ceil((fmax - fmin) / (1e6 / (1e6 / fmin - DP) - fmin)).astype(int)
+
+            num_scan = len(fmin)
+
+    return fmin, fmax, n_freq, num_scan
+
+
+def split_scan(fmin, fmax, n_freq, grid_type, args):
     if grid_type == 'LINEAR':
-        
+
         fmin_new = []
         fmax_new = []
         n_freq_new = []
@@ -523,51 +521,50 @@ def split_scan(fmin, fmax, n_freq, grid_type, args):
                 sub_fmin = sub_intervals[:-1]
                 sub_fmax = sub_intervals[1:]
                 sub_n = (int(n / num_split) + 1) * np.ones_like(sub_fmin, dtype=int)
-                
+
                 fmin_new.extend(sub_fmin)
                 fmax_new.extend(sub_fmax)
                 n_freq_new.extend(sub_n)
         fmin = np.array(fmin_new)
         fmax = np.array(fmax_new)
         n_freq = np.array(n_freq_new, dtype=int)
-    
+
     else:
         raise NotImplementedError(f'Only `grid_type = LINEAR` is implemented.')
-    
+
     num_scan = len(n_freq)
-    
+
     return fmin, fmax, n_freq, num_scan
 
 
 def do_gyre_sim(fpath, args):
-    
     grid_type = 'LINEAR'
     num_scan = 0
     try:
         for l in args.ll:
             fmin, fmax, n_freq, num_scan = calc_scan(fpath, l, args)
-            
+
             # Split each frequency scan into a different gyre run. Usually is a bit faster.
             if num_scan > 1 and args.parts:
                 # Split into scans upto size `args.batch`. Can be slow if batch is too small.
                 if args.batch is not None and any(n_freq > args.batch):
                     fmin, fmax, n_freq, num_scan = split_scan(fmin, fmax, n_freq, grid_type, args)
-                
+
                 for i in range(len(n_freq)):
                     fmin_i = fmin[i]
                     fmax_i = fmax[i]
                     n_freq_i = n_freq[i]
-                    
+
                     part_suffix = f'.part{i + 1}of{num_scan}'
-                    
+
                     write_gyre_adin(fpath, l, args.filetype, part_suffix, args.save_modes,
                                     grid_type, fmin_i, fmax_i, n_freq_i, args)
                     run_gyre(fpath, l, part_suffix, args)
-            
+
             else:
                 write_gyre_adin(fpath, l, args.filetype, '', args.save_modes, grid_type, fmin, fmax, n_freq, args)
                 run_gyre(fpath, l, '', args)
-            
+
             if args.parts and num_scan > 1:
                 merge_summary_parts(fpath, l, num_scan)
         if not args.no_merge:
@@ -584,19 +581,18 @@ def sort_files(files):
     i_sort = np.argsort(path_lengths[:, 1])
     files = np.asarray(files, dtype=object)[i_sort]
     path_lengths = path_lengths[i_sort]
-    
+
     lengths = list(set(path_lengths[:, 1]))
     lengths.sort()
     for length in lengths:
         i_sub = np.where(path_lengths[:, 1] == length)[0]
         files[i_sub] = files[i_sub][np.argsort(files[i_sub])]
-    
+
     files = list(files)
     return files
 
 
 def check_args(args):
-
     if args.gyre in ['G6', 'G7']:
         parts_set = False
         if args.parts:
@@ -614,36 +610,37 @@ def check_args(args):
     if args.ll.startswith('mode'):
         args.save_modes = True
         args.ll = args.ll.replace('mode', '')
-    
+
     args.ll = [int(l) for l in args.ll]
     args.ll.sort()
-    
+
     if 0 not in args.ll:
         args.ll = [0] + args.ll  # Need l=0 modes to estimate frequency scans.
-    
+
     if type(args.files) == list:
         args.files = [pathlib.PurePath(fpath.strip()) for fpath in args.files]
     else:
         args.files = [pathlib.PurePath(args.files.strip())]
-    
+
     if args.skip_existing:
         existing_out_files = list(pathlib.Path(args.out_dir).glob('*.sgyre_l'))
         existing_out_files = [_.absolute() for _ in existing_out_files]
-        do_files = [model_name for model_name in args.files if summary_path(model_name, '', '', args).absolute() not in existing_out_files]
+        do_files = [model_name for model_name in args.files if
+                    summary_path(model_name, '', '', args).absolute() not in existing_out_files]
         if args.verbose:
             print(f'num_prof_skipped= {len(args.files) - len(do_files)}')
         args.files = do_files
-    
+
     # Sort files by length, then by filename.
     if args.sort and len(args.files) > 1:
         args.files = sort_files(args.files)
-    
+
     # Create output directory
     if args.out_dir != '':
         args.out_dir = pathlib.Path(args.out_dir)
         if not args.out_dir.exists():
             os.mkdir(args.out_dir)
-        
+
     # Create and/or clean input directory
     if args.in_dir != '':
         gyre_adin_template = args.in_dir + '/gyre_ad.in_'
@@ -654,15 +651,15 @@ def check_args(args):
     if args.in_dir.exists():
         shutil.rmtree(args.in_dir)
     os.mkdir(args.in_dir)
-    
+
     if args.base_in != '':
         args.base_in = pathlib.PurePath(args.base_in)
-    
+
     # If --lenient, switch to the version of gyre found.
     original_gyre = args.gyre
     checked_gyre = get_gyre(args, True, True)[1]
     args.gyre = checked_gyre
-    
+
     return args, gyre_adin_template, original_gyre
 
 
@@ -671,7 +668,7 @@ def get_parser():
     This program will run GYRE, estimating appropriate number of scan points for different angular orders l
     and range of frequency.
     """)
-    
+
     parser.add_argument('ll', type=str,
                         help='Degrees of modes to scan. eg. `012` or `mode0`. '
                              'Including `mode` overrides `--save-modes`.')
@@ -711,21 +708,23 @@ def get_parser():
                         help='Skip running gyre for existing runs. Only works if summary files are merged.')
     return parser
 
+
 def run():
     args = " ".join(sys.argv[1:])
     os.system(f'{__file__} {args}')
 
+
 if __name__ == '__main__':
     t_start = time.time()
     cwd = os.getcwd()
-    
+
     parser = get_parser()
     args = parser.parse_args()
-    
+
     args.sort = True
     if len(args.files) > 1:
         args.files = sort_files(args.files)
-    
+
     if args.filetype == 'LOSC':
         print('Warning! LOSC does not supply an effective temperature, will use an estimate instead.')
 
@@ -751,7 +750,7 @@ if __name__ == '__main__':
         print(f'--skip-calc     = {args.skip_calc}')
         print(f'--skip-existing = {args.skip_existing}')
         print()
-    
+
     # Load environment variables from --source and keep a copy of the old ones.
     environ_original = os.environ.copy()
     if args.source != '':
@@ -764,7 +763,7 @@ if __name__ == '__main__':
     environ_used = os.environ.copy()
 
     args, gyre_adin_template, original_gyre = check_args(args)
-    
+
     if args.verbose:
         print('Processed inputs:')
         print(f'll              = {args.ll}')
@@ -778,18 +777,18 @@ if __name__ == '__main__':
 
     for file in args.files:
         do_gyre_sim(file, args)
-            
+
     t_end = time.time()
     t_taken = t_end - t_start
-    print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60)%60}m{t_taken%60 :.2f}s\n")
-    
+    print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
+
     if original_gyre != args.gyre:
         print('###################################################################')
         print(f'Could not find the required gyre version `{original_gyre}` in $GYRE_DIR.\n'
               f'Used gyre version `{args.gyre}` instead.')
         print('###################################################################')
         print()
-    
+
     # Reset to the old environment variables.
     os.environ.clear()
     os.environ.update(environ_original)

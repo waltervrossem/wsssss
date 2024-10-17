@@ -3,26 +3,24 @@
 
 import matplotlib as mpl
 import numpy as np
-from matplotlib import cm, pyplot as plt, patheffects, colors
+from matplotlib import cm
 from matplotlib import colors
-from matplotlib import pyplot as plt
-from matplotlib import transforms
-from matplotlib.collections import LineCollection
-from matplotlib.lines import Line2D
-from matplotlib.legend_handler import HandlerLineCollection, HandlerTuple
 from matplotlib import patheffects
-from matplotlib import animation
+from matplotlib import pyplot as plt
+from matplotlib.collections import LineCollection
+from matplotlib.legend_handler import HandlerLineCollection
+from matplotlib.lines import Line2D
 from scipy.interpolate import interp1d
 
+from .. import functions as uf
 from ..constants import post15140
-from ..constants import pre15140
 
-import wssss.functions as uf
 
 class HandlerDashedLines(HandlerLineCollection):
     """
     Custom Handler for LineCollection instances.
     """
+
     # From https://matplotlib.org/stable/gallery/text_labels_and_annotations/legend_demo.html
     def create_artists(self, legend, orig_handle,
                        xdescent, ydescent, width, height, fontsize, trans):
@@ -213,11 +211,11 @@ def top_figure_legend(f, ncol, top=0.9, **kwargs):
     fig_size = f.bbox.corners()[3]
     plt.subplots_adjust(top=top)
     corners = np.array([ax.bbox.corners() for ax in f.axes])
-    top_left = corners[0,1]/fig_size
-    top_right = corners[1,3]/fig_size
+    top_left = corners[0, 1] / fig_size
+    top_right = corners[1, 3] / fig_size
     legend = f.legend(loc='upper center', ncol=ncol, mode='expand', borderaxespad=0.,
-                    bbox_to_anchor=(top_left[0], top_right[1] , top_right[0]-top_left[0], 1-top_left[1] - 0.02),
-                    **kwargs)
+                      bbox_to_anchor=(top_left[0], top_right[1], top_right[0] - top_left[0], 1 - top_left[1] - 0.02),
+                      **kwargs)
     return legend
 
 
@@ -249,9 +247,9 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
     xw = xlim1[0] - xlim1[1]
     yw = ylim1[1] - ylim1[0]
 
-    xfactor = 0.07 / 4*yw/xw
+    xfactor = 0.07 / 4 * yw / xw
 
-    const = 4 * np.pi * post15140.boltz_sigma / post15140.lsun * post15140.rsun**2
+    const = 4 * np.pi * post15140.boltz_sigma / post15140.lsun * post15140.rsun ** 2
     log_const = np.log10(const)
     logTs = np.linspace(0, 6, 2)
     if radii is None:
@@ -300,7 +298,7 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
             textxs.append(xleft - 0.07 * xw)
             textxs.append(xright + 0.07 * xw)
 
-        frac_x_sep = abs(np.diff(textxs))/xw
+        frac_x_sep = abs(np.diff(textxs)) / xw
         if frac_x_sep < 0.1:
             textxs.pop(0)
 
@@ -315,7 +313,8 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
                 angle = (np.degrees(np.arctan2(screen_dy, screen_dx)) + 90) % 180 - 90
             texty = np.interp(textx, logTs, logLs)
             text = ax.text(textx, texty, r"${}\;\mathrm{{R}}_{{\odot}}$".format(nr_string), color='k', zorder=-9,
-                           rotation=angle, size=fontsize, va='center', ha='center', clip_on=True, bbox=dict(facecolor='white',linewidth=0,pad=0))
+                           rotation=angle, size=fontsize, va='center', ha='center', clip_on=True,
+                           bbox=dict(facecolor='white', linewidth=0, pad=0))
             text.set_path_effects(
                 [patheffects.Stroke(linewidth=3, foreground=ax.get_facecolor()), patheffects.Normal()])
 
@@ -357,7 +356,7 @@ def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
         r1 = hist.data.r_1[i_hist]
         r2 = hist.data.r_2[i_hist]
         r0 = np.sqrt(r1 * r2)
-        x = np.log(p.data.radius/r0)
+        x = np.log(p.data.radius / r0)
         label = '$s$'
     else:
         x = p.get(xname)
@@ -402,7 +401,7 @@ def get_mixing(profile, min_width):
         if len(good_zones) > 1:
             starts.append(good_zones[0])
             for change in changes:
-                ends.append(good_zones[change]+1)  # Add one to include final cell
+                ends.append(good_zones[change] + 1)  # Add one to include final cell
                 starts.append(good_zones[change + 1])
             ends.append(good_zones[-1])
         pairs = zip(starts, ends)
@@ -469,7 +468,7 @@ def add_burning(ax, profile, xname='mass', ymin=0, ymax=1, num_levels=None, vmin
         num_levels = int(vmax - vmin + 1)
 
     if (kind == 'net_nuclear_energy') and (vmin < 0):
-        levels = np.linspace(vmin-0.5, vmax+0.5, num_levels+1)
+        levels = np.linspace(vmin - 0.5, vmax + 0.5, num_levels + 1)
         cmap = plt.cm.RdBu
         if norm is None:
             norm = MidpointBoundaryNorm(levels, cmap.N, midpoint=0, singular_midpoint=True)
@@ -552,7 +551,7 @@ def calc_inertia_marker_size(gs, l, freq_units='uHz'):
     # ms = 2.5 * 10 ** (2 * (1 - x))
     xmin = min(E_l0)
     x = np.log10(gs.data.E_norm[mask] / xmin)
-    ms = 25 - 2 * x**3
+    ms = 25 - 2 * x ** 3
     ms = np.minimum(25, ms)
     ms = np.maximum(1, ms)
     return ms

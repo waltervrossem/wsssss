@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os
-import f90nml
-import sys
 
+import f90nml
 
 parser = f90nml.Parser()
 parser.global_start_index = 1
@@ -49,10 +48,12 @@ def evaluate_inlist_str(inlist_str, inlist_dir):
     inlist = parser.reads(inlist_str)
     return _evaluate_inlist(inlist, inlist_dir)
 
+
 def evaluate_inlist(path):
     inlist = parser.read(path)
     inlist_dir = os.path.dirname(path)
     return _evaluate_inlist(inlist, inlist_dir)
+
 
 def _evaluate_inlist(inlist, inlist_dir):
     to_read = []
@@ -64,9 +65,9 @@ def _evaluate_inlist(inlist, inlist_dir):
         else:
             use_kinds.append(kind)
         for j in range(5):
-            if f'read_extra_{kind}_inlist{j+1}' in inlist[kind].keys():
-                if inlist[kind][f'read_extra_{kind}_inlist{j+1}']:
-                    to_read[i].append(inlist[kind][f'extra_{kind}_inlist{j+1}_name'])
+            if f'read_extra_{kind}_inlist{j + 1}' in inlist[kind].keys():
+                if inlist[kind][f'read_extra_{kind}_inlist{j + 1}']:
+                    to_read[i].append(inlist[kind][f'extra_{kind}_inlist{j + 1}_name'])
             elif f'read_extra_{kind}_inlist' in inlist[kind].keys():
                 if inlist[kind][f'read_extra_{kind}_inlist'][j]:
                     to_read[i].append(inlist[kind][f'extra_{kind}_inlist_name'][j])
@@ -92,12 +93,13 @@ def _evaluate_inlist(inlist, inlist_dir):
 
     return out
 
+
 def print_dict(to_print):
     for k, v in to_print.items():
         print(f'{k}: {v}')
 
-def compare_inlist(path1, path2, show_same=False):
 
+def compare_inlist(path1, path2, show_same=False):
     inlist1 = evaluate_inlist(path1)
     inlist2 = evaluate_inlist(path2)
 

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+
 import f90nml
 
 version = '15140'
@@ -12,7 +13,6 @@ path_defaults = {'star_job': 'star/defaults/star_job.defaults',
                  'pgstar': 'star/defaults/pgstar.defaults',
                  'kap': 'kap/defaults/kap.defaults',
                  'eos': 'eos/defaults/eos.defaults'}
-
 
 keys_defaults = {}
 for nml_type, path in path_defaults.items():
@@ -53,12 +53,12 @@ def compare_inlist(path_to_inlist):
                         break
                     else:
                         if key.startswith('kappa'):
-                            new_key = 'kap'+key[5:]
+                            new_key = 'kap' + key[5:]
                             if new_key in keys_defaults[new_nml_type]:
                                 orders[key] = f'rename to {new_key} and move to {new_nml_type}'
         all_orders[nml_type] = orders
 
-    #Print nicely
+    # Print nicely
     for nml_type, orders in all_orders.items():
         if len(orders) == 0:
             continue
@@ -68,4 +68,3 @@ def compare_inlist(path_to_inlist):
         print()
 
     return all_orders
-

@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import functools
+import multiprocessing as mp
 import os
+
 import dill
 import numpy as np
-import multiprocessing as mp
 from scipy import integrate as ig
 from scipy import interpolate as ip
 from scipy import stats
 from scipy.optimize import newton
-
 from wssss.constants import post15140
 from wssss.constants import pre15140
 
@@ -29,6 +29,7 @@ def get_constants(p_or_hist):
         return pre15140
     else:
         return post15140
+
 
 # Mixing type codes for pre and post 15140
 mix_dict = {'pre15140': {0: 'no_mixing',
@@ -72,7 +73,7 @@ def cell2face(val, dm, dm_is_m=False, m_center=0):
         dm = np.diff(dm, append=m_center)
     face = np.zeros_like(val)
     face[0] = val[0]
-    face[1:] = (val[:-1]*dm[1:] + val[1:]*dm[:-1]) / (dm[1:] + dm[:-1])
+    face[1:] = (val[:-1] * dm[1:] + val[1:] * dm[:-1]) / (dm[1:] + dm[:-1])
     return face
 
 
@@ -93,7 +94,7 @@ def dy_dlog10x(y, x):
 
 
 def signed_log10(q):
-    return np.sign(q)*np.log10(np.maximum(np.abs(q), 1))
+    return np.sign(q) * np.log10(np.maximum(np.abs(q), 1))
 
 
 def prof2i_hist(prof, hist):
@@ -102,7 +103,7 @@ def prof2i_hist(prof, hist):
 
 
 def calc_logQ(prof):
-    return prof.get('logRho') - 2*prof.get('logT') + 12
+    return prof.get('logRho') - 2 * prof.get('logT') + 12
 
 
 def get_logTeffL(hist, mask=None):
@@ -112,7 +113,7 @@ def get_logTeffL(hist, mask=None):
         logTeff = np.log10(hist.get('effective_T'))
     else:
         raise ValueError('log_Teff or effective_T not in history file.')
-    
+
     if 'photosphere_L' in hist.columns:
         logL = np.log10(hist.get('photosphere_L'))
     elif 'luminosity' in hist.columns:
@@ -123,7 +124,7 @@ def get_logTeffL(hist, mask=None):
         if 'photosphere_r' in hist.columns:
             print('Calculating logL from Teff and R_photosphere.')
             R = hist.get('photosphere_r')
-            logL = 2*np.log10(R) + 4 * logTeff - 4 * np.log10(5777)
+            logL = 2 * np.log10(R) + 4 * logTeff - 4 * np.log10(5777)
         else:
             raise ValueError('log_L, luminosity, or photosphere_L not in history file.')
     mask = get_mask(hist, mask)
@@ -145,7 +146,7 @@ def get_radius(p, unit='cm'):
     if unit == 'log':
         radius = np.log10(radius)
     elif unit.lower().replace('_', '') in ['rsun', 'rsol']:
-        radius = radius/c.rsun
+        radius = radius / c.rsun
     return radius
 
 
@@ -159,7 +160,8 @@ def get_m_bot_CZ(hist, mask=None):
             n_mix += 1
     for i in range(n_mix):
         i += 1
-        m_bot_CZ = np.maximum(m_bot_CZ, hist.get(f'mix_qtop_{i}', mask=mask) * (hist.get(f'mix_type_{i}', mask=mask) == 3))
+        m_bot_CZ = np.maximum(m_bot_CZ,
+                              hist.get(f'mix_qtop_{i}', mask=mask) * (hist.get(f'mix_type_{i}', mask=mask) == 3))
     return m_bot_CZ
 
 
@@ -176,12 +178,12 @@ def get_cheb_mask(hist, min_Yc=1e-6, max_Yc=1.0):
     :param max_Yc:
     :return:
     """
-    
+
     mask = hist.data.center_he4 >= min_Yc
     mask = np.logical_and(mask, hist.data.center_he4 <= max_Yc)
     mask = np.logical_and(mask, hist.data.mass_conv_core > 0)
     mask = np.logical_and(mask, hist.data.center_h1 < 1e-6)
-    
+
     return mask
 
 
@@ -201,13 +203,13 @@ def get_rc_mask(hist, min_Yc=0.1, max_Yc=0.95, first_chunk=False):
     """
 
     mask = hist.data.center_he4 >= min_Yc
-    mask = np.logical_and(mask, hist.data.center_he4 <= max_Yc*max(hist.data.center_he4))
+    mask = np.logical_and(mask, hist.data.center_he4 <= max_Yc * max(hist.data.center_he4))
     mask = np.logical_and(mask, hist.data.mass_conv_core > 0)
     mask = np.logical_and(mask, hist.data.center_h1 < 1e-6)
 
     if first_chunk and np.any(mask):
         end_first_block = np.where(np.diff(mask, prepend=False))[0][1]
-        mask[end_first_block+1:] = False
+        mask[end_first_block + 1:] = False
     return mask
 
 
@@ -224,12 +226,12 @@ def get_pms_mask(hist, invert=False, use_LH=True):
     if use_LH:
         _, logL = get_logTeffL(hist)
         maskL = ((hist.data.log_LH - logL) < 0) & (hist.data.center_h1 > 0.6)
-        starts_pms =  maskL[0]
+        starts_pms = maskL[0]
 
         mask = np.zeros_like(maskL)
         if starts_pms:
             end = np.where(np.diff(maskL))[0][0]
-            mask[:end+1] = True
+            mask[:end + 1] = True
     else:
         mask = hist.data.center_h1 >= hist.data.center_h1[0] * 0.99
 
@@ -249,10 +251,10 @@ def get_ms_mask(hist, min_Xc=1e-3, use_LH=True):
     :param use_LH: which condition to use for start of MS, passed to get_pms_mask.
     :return:
     """
-    
+
     mask = hist.data.center_h1 > min_Xc
     mask = np.logical_and(mask, get_pms_mask(hist, invert=True, use_LH=use_LH))
-    
+
     return mask
 
 
@@ -279,9 +281,11 @@ def get_sgb_mask_old(hist, min_dmhecore_dlnt=0.05, min_Xc=1e-3, max_logT_lim=3.8
     mask = np.logical_and(hist.data.model_number > min_mod, hist.data.model_number < max_mod)
 
     age = hist.data.star_age
-    dmhecore_dlnt = age*np.gradient(hist.data.he_core_mass, age)
+    dmhecore_dlnt = age * np.gradient(hist.data.he_core_mass, age)
     dmhecore_dlnt[dmhecore_dlnt <= 0] = 0
-    smoothed = np.roll(dmhecore_dlnt, -3) * np.roll(dmhecore_dlnt, -2) * np.roll(dmhecore_dlnt, -1) * dmhecore_dlnt * np.roll(dmhecore_dlnt, 1)
+    smoothed = np.roll(dmhecore_dlnt, -3) * np.roll(dmhecore_dlnt, -2) * np.roll(dmhecore_dlnt,
+                                                                                 -1) * dmhecore_dlnt * np.roll(
+        dmhecore_dlnt, 1)
     smoothed[smoothed <= 0] = 0
 
     mask = np.logical_and(mask, smoothed >= min_dmhecore_dlnt)
@@ -289,22 +293,23 @@ def get_sgb_mask_old(hist, min_dmhecore_dlnt=0.05, min_Xc=1e-3, max_logT_lim=3.8
     conv_mix_q = np.zeros_like(age[mask])
     has_q = np.zeros_like(age[mask], dtype=bool)
     for i in range(4):
-        mix_type = hist.get(f'mix_type_{i+2}')[mask]
+        mix_type = hist.get(f'mix_type_{i + 2}')[mask]
         mix_mask = mix_type == 1  # Convective mixing
         needs_data = np.logical_and(mix_mask, ~has_q)
-        conv_mix_q[needs_data] = hist.get(f'mix_qtop_{i+1}')[mask][needs_data]
+        conv_mix_q[needs_data] = hist.get(f'mix_qtop_{i + 1}')[mask][needs_data]
         has_q[needs_data] = True
         if i > 1 and np.all(has_q):
             break
-    
+
     if not np.any(mask):
         return np.zeros_like(ms_mask, dtype=bool)
-    
+
     i_lowest_CZ = np.where(mask)[0][np.argmin(conv_mix_q)]
     mask = hist.data.model_number >= min_mod
-    mask[i_lowest_CZ+1:] = False
+    mask[i_lowest_CZ + 1:] = False
 
     return mask
+
 
 def get_sgb_mask(hist, min_Xc=1e-3, fCZ=0.35):
     ms_mask = get_ms_mask(hist, min_Xc)
@@ -320,7 +325,7 @@ def get_sgb_mask(hist, min_Xc=1e-3, fCZ=0.35):
         min_mod = hist.data.model_number[0]
 
     try:
-        mask = hist.data.m_botCZ/hist.data.star_mass <= (1-fCZ)
+        mask = hist.data.m_botCZ / hist.data.star_mass <= (1 - fCZ)
     except AttributeError:
         m_bot_CZ = get_m_bot_CZ(hist)
         mask = m_bot_CZ / hist.data.star_mass <= (1 - fCZ)
@@ -329,6 +334,7 @@ def get_sgb_mask(hist, min_Xc=1e-3, fCZ=0.35):
 
     mask = np.logical_and(hist.data.model_number > min_mod, hist.data.model_number < max_mod)
     return mask
+
 
 def get_bump_mask(hist, max_logT_lim=3.8, min_logT_lim=3.6, min_logL=0.5):
     """
@@ -340,52 +346,51 @@ def get_bump_mask(hist, max_logT_lim=3.8, min_logT_lim=3.6, min_logL=0.5):
     """
 
     logTeff, logL = get_logTeffL(hist)
-    
+
     mask = hist.data.center_h1 < 1e-9
     mask = np.logical_and(mask, hist.data.center_he4 > 0.95)
     mask = np.logical_and(mask, logTeff < max_logT_lim)
     mask = np.logical_and(mask, logTeff > min_logT_lim)
     mask = np.logical_and(mask, logL > min_logL)
-    
+
     if sum(mask) == 0:
         return np.zeros_like(mask, dtype=bool)
-    
+
     mod_min = min(hist.get('model_number')[mask])
     try:
         mod_max = min(hist.get('model_number')[get_tip_mask(hist, max_logT_lim)])  # before RGB tip
     except (IndexError, ValueError):  # no flashes, use cheb instead
         mod_max = hist.data.model_number[get_cheb_mask(hist)][0]
-    
+
     # Bump is somewhere in the following mask:
     mask = np.logical_and(mask, hist.get('model_number') >= mod_min)
     mask = np.logical_and(mask, hist.get('model_number') <= mod_max)
-    
+
     # Bump is defined as when L decreases and Teff increases on RGB
     # submask_bump = np.logical_and(np.diff(logL[mask], prepend=-99) < 0, np.diff(logTeff[mask], prepend=99) > 0)
     # Bump is defined as when Teff increases on RGB
     submask_bump = np.diff(logTeff[mask], prepend=99) > 0
     mask[mask] = submask_bump
-    
+
     return mask
 
 
 def get_tip_mask(hist, logT_lim=3.8):
-    
     logTeff, logL = get_logTeffL(hist)
 
     mask = hist.data.center_h1 < 1e-9
     mask = np.logical_and(mask, hist.data.center_he4 > 0.95)
     mask = np.logical_and(mask, logTeff < logT_lim)
-    
+
     if sum(mask) == 0:
         return np.zeros_like(mask, dtype=bool)
-    
+
     minT = min(logTeff[mask])
     maxL = max(logL[mask])
-    
+
     mask = np.logical_and(mask, logTeff < minT + 0.01)
     mask = np.logical_and(mask, logL > maxL - 0.1)
-    
+
     return mask
 
 
@@ -401,7 +406,7 @@ def get_rgb_mask(hist, min_Xc=1e-3, logT_lim=3.8, old_sgb=False):
             first_mod = hist.data.model_number[0]
     except IndexError:
         first_mod = hist.data.model_number[0]
-    
+
     tip_mask = get_tip_mask(hist, logT_lim)
     if np.any(tip_mask):
         logTeff, logL = get_logTeffL(hist)
@@ -421,12 +426,12 @@ def get_flashes_mask(hist, logT_lim=3.8):
     else:
         print('No CHeB model, using last.')
         last_mod = hist.data.model_number[-1]
-    
+
     tip_mask = get_tip_mask(hist, logT_lim)
     logTeff, logL = get_logTeffL(hist)
     masked_i_min_T = np.argmin(logTeff[tip_mask])
     first_mod = hist.data.model_number[tip_mask][masked_i_min_T]
-    
+
     mask = np.logical_and(hist.data.model_number > first_mod, hist.data.model_number < last_mod)
     return mask
 
@@ -441,11 +446,12 @@ def get_agb_mask(hist):
     return mask
 
 
-mask_functions = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_bump_mask, get_tip_mask, get_flashes_mask, get_cheb_mask,
+mask_functions = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_bump_mask, get_tip_mask, get_flashes_mask,
+                  get_cheb_mask,
                   get_rc_mask, get_agb_mask]
 mask_names = ['PMS', 'MS', 'SGB', 'RGB', 'RGBb', 'RGB tip', 'He flashes', 'CHeB', 'RC', 'post-CHeB']
 
-    
+
 def get_gridnum(hist):
     return int(os.path.split(hist.LOGS)[0][-4:])
 
@@ -457,7 +463,8 @@ def get_mask(hist, use_mask):
         else:
             # Try to get numpy to raise the index error first
             _ = hist.get('model_number')[use_mask]
-            raise IndexError(f'Length of mask not the same as length of data ({len(use_mask)} vs {len(hist.get("model_number"))}')
+            raise IndexError(
+                f'Length of mask not the same as length of data ({len(use_mask)} vs {len(hist.get("model_number"))}')
     elif callable(use_mask):
         mask = use_mask(hist)
     else:
@@ -473,7 +480,7 @@ def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=
         mask = get_mask(hist, use_mask=use_mask)
     else:
         mask = ...
-    
+
     if isinstance(domain, str):
         xdat = hist.get(domain)[mask]
     else:
@@ -518,8 +525,9 @@ def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=
         std = np.nan
     else:
         mean = ig.trapz(ydat, xdat) / (xdat[-1] - xdat[0])
-        std = (ig.trapz((ydat-mean)**2, xdat) / (xdat[-1] - xdat[0]))**0.5
-        std = np.mean(np.diff(np.quantile(ip.interp1d(xdat, ydat)(np.linspace(min(xdat), max(xdat), 201)),[0.15865, 0.50, 0.84135])))
+        std = (ig.trapz((ydat - mean) ** 2, xdat) / (xdat[-1] - xdat[0])) ** 0.5
+        std = np.mean(np.diff(
+            np.quantile(ip.interp1d(xdat, ydat)(np.linspace(min(xdat), max(xdat), 201)), [0.15865, 0.50, 0.84135])))
     if get_std:
         return mean, std
     else:
@@ -540,7 +548,6 @@ def get_weighted_quantile(x, w, q=(0.15865, 0.50, 0.84135)):
     cumsumw /= cumsumw[-1]
 
     return ip.interp1d(cumsumw, x)(q)
-
 
 
 # def get_instability_strip(Z, logL_min=3, logL_max=4.5):
@@ -568,7 +575,7 @@ def get_instability_strip(Z, Y, logL_min=3, logL_max=4.5, kind='RRLyrae'):
         logL_max = 1.9
 
         logL = np.linspace(logL_min, logL_max, 101)
-        logTr = -0.084 * logL -0.012 * np.log10(Z) + 3.879
+        logTr = -0.084 * logL - 0.012 * np.log10(Z) + 3.879
         logTb = -0.080 * logL - 0.012 * np.log10(Z) + 3.957
 
         return logL, (logTb, logTr)
@@ -582,8 +589,8 @@ def get_instability_strip(Z, Y, logL_min=3, logL_max=4.5, kind='RRLyrae'):
         deltaZ = Z - Zref
 
         logL = np.linspace(logL_min, logL_max, 101)
-        logTeff = -0.036 * logL+ 3.925
-        dlogTeff = 0.04 * deltaY - 0.49*deltaZ
+        logTeff = -0.036 * logL + 3.925
+        dlogTeff = 0.04 * deltaY - 0.49 * deltaZ
         logTeff += dlogTeff
 
     return logL, (logTeff, logTeff - 0.06)
@@ -619,7 +626,7 @@ def get_evo_stretch_func(hist, xaxis='star_age', phase_funcs=None):
     xdata = hist.get(xaxis)
 
     if np.all(np.diff(xdata) < 0):  # monotonically decreasing
-        factor = -1*xdata
+        factor = -1 * xdata
     elif np.all(np.diff(xdata) > 0):  # monotonically increasing
         pass
     else:
@@ -634,7 +641,7 @@ def get_evo_stretch_func(hist, xaxis='star_age', phase_funcs=None):
         xdata_min = min(phase_xdata)
         xdata_max = max(phase_xdata)
         func = ip.interp1d([xdata_min, xdata_max], [0.0, 1.0])
-    
+
         stretched[mask] += func(phase_xdata)
 
     func = ip.interp1d(hist.data.model_number, stretched)
@@ -647,7 +654,7 @@ def get_bottom_envelope(p, indeces_only=False):
     mass = p.get('mass')
     temperature = p.get('temperature')
     mix_type = p.get('mixing_type')
-    
+
     if version >= '15140':
         prefix = 'post'
     else:
@@ -685,10 +692,10 @@ def get_lamb2(p, l=1):
     if 'lamb_S2' in p.columns:
         lamb2 = p.data.lamb_S2
     elif 'lamb_Sl1' in p.columns:
-        lamb2 = (p.data.lamb_Sl1/(1e6/(2*np.pi)))**2 * l*(l+1)/2  # l part to convert from l=1 to l=l
+        lamb2 = (p.data.lamb_Sl1 / (1e6 / (2 * np.pi))) ** 2 * l * (l + 1) / 2  # l part to convert from l=1 to l=l
     else:
         radius = get_radius(p)
-        lamb2 = l*(l+1) * (p.data.csound/radius)**2
+        lamb2 = l * (l + 1) * (p.data.csound / radius) ** 2
     return lamb2
 
 
@@ -698,9 +705,9 @@ def calc_r0line_fCZ(freq, r, Nred, Sred, r_bCZ):  # assumes well behaved Nred, S
 
     r1 = fSred(freq)
     r2 = fNred(freq)
-    r0 = np.sqrt(r1*r2)
-    s0 = 0.5*(np.log(r1) - np.log(r2))
-    f_CZ = (s0 - np.log(r_bCZ/r0))/(2*s0)
+    r0 = np.sqrt(r1 * r2)
+    s0 = 0.5 * (np.log(r1) - np.log(r2))
+    f_CZ = (s0 - np.log(r_bCZ / r0)) / (2 * s0)
     f_CZ = np.minimum(f_CZ, 1)
     f_CZ = np.maximum(f_CZ, 0)
     return r0, f_CZ
@@ -708,10 +715,10 @@ def calc_r0line_fCZ(freq, r, Nred, Sred, r_bCZ):  # assumes well behaved Nred, S
 
 def get_X_from_q(q, kind='strong'):
     if kind == 'strong':
-        return np.log(1 - ((1-q)/(1+q))**2)/(-2*np.pi)
+        return np.log(1 - ((1 - q) / (1 + q)) ** 2) / (-2 * np.pi)
     elif kind == 'weak':
         if np.any(q <= 0.25):
-            return np.log(4*q)/(-2*np.pi)
+            return np.log(4 * q) / (-2 * np.pi)
         else:
             return ValueError('q must be less than 0.25 for kind weak.')
     else:
@@ -720,6 +727,7 @@ def get_X_from_q(q, kind='strong'):
 
 def calc_q(X):
     return (1 - np.sqrt(1 - np.exp(-2 * np.pi * X))) / (1 + np.sqrt(1 - np.exp(-2 * np.pi * X)))
+
 
 #
 # def calc_qP(hist, integral='MESA'):
@@ -735,18 +743,21 @@ def calc_q(X):
 
 def calc_J0(hist):
     # Mean J in EZ
-    rho_EZ = (hist.data.m_2 - hist.data.m_1) / (4/3*np.pi * (hist.data.r_2**3 - hist.data.r_1**3))
+    rho_EZ = (hist.data.m_2 - hist.data.m_1) / (4 / 3 * np.pi * (hist.data.r_2 ** 3 - hist.data.r_1 ** 3))
     r0 = calc_r0(hist)
-    m0 = np.sqrt(hist.data.m_2*hist.data.m_1)  # best we can do, <1% error for f_CZ<0.2
-    rho_mean = m0 / (4/3 * np.pi * r0**3)
-    J0 = 1 - rho_EZ/rho_mean
+    m0 = np.sqrt(hist.data.m_2 * hist.data.m_1)  # best we can do, <1% error for f_CZ<0.2
+    rho_mean = m0 / (4 / 3 * np.pi * r0 ** 3)
+    J0 = 1 - rho_EZ / rho_mean
     return J0
+
+
 def get_betaN_plus_betaS(hist):
     J0 = calc_J0(hist)
     P0 = hist.data.a_0_int_P
     Q0 = hist.data.a_0_int_Q
     # return -0.5 * np.log((J0 - Q0) / (J0 - P0 / 2)) / calc_s0(hist)
-    return -0.5 * np.log((1 - Q0/J0)*(1 - P0/(2*J0))) / calc_s0(hist)
+    return -0.5 * np.log((1 - Q0 / J0) * (1 - P0 / (2 * J0))) / calc_s0(hist)
+
 
 def get_beta_from_dlnc(hist, which='S'):
     r_1 = hist.get('r_1')
@@ -764,24 +775,25 @@ def get_beta_from_dlnc(hist, which='S'):
         dlncds = hist.data.dlnc_ds_s0_part_Sl
     elif which == 'N':
         dlncds = hist.data.dlnc_ds_s0_part_N
-    elif which == 'q': # Get equivalent beta for full strong q
+    elif which == 'q':  # Get equivalent beta for full strong q
         s0 = calc_s0(hist)
         dlncds = 0.25 * (hist.data.dlnPds_s0 - hist.data.dlnQds_s0)  # 2/s0 is already in dlnPQ parts
 
     def func(beta, r_1, r_2, dlncds):
-        alfa = (r_2/r_1) ** beta
+        alfa = (r_2 / r_1) ** beta
         return abs(dlncds - (-beta * (
-                    alfa / (1 - alfa) + 1 / np.log(alfa))))
+                alfa / (1 - alfa) + 1 / np.log(alfa))))
 
-    beta = newton(func, x0=1.5*np.ones_like(r_1), args=(r_1, r_2, dlncds))  # gives betaS
+    beta = newton(func, x0=1.5 * np.ones_like(r_1), args=(r_1, r_2, dlncds))  # gives betaS
     # if which == 'N':
     #     beta = get_betaN_plus_betaS(hist) - beta  # behaves better than doing newton for betaN directly
     return beta
 
+
 def calc_PQ_int_frm_beta(hist, kind='parallel', num=101):
     r1 = hist.data.r_1
     r2 = hist.data.r_2
-    r0 = np.sqrt(r1*r2)
+    r0 = np.sqrt(r1 * r2)
     J0 = calc_J0(hist)
     betaS = get_beta_from_dlnc(hist)
     if kind == 'parallel':
@@ -789,7 +801,7 @@ def calc_PQ_int_frm_beta(hist, kind='parallel', num=101):
     elif kind.lower().startswith('non'):
         betaN = get_beta_from_dlnc(hist, 'N')
     r = np.logspace(np.log(np.minimum(r1, r2)), np.log(np.maximum(r1, r2)), num, base=np.e)
-    sqrtPQ_div_r = np.sqrt(2 * J0**2 * (1 - (r1/r)**(-2*betaS)) * (1 - (r2/r)**(2*betaN)))/r
+    sqrtPQ_div_r = np.sqrt(2 * J0 ** 2 * (1 - (r1 / r) ** (-2 * betaS)) * (1 - (r2 / r) ** (2 * betaN))) / r
     sqrtPQ_div_r[0, :] = 0  # Force to equal 0 at s = pm s_0
     sqrtPQ_div_r[-1, :] = 0
     integ = ig.simps(sqrtPQ_div_r, r, axis=0)
@@ -800,7 +812,7 @@ def calc_q_app(hist, integral='MESA', which='non-parallel', output='q', fix_bugg
     if integral == 'MESA':
         Xi = hist.get('X_integral_part')
     elif integral.startswith('approx'):
-        Xi = calc_PQ_int_frm_beta(hist, which)/np.pi
+        Xi = calc_PQ_int_frm_beta(hist, which) / np.pi
     else:
         raise ValueError('integral must be MESA or approx.')
 
@@ -810,21 +822,22 @@ def calc_q_app(hist, integral='MESA', which='non-parallel', output='q', fix_bugg
     if which.lower().startswith('non'):
         betaN = get_beta_from_dlnc(hist, which='N')
         if fix_bugged_betaN:
-            betaN = betaN/2  # fix a missing sqrt in rse betaN calculation
+            betaN = betaN / 2  # fix a missing sqrt in rse betaN calculation
     else:
         betaN = betaS
     gamma = betaN / betaS
     alphaP = (r2 / r1) ** (betaS)
     dlnc_ds_s0_part_noP = -betaS * ((gamma * alphaP ** gamma - alphaP * (alphaP ** gamma * (1 + gamma) - 1)) / (
-                2 * (alphaP - 1) * (alphaP ** gamma - 1)) + 1 / np.log(alphaP))
+            2 * (alphaP - 1) * (alphaP ** gamma - 1)) + 1 / np.log(alphaP))
 
     Xg = (dlnc_ds_s0_part_noP - 0.5 * hist.get('NuAJ_s0')) ** 2 / (2 * hist.get('kappa_s0'))
     X = Xi + Xg
 
     if output == 'full':
-        return calc_q(X), Xi, Xg, betaS, betaN,  alphaP
+        return calc_q(X), Xi, Xg, betaS, betaN, alphaP
     else:
         return calc_q(X)
+
 
 def get_r1r2(hist, mask=None):
     try:
@@ -833,7 +846,8 @@ def get_r1r2(hist, mask=None):
     except ValueError:
         r1 = hist.get('r_1_strong', mask=mask)
         r2 = hist.get('r_2_strong', mask=mask)
-    return  r1, r2
+    return r1, r2
+
 
 def get_m1m2(hist, mask=None):
     try:
@@ -842,16 +856,18 @@ def get_m1m2(hist, mask=None):
     except ValueError:
         m1 = hist.get('m_1_strong', mask=mask)
         m2 = hist.get('m_2_strong', mask=mask)
-    return  m1, m2
+    return m1, m2
+
 
 def calc_s0(hist, mask=None):
     r1, r2 = get_r1r2(hist, mask)
-    return np.log(r1/r2)/2
+    return np.log(r1 / r2) / 2
 
 
 def calc_r0(hist, mask=None):
     r1, r2 = get_r1r2(hist, mask)
-    return np.sqrt(r1*r2)
+    return np.sqrt(r1 * r2)
+
 
 def calc_int_PQ_quad(hist, mask=None, n=21):
     mask = get_mask(hist, mask)
@@ -874,13 +890,15 @@ def calc_int_PQ_quad(hist, mask=None, n=21):
     PQ = np.sqrt(PQ)
 
     I_quad = ig.simpson(PQ, ss, axis=1)
-    return I_quad/np.pi
+    return I_quad / np.pi
+
+
 def calc_q_grad(hist, mask=None):
     Xi = hist.get('X_integral_part', mask=mask)
     NuAJ_s0 = hist.get('NuAJ_s0', mask=mask)
-    
+
     s_0 = calc_s0(hist, mask=mask)
-    
+
     P_s0 = hist.get('a_0_int_P', mask=mask)
     Q_s0 = hist.get('a_0_int_Q', mask=mask)
     dlnPds_s0 = hist.get('a_0_grd_P', mask=mask) / (P_s0 / s_0)
@@ -888,29 +906,30 @@ def calc_q_grad(hist, mask=None):
 
     kappa_s0 = np.sqrt(P_s0 * Q_s0) / abs(s_0)
     dlnc_ds_s0_part = 0.25 * (dlnPds_s0 - dlnQds_s0 + 0)
-    
-    Xg = (dlnc_ds_s0_part - 0.5 * NuAJ_s0)**2 / (2*kappa_s0)
+
+    Xg = (dlnc_ds_s0_part - 0.5 * NuAJ_s0) ** 2 / (2 * kappa_s0)
     X = Xi + Xg
     return calc_q(X)
+
 
 def calc_q_num(hist, mask=None):
     Xi = hist.get('X_integral_part', mask=mask)
     NuAJ_s0 = hist.get('NuAJ_s0', mask=mask)
-    
+
     s_0 = calc_s0(hist, mask=mask)
 
     P_s0 = hist.get('a_0_int_P', mask=mask)
     Q_s0 = hist.get('a_0_int_Q', mask=mask)
     kappa_s0 = np.sqrt(P_s0 * Q_s0) / abs(s_0)
     dlnc_ds_s0_part = hist.get('dlnc_ds_s0_part_ip', mask=mask)
-    
+
     Xg = (dlnc_ds_s0_part - 0.5 * NuAJ_s0) ** 2 / (2 * kappa_s0)
     X = Xi + Xg
     return calc_q(X)
 
 
 def calc_qw(X):
-    return 0.25*np.exp(-2*np.pi*X)
+    return 0.25 * np.exp(-2 * np.pi * X)
 
 
 def load_meshdat(base_dir):
@@ -925,13 +944,13 @@ def load_meshdat(base_dir):
         unsmoothed = np.loadtxt(f'{base_dir}/unsmoothed.dat')
         smoothed = np.loadtxt(f'{base_dir}/smoothed.dat')
         meshed = np.loadtxt(f'{base_dir}/smoothed_meshed.dat')
-    
+
     from collections import Counter
-    
+
     uns = []
     smo = []
     msh = []
-    
+
     for i_type, dat in enumerate([unsmoothed, smoothed, meshed]):
         cnt = Counter(dat[:, 0])
         min_npoints = min(cnt.values())
@@ -945,7 +964,7 @@ def load_meshdat(base_dir):
         for j, (mnum, npoints) in enumerate(cnt.items()):
             sub_dat = dat[cum_pts:cum_pts + npoints]
             mod = sub_dat[0][0]
-            
+
             x1 = sub_dat[:min_npoints // 2, 2]
             y1 = sub_dat[:min_npoints // 2, 3]
             x2 = sub_dat[min_npoints // 2:min_npoints, 2]
@@ -985,11 +1004,11 @@ def load_meshdat2(base_dir, oldstyle=False):
             meshed = np.loadtxt(f'{base_dir}/meshed.dat')
         except OSError:
             meshed = np.loadtxt(f'{base_dir}/smoothed_meshed.dat')
-    
+
     uns = []
     smo = []
     msh = []
-    
+
     for i_type, dat in enumerate([unsmoothed, smoothed, meshed]):
         if dat[0] is None:
             continue
@@ -1000,14 +1019,15 @@ def load_meshdat2(base_dir, oldstyle=False):
             new_dat = smo
         elif i_type == 2:
             new_dat = msh
-        
+
         mnum = dat[::2, 0]
-        xP = dat[::2, 2:2+npoints]
-        yP = dat[::2, 2+npoints:]
-        xQ = dat[1::2, 2:2+npoints]
-        yQ = dat[1::2, 2+npoints:]
-        
-        new_dat.extend([[mnum[i], xP[i], yP[i], xQ[i], yQ[i]] for i in range(len(mnum)) if (mnum[i] != mnum[i-2]) and (mnum[i] <= max_mnum)])
+        xP = dat[::2, 2:2 + npoints]
+        yP = dat[::2, 2 + npoints:]
+        xQ = dat[1::2, 2:2 + npoints]
+        yQ = dat[1::2, 2 + npoints:]
+
+        new_dat.extend([[mnum[i], xP[i], yP[i], xQ[i], yQ[i]] for i in range(len(mnum)) if
+                        (mnum[i] != mnum[i - 2]) and (mnum[i] <= max_mnum)])
     uns = np.array(uns, dtype=object)
     smo = np.array(smo, dtype=object)
     msh = np.array(msh, dtype=object)
@@ -1033,18 +1053,19 @@ def calc_fCZ(r1, r2, r_bCZ):
     f_CZ = np.minimum(f_CZ, 1)
     return f_CZ
 
+
 def get_coupling(hist, f=0.2):
     f_CZ = calc_f_CZ_from_hist(hist)
-    
+
     mask_f = f_CZ < f
     mask_1mf = f_CZ > 1 - f
     mask_inter = (f_CZ >= f) & (f_CZ <= 1 - f)
-    
+
     kind = np.zeros_like(hist.get('star_age'), dtype=int)
     kind[mask_f] = 1  # strong
     kind[mask_1mf] = 2  # weak
     kind[mask_inter] = 3  # inter/two evn
-    
+
     try:
         mask_sgbrgb = get_sgb_mask(hist) | get_rgb_mask(hist)
     except ValueError:
@@ -1054,50 +1075,51 @@ def get_coupling(hist, f=0.2):
     elif 'log_center_Rho' in hist.cols:
         center_Rho = 10 ** hist.get('log_center_Rho')
     mask = mask_sgbrgb & (hist.get('X_integral_part') >= 0) & (hist.get('X_integral_part_b') >= 0) & (
-                hist.get('k_u2b') * hist.get('k_l2b') > 0) & (center_Rho > 1e4)
+            hist.get('k_u2b') * hist.get('k_l2b') > 0) & (center_Rho > 1e4)
     if np.any(mask):
         i0 = np.where(mask_sgbrgb & (kind == 1) &
                       (hist.get('X_integral_part_b') > 0) &
                       (center_Rho > 1e4))[0][0]
         i0 -= 1
-        
+
         # mask = mask & (hist.data.star_age <= (hist.data.star_age[i0] + 5e8))
         i1 = np.where(mask_sgbrgb & (kind == 2))[0][0]
         i1 += 1
-        
+
         mask = np.zeros_like(mask)
         mask[i0:i1 + 1] = True
         kind[i0:i1] = 3
-        
+
         print(hist.path, (hist.data.star_age[i1] - hist.data.star_age[i0]) / 1e6)
-        
+
         q0 = hist.get('coupling_strong')[i0]
         # q1 = hist.get('coupling_strong')[i1]
         q1 = 0.25 * np.exp(-2 * np.pi * (hist.get('X_integral_part')[i1]))
-        
+
         x = hist.get('star_age')
         x0 = x[i0]
         x1 = x[i1]
-        
+
         ip_func = ip.interp1d([x0, x1], [q0, q1])
-        
+
         new_q = hist.get('coupling_strong')[:]
         new_q[mask] = ip_func(x[mask])
     else:
         new_q = hist.get('coupling_strong')[:]
-    
+
     # true q blends qs and qw across transition to conv ez
     true_q = np.nan * np.zeros_like(new_q)
     true_q[mask_f] = hist.get('coupling_strong')[mask_f]
     true_q[mask_1mf] = 0.25 * np.exp(-2 * np.pi * hist.get('X_integral_part')[mask_1mf])
-    
+
     ip_func = ip.interp1d(hist.get('star_age')[~(kind == 3)], true_q[~(kind == 3)], bounds_error=False)
     true_q = ip_func(hist.get('star_age'))
-    
+
     return new_q, mask, true_q, f_CZ, kind
 
 
-def get_coupling2(hist, f=0.2, remove_extra=5, do_blend=False, rgb_type=None, interp_window=5, skip_rgbsgb=False, old_sgb=True):
+def get_coupling2(hist, f=0.2, remove_extra=5, do_blend=False, rgb_type=None, interp_window=5, skip_rgbsgb=False,
+                  old_sgb=True):
     mask_cheb = get_cheb_mask(hist)
     if skip_rgbsgb:
         mask_sgbrgb = np.zeros_like(mask_cheb, dtype=bool)
@@ -1122,7 +1144,7 @@ def get_coupling2(hist, f=0.2, remove_extra=5, do_blend=False, rgb_type=None, in
     if 'center_Rho' in hist.cols:
         center_Rho = hist.get('center_Rho')
     elif 'log_center_Rho' in hist.cols:
-        center_Rho = 10**hist.get('log_center_Rho')
+        center_Rho = 10 ** hist.get('log_center_Rho')
     else:
         raise ValueError('No center_Rho-like columns found,')
     bad_vals = (hist.get('X_integral_part_b') > 0) & (center_Rho > 1e4) & mask_sgbrgb
@@ -1139,7 +1161,7 @@ def get_coupling2(hist, f=0.2, remove_extra=5, do_blend=False, rgb_type=None, in
             i1 += remove_extra
 
         mask = np.zeros_like(mask_sgbrgb, dtype=bool)
-        mask[i0:i1+1] = True
+        mask[i0:i1 + 1] = True
     else:
         mask = bad_vals
     f_CZ = calc_f_CZ_from_hist(hist)
@@ -1158,34 +1180,37 @@ def get_coupling2(hist, f=0.2, remove_extra=5, do_blend=False, rgb_type=None, in
         i_bad = np.where(bad_r2_mask)[0][0]
         f_CZ[i0 + i_bad] = (f_CZ[i0 + i_bad - 1] + f_CZ[i0 + i_bad + 1]) / 2
         i0 = i0 + i_bad - min(i_bad, 40)  # use as much of q_strong
-    
+
     if np.any(bad_vals):
         mask = np.zeros_like(mask_sgbrgb, dtype=bool)
-        mask[i0:i1+1] = True
+        mask[i0:i1 + 1] = True
         x = hist.get('star_age')
         x0 = x[i0]
         x1 = x[i1]
-        
-        #strong
+
+        # strong
         y0 = hist.get('coupling_strong')[i0]
         y1 = hist.get('coupling_strong')[i1]
         ip_func = ip.interp1d([x0, x1], [y0, y1])
         new_q = np.copy(hist.get('coupling_strong'))
         new_q[mask] = ip_func(x[mask])
-        
-        #weak
+
+        # weak
         new_qw = calc_qw(hist.get('X_integral_part'))
         if do_sum:
-            new_qw[mask] = calc_qw(np.nansum([hist.get('X_integral_part')[mask], hist.get('X_integral_part_b')[mask]], axis=0))
+            new_qw[mask] = calc_qw(
+                np.nansum([hist.get('X_integral_part')[mask], hist.get('X_integral_part_b')[mask]], axis=0))
         else:
             interp_window += 1
-            dydx0, y0 = np.polyfit(x[i0-interp_window:i0], hist.get('X_integral_part')[i0-interp_window:i0]**0.5, 1)
-            dydx1, y1 = np.polyfit(x[i1:i1+interp_window], hist.get('X_integral_part')[i1:i1+interp_window]**0.5, 1)
-            f1 = x[mask]*dydx0 + y0
-            f2 = x[mask]*dydx1 + y1
+            dydx0, y0 = np.polyfit(x[i0 - interp_window:i0], hist.get('X_integral_part')[i0 - interp_window:i0] ** 0.5,
+                                   1)
+            dydx1, y1 = np.polyfit(x[i1:i1 + interp_window], hist.get('X_integral_part')[i1:i1 + interp_window] ** 0.5,
+                                   1)
+            f1 = x[mask] * dydx0 + y0
+            f2 = x[mask] * dydx1 + y1
             new_qw = calc_qw(hist.get('X_integral_part'))
-            new_qw[mask] = calc_qw(np.maximum(f1, f2)**2)
-        
+            new_qw[mask] = calc_qw(np.maximum(f1, f2) ** 2)
+
         kind[mask] = 3
     else:
         new_q = np.copy(hist.get('coupling_strong'))
@@ -1199,18 +1224,18 @@ def get_coupling2(hist, f=0.2, remove_extra=5, do_blend=False, rgb_type=None, in
     true_q[mask_sgbrgb] = ip_func(hist.get('star_age')[mask_sgbrgb])
 
     mask_cheb_inter = mask_inter & (~mask_sgbrgb)
-    alfa = (f_CZ[mask_cheb_inter] - f) / (1 - 2*f)
+    alfa = (f_CZ[mask_cheb_inter] - f) / (1 - 2 * f)
     beta = 1 - alfa
     true_q[mask_cheb_inter] = alfa * new_qw[mask_cheb_inter] + beta * new_q[mask_cheb_inter]
-    
+
     if not do_blend:
         new_q[kind == 3] = np.nan
         if not interp_rgb:
             new_qw[kind == 3] = np.nan
         true_q[kind == 3] = np.nan
-    
+
     return new_q, new_qw, mask, true_q, f_CZ, kind
-    
+
 
 def calc_FeH(hist, ZX_sol=0.0178, use_mask=None):
     mask = get_mask(hist, use_mask)
@@ -1240,17 +1265,17 @@ def calc_deltaPg(gs, hist, l, prefix='profile', suffix='.data.GYRE.sgyre_l'):
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
     hist_i = hist.get_model_num(pnum)[0][2]
     nu_max = hist.get('nu_max')[hist_i]
-    
+
     if l == 0:
         raise ValueError('Cannot use l=0 for period spacing.')
-    
+
     mask = gs.data.l == l
     nu = gs.get_frequencies('Hz')[mask]
     dPi = -np.diff(nu ** -1)
 
     fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))
     w = np.exp(-((nu[:-1] - nu_max) / fsig) ** 2)
-    dPi = np.sum(dPi*w/sum(w))
+    dPi = np.sum(dPi * w / sum(w))
     return dPi
 
 
@@ -1277,13 +1302,13 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
             deltanus.append(deltanu)
             h_deltanu = hist.data.delta_nu[hist_i]
             y_nu.append(deltanu / h_deltanu)
-        
+
         if do_deltaP:
             deltaP = calc_deltaPg(gs, hist, 1)
             deltaPs.append(deltaP)
             h_deltaP = hist.data.delta_Pg[hist_i]
             y_P.append(deltaP / h_deltaP)
-        
+
         x.append(hist.get(xname)[hist_i])
     x = np.array(x)
     y_nu = np.array(y_nu)
@@ -1292,7 +1317,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
     i_sort = np.argsort(x)
     x = x[i_sort]
     if weight:
-        mid = (x[1:] + x[:-1])/2
+        mid = (x[1:] + x[:-1]) / 2
         w = np.zeros_like(x)
         w[1:-1] = np.diff(mid)
         w[1:-1] = (x[2:] - x[:-2])
@@ -1316,7 +1341,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
         try:
             P_poly = np.polyfit(x, y_P, 2, w=w)
         except Exception:
-            P_poly = np.array([np.nan]*3)
+            P_poly = np.array([np.nan] * 3)
         P_poly = np.poly1d(P_poly)
         P_f = P_poly(hist.get(xname)[mask])
         new_deltaP = hist.data.delta_Pg[mask] * P_f
@@ -1336,14 +1361,14 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
 
 
 def calc_ModDens(numax, deltanu, deltap):
-    return deltanu/(numax**2 * 1e-6*deltap)
+    return deltanu / (numax ** 2 * 1e-6 * deltap)
 
 
-def strided_app(a, L, S ):  # Window len = L, Stride len/stepsize = S
+def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     # https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
-    nrows = ((a.size-L)//S)+1
+    nrows = ((a.size - L) // S) + 1
     n = a.strides[0]
-    return np.lib.stride_tricks.as_strided(a, shape=(nrows,L), strides=(S*n,n))
+    return np.lib.stride_tricks.as_strided(a, shape=(nrows, L), strides=(S * n, n))
 
 
 def weighted_percentile(data, weights, percentiles):
@@ -1361,10 +1386,10 @@ def weighted_percentile(data, weights, percentiles):
 def bootstrap_rolling_percentiles(xdat, ydat, window, percentiles, n=1000, size=None, rng=None):
     if rng is None:
         rng = np.random.default_rng()
-    
+
     x_sample_stats = []
     y_sample_stats = []
-    
+
     if size is None:
         size = len(xdat)
     num_pts = len(xdat)
@@ -1375,10 +1400,10 @@ def bootstrap_rolling_percentiles(xdat, ydat, window, percentiles, n=1000, size=
         x_sort_idx = np.argsort(x)
         x_sample_stats.append(np.median(strided_app(x[x_sort_idx], window, 1), axis=-1))
         y_sample_stats.append(np.percentile(strided_app(y[x_sort_idx], window, 1), percentiles, axis=-1))
-    
+
     x_sample_stats = np.array(x_sample_stats)
     y_sample_stats = np.array(y_sample_stats)
-    
+
     x_med = np.mean(x_sample_stats, axis=0)
     y_med = np.mean(y_sample_stats, axis=0)
     y_std = np.std(y_sample_stats, axis=0)
@@ -1386,7 +1411,6 @@ def bootstrap_rolling_percentiles(xdat, ydat, window, percentiles, n=1000, size=
 
 
 def bootstrap_binned(xdat, ydat, percentiles, bins=20, min_frac_cts=0.02, n=1000, size=None, rng=None, max_loops=64):
-
     if isinstance(bins, int):
         nbins = bins
 
@@ -1398,11 +1422,12 @@ def bootstrap_binned(xdat, ydat, percentiles, bins=20, min_frac_cts=0.02, n=1000
         ndat = len(xdat)
         min_ct = int(np.ceil(ndat * min_frac_cts))
 
-        pivot = np.where(np.cumsum(cts) > ndat/2)[0][0]
+        pivot = np.where(np.cumsum(cts) > ndat / 2)[0][0]
         for i in np.arange(pivot):
             ct = cts[i]
             if ct < min_ct:
-                bins[i + 1:pivot+1] = np.linspace(0.5 * (xsort[sum(cts[:i]) + min_ct - 1] + xsort[sum(cts[:i]) + min_ct + 1]), bins[pivot], pivot-i)
+                bins[i + 1:pivot + 1] = np.linspace(
+                    0.5 * (xsort[sum(cts[:i]) + min_ct - 1] + xsort[sum(cts[:i]) + min_ct + 1]), bins[pivot], pivot - i)
                 cts, _ = np.histogram(xsort, bins=bins)
 
         bins = -bins[::-1]
@@ -1412,7 +1437,9 @@ def bootstrap_binned(xdat, ydat, percentiles, bins=20, min_frac_cts=0.02, n=1000
         for i in np.arange(rev_pivot):
             ct = cts[i]
             if ct < min_ct:
-                bins[i + 1:rev_pivot+1] = np.linspace(0.5 * (xsort[sum(cts[:i]) + min_ct - 1] + xsort[sum(cts[:i]) + min_ct + 1]), bins[rev_pivot], rev_pivot-i)
+                bins[i + 1:rev_pivot + 1] = np.linspace(
+                    0.5 * (xsort[sum(cts[:i]) + min_ct - 1] + xsort[sum(cts[:i]) + min_ct + 1]), bins[rev_pivot],
+                    rev_pivot - i)
                 cts, _ = np.histogram(xsort, bins=bins)
 
         bins = -bins[::-1]
@@ -1425,20 +1452,21 @@ def bootstrap_binned(xdat, ydat, percentiles, bins=20, min_frac_cts=0.02, n=1000
         elif len(nonmon) == 1:
             rebin = np.where(cts > min_ct)[0]
             i0 = min(rebin)
-            i1 = max(rebin)+1
-            bins[i0:i1+1] = np.linspace(bins[i0], bins[i1], i1 - i0 + 1)
+            i1 = max(rebin) + 1
+            bins[i0:i1 + 1] = np.linspace(bins[i0], bins[i1], i1 - i0 + 1)
         cts, bins = np.histogram(xsort, bins=bins)
 
     else:
         nbins = len(bins) - 1
     x_sample_stats = []
     y_sample_stats = []
-    
+
     percentiles = np.array(percentiles, dtype=float)
     if min(percentiles) > 1:
         percentiles /= 100
-    stat_funcs = [functools.partial(weighted_percentile, weights=None, percentiles=percentile) for percentile in percentiles]
-    
+    stat_funcs = [functools.partial(weighted_percentile, weights=None, percentiles=percentile) for percentile in
+                  percentiles]
+
     if size is None:
         size = len(xdat)
 
@@ -1486,7 +1514,7 @@ def bootstrap_binned(xdat, ydat, percentiles, bins=20, min_frac_cts=0.02, n=1000
         payload = dill.dumps((work_func, args))
 
         with mp.Pool(nproc) as pool:
-            out_y_sample_stats = pool.map(run_dill_encoded, [payload]*nproc)
+            out_y_sample_stats = pool.map(run_dill_encoded, [payload] * nproc)
         y_sample_stats = np.concatenate(out_y_sample_stats)
     else:
         args = n, rng, size, bins, nbins, stat_funcs, xdat, ydat
@@ -1495,6 +1523,7 @@ def bootstrap_binned(xdat, ydat, percentiles, bins=20, min_frac_cts=0.02, n=1000
     y_meds = np.nanmean(y_sample_stats, axis=0)
     y_stds = np.nanstd(y_sample_stats, axis=0)
     return bins, y_meds, y_stds
+
 
 def run_dill_encoded(payload):
     fun, args = dill.loads(payload)
@@ -1507,11 +1536,13 @@ def two_dim_gaussian(x, y, A, mu_x, mu_y, sig_x, sig_y, rho):
             ((x - mu_x) / sig_x) ** 2 -
             2 * rho * (x - mu_x) * (y - mu_y) / (sig_x * sig_y) +
             ((y - mu_y) / sig_y) ** 2))
+
+
 def make_kde(xdat, ydat, e_xdat, e_ydat, xmin, xmax, xnum, ymin, ymax, ynum, w=1, rho=0):
     if np.isscalar(w):
         w = w * np.ones_like(xdat)
     if np.isscalar(rho):
-        rho = rho*np.ones_like(xdat)
+        rho = rho * np.ones_like(xdat)
 
     x_grid = np.linspace(xmin, xmax, xnum)
     y_grid = np.linspace(ymin, ymax, ynum)

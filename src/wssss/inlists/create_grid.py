@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import itertools
+import os
 import shutil
 
 import numpy as np
 
+from .inlists import defaults, evaluate_inlist
 from ..functions import get_mesa_version
-from .inlists import defaults, evaluate_inlist, evaluate_inlist_str
 
 non_mesa_key_start = '!PY_KEY_'
+
 
 class MesaGrid:
     def __init__(self, version='', inlist_filename='inlist', starjob_filename='inlist_project',
@@ -18,8 +19,9 @@ class MesaGrid:
                  pgstar_filename='inlist_project'):
 
         if inlist_filename in [starjob_filename, controls_filename, eos_filename, kap_filename, pgstar_filename]:
-            raise ValueError('`inlist_filename` cannot be the same as `starjob_filename`, `controls_filename`, `eos_filename`, `kap_filename`, or `pgstar_filename`.')
-        
+            raise ValueError(
+                '`inlist_filename` cannot be the same as `starjob_filename`, `controls_filename`, `eos_filename`, `kap_filename`, or `pgstar_filename`.')
+
         version = str(version)
         if version == '':
             self.mesa_dir = os.environ['MESA_DIR']
@@ -55,7 +57,7 @@ class MesaGrid:
                         f'{non_mesa_key_start}type': 'kap',
                         f'{non_mesa_key_start}group_unpack': []}
         self.pgstar = {f'{non_mesa_key_start}filename': pgstar_filename,
-                       f'{non_mesa_key_start}type': 'pgstar',}
+                       f'{non_mesa_key_start}type': 'pgstar', }
         self.inlist = {f'{non_mesa_key_start}filename': inlist_filename,
                        f'{non_mesa_key_start}type': 'master',
                        f'{non_mesa_key_start}group_unpack': []}
@@ -78,14 +80,15 @@ class MesaGrid:
         self.name_funcion = None
         self.unpacked = False
 
-        self.inlist_option_files_to_validate = [('star_job', 'history_columns_file'), ('star_job', 'profile_columns_file')]
+        self.inlist_option_files_to_validate = [('star_job', 'history_columns_file'),
+                                                ('star_job', 'profile_columns_file')]
 
     def __repr__(self):
         s = f'MESA Grid for version {self.version}.'
         if self.unpacked:
             s += f' {len(self.unpacked)} runs.'
         return s
-    
+
     def add_file(self, path):
         """Add a file which will be copied into each grid directory."""
         if os.path.isfile(path):
@@ -98,14 +101,13 @@ class MesaGrid:
         if namelist not in self.namelists:
             raise ValueError(f'`namelist` {namelist} must be one of {", ".join(self.namelists)}.')
         self.inlist_option_files_to_validate.append((namelist, filename))
-    
+
     def add_dir(self, path):
         """Add a directory which will be copied into each grid directory."""
         if os.path.isdir(path):
             self.extra_dirs.append(path)
         else:
             raise NotADirectoryError(f'{path} is not a directory.')
-
 
     def set_inlist_finalize_function(self, function):
         """Set the function which is applied to all unpacked namelists.
@@ -139,7 +141,6 @@ class MesaGrid:
 
         self.validate_files(grid_path)
 
-
     def validate_inlists(self, mesa_dir=None):
         """Check if all options in the inlists are valid MESA keys."""
         # Check if all extra namelists filenames are unique and different from the main inlist name.
@@ -157,8 +158,10 @@ class MesaGrid:
                     continue
                 if self.inlist[namelist][read_extra_inlist_key]:
                     read_extra_names.append(self.inlist[namelist][read_extra_inlist_name_key])
-                    if self.inlist[f'{non_mesa_key_start}filename'] == self.inlist[namelist][read_extra_inlist_name_key]:
-                        raise ValueError(f'Main inlist filename {self.inlist[f"{non_mesa_key_start}filename"]} cannot be the same as an extra inlist filename {self.inlist[namelist][read_extra_inlist_name_key]}.')
+                    if self.inlist[f'{non_mesa_key_start}filename'] == self.inlist[namelist][
+                        read_extra_inlist_name_key]:
+                        raise ValueError(
+                            f'Main inlist filename {self.inlist[f"{non_mesa_key_start}filename"]} cannot be the same as an extra inlist filename {self.inlist[namelist][read_extra_inlist_name_key]}.')
 
             if len(read_extra_names) != len(np.unique(read_extra_names)):
                 raise ValueError(f'Extra {namelist} inlist names must be unique.')
@@ -196,11 +199,10 @@ class MesaGrid:
             s = ' '.join(s)
             raise KeyError(s)
 
-
     def validate_files(self, grid_path):
 
         file_not_found = []
-        #Check for history/profile column files.
+        # Check for history/profile column files.
         for i, dirname in enumerate(self.dirnames):
             run_dir = os.path.join(grid_path, self.dirname)
             inlist = evaluate_inlist(os.path.join(run_dir, self.inlist[f'{non_mesa_key_start}filename']))
@@ -254,7 +256,6 @@ class MesaGrid:
         if s:
             raise FileNotFoundError(s)
 
-
     def unpack_inlists(self):
         generators = []
         for namelist in ['inlist', *self.namelists]:
@@ -267,7 +268,6 @@ class MesaGrid:
                 unpacked[j] = self.inlist_finalize_function(unpacked_namelist)
             all_unpacked.append(dict(zip(['inlist', *self.namelists], unpacked)))
         self.unpacked = tuple(all_unpacked)
-
 
     def _make_inlist_generator(self, inlist_dict):
         """
@@ -337,7 +337,6 @@ class MesaGrid:
             new_inlist[f'{non_mesa_key_start}unpacknumber'] = i
             yield new_inlist
 
-
     def _setup_directories(self, grid_path):
         num_unpacked = len(self.unpacked)
         self.dirnames = []
@@ -361,7 +360,6 @@ class MesaGrid:
         os.makedirs(grid_path)
         for dirname in self.dirnames:
             os.makedirs(os.path.join(grid_path, dirname))
-
 
     def _write_inlists(self, grid_path):
         for i, dirname in enumerate(self.dirnames):
@@ -441,7 +439,6 @@ class MesaGrid:
             for dpath in self.extra_dirs:
                 dname = os.path.basename(dpath)
                 shutil.copytree(dpath, os.path.join(dirpath, dname))
-
 
     def summary(self):
         """Print a summary of which variables change."""
