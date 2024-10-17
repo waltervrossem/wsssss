@@ -358,7 +358,7 @@ class History(_Mesa):
         return scrubbed
 
 class Profile(_Mesa):
-    def __init__(self, *args, load_GyreProfile=False, **kwargs):
+    def __init__(self, *args, load_GyreProfile=False, suffix_GyreProfile='.GYRE', **kwargs):
         super().__init__(*args, **kwargs)
         self.LOGS = self.directory
 
@@ -367,7 +367,7 @@ class Profile(_Mesa):
         else:
             self.profile_num = None
         if load_GyreProfile:
-            self.GyreProfile = GyreProfile(f'{self.path}.GYRE')
+            self.GyreProfile = GyreProfile(f'{self.path}{suffix_GyreProfile}')
 
     def __repr__(self):
         try_to_get = ['model_number', 'num_zones', 'star_mass', 'star_age', 'Teff', 'photosphere_L',
