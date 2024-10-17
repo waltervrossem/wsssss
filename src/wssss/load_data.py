@@ -620,55 +620,42 @@ class GyreProfile:
 
         num_zones, mass, radius, luminosity, version = np.loadtxt(f'{path}', max_rows=1)
         num_zones = int(num_zones)
-        version = int(version)
+        self.version = int(version)
 
         self.header = {'num_zones': num_zones, 'star_mass': mass, 'star_radius': radius, 'star_luminosity': luminosity,
-                  'version': version}
-        self.columns = ('zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T', 'brunt_N2',
-               'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T', 'opacity_partial_rho', 'total_energy_generation',
-               'nuclear_energy_generation_partial_T', 'nuclear_energy_generation_partial_rho', 'rotation')
-        self.loaded = False
-
-
-    def _load_gyre_profile(path):
-        num_zones, mass, radius, luminosity, version = np.loadtxt(f'{path}', max_rows=1)
-        num_zones = int(num_zones)
-        version = int(version)
-
-        header = {'num_zones': num_zones, 'star_mass': mass, 'star_radius': radius, 'star_luminosity': luminosity,
-                  'version': version}
-
-        if version == 100:
-            columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
+                       'version': version}
+        if self.version == 100:
+            self.columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
                        'brunt_N2', 'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T', 'opacity_partial_rho',
                        'total_energy_generation', 'nuclear_energy_generation_partial_T',
                        'nuclear_energy_generation_partial_rho', 'rotation']
 
-            formats = [int] + 18 * [float]
-        elif version == 101:
-            columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
+            self.formats = [int] + 18 * [float]
+        elif self.version == 101:
+            self.columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
                        'brunt_N2', 'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T', 'opacity_partial_rho',
                        'nuclear_energy_generation', 'nuclear_energy_generation_partial_T',
                        'nuclear_energy_generation_partial_rho', 'rotation']
 
-            formats = [int] + 18 * [float]
-        elif version == 120:
-            columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
+            self.formats = [int] + 18 * [float]
+        elif self.version == 120:
+            self.columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
                        'brunt_N2', 'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T', 'opacity_partial_rho',
                        'nuclear_energy_generation', 'nuclear_energy_generation_partial_T',
                        'nuclear_energy_generation_partial_rho', 'gravothermal_energy_generation', 'rotation']
-            formats = [int] + 19 * [float]
+            self.formats = [int] + 19 * [float]
         else:
             raise NotImplementedError('Only fileversions 100, 101, and 120 are implemented implemented.')
 
-        data = np.rec.array(np.loadtxt(f'{path}', skiprows=1, dtype={'names': columns, 'formats': formats}))
-        return header, columns, data
+        self.loaded = False
 
+    def _load_gyre_profile(self):
+        data = np.rec.array(np.loadtxt(f'{self.path}', skiprows=1, dtype={'names': self.columns, 'formats': self.formats}))
+        return data
 
     @LazyProperty
     def data(self):
-        header, columns, data = self._load_gyre_profile(self.path)
-        self.data = data
+        self.data = self._load_gyre_profile()
         self.loaded = True
         return data
 
