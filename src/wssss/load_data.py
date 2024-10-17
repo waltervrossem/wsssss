@@ -373,7 +373,7 @@ class Profile(_Mesa):
         try_to_get = ['model_number', 'num_zones', 'star_mass', 'star_age', 'Teff', 'photosphere_L',
                       'center_h1', 'center_he4', 'date']
         return 'MESA profile data file at {}'.format(self.path) + '\n' + str(
-            {key: self.header[key] for key in try_to_get})
+            {key: self.header[key] for key in try_to_get if key in self.header.keys()})
 
 
 class _Gyre(_Data):
