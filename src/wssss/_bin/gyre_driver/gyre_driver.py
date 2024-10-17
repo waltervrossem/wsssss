@@ -77,18 +77,18 @@ def get_nu_max_dnu_dp(args, fpath, l):
 
     elif args.filetype == 'FGONG':
         raise NotImplementedError('FGONG files not implemented.')
-        header, data = fgong.load_fgong(fpath, return_comment=False)
-        
-        M_star = header[0] / Msun
-        R_star = header[1] / Rsun
-        Teff_star = header[13]
-        
-        r = data[:, 0]
-        m = np.exp(data[:, 1]) * M_star * Msun
-        gamma1 = data[:, 14]
-        gamma1[gamma1 < 0] = 0
-        
-        N = np.sqrt((G * m / r**3) * gamma1)
+        # header, data = fgong.load_fgong(fpath, return_comment=False)
+        #
+        # M_star = header[0] / Msun
+        # R_star = header[1] / Rsun
+        # Teff_star = header[13]
+        #
+        # r = data[:, 0]
+        # m = np.exp(data[:, 1]) * M_star * Msun
+        # gamma1 = data[:, 14]
+        # gamma1[gamma1 < 0] = 0
+        #
+        # N = np.sqrt((G * m / r**3) * gamma1)
         
     elif args.filetype == 'LOSC':
         with open(fpath, 'r') as handle:
