@@ -406,7 +406,7 @@ def add_hrd_instabilities(ax, classic=True, sdB=True, ):
 def calc_inertia_marker_size(gs, l, freq_units='uHz'):
     mask = gs.data.l == 0
     E_l0 = gs.get('E_norm')[mask]
-    nu_all = uf.get_freq(gs, freq_units)
+    nu_all = gs.get_frequencies(freq_units)
     nu_l0 = nu_all[mask]
     # interpolate over log10 inertia for better behaviour
     try:
@@ -414,7 +414,7 @@ def calc_inertia_marker_size(gs, l, freq_units='uHz'):
     except ValueError:
         log_f_El0 = interp1d(nu_l0, np.log10(E_l0), kind='linear', bounds_error=True)
     mask = gs.data.l == l
-    nu = uf.get_freq(gs, freq_units)[mask]
+    nu = gs.get_frequencies(freq_units)[mask]
     # x = np.log10(gs.data.E_norm[mask]) - log_f_El0(nu_all[mask])
     # ms = 2.5 * 10 ** (2 * (1 - x))
     xmin = min(E_l0)

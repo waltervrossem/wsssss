@@ -445,48 +445,6 @@ mask_functions = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_bum
                   get_rc_mask, get_agb_mask]
 mask_names = ['PMS', 'MS', 'SGB', 'RGB', 'RGBb', 'RGB tip', 'He flashes', 'CHeB', 'RC', 'post-CHeB']
 
-def calc_dimless_to_Hz(gs):
-    if gyre_version < '6':
-        G = pre15140.standard_cgrav
-    else:
-        G = post15140.standard_cgrav
-    if 'M_star' in gs.header.keys():
-        M_star = gs.header['M_star']
-        R_star = gs.header['R_star']
-    else:
-        M_star = gs.get('M_star')[0]
-        R_star = gs.get('R_star')[0]
-    return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
-
-
-def get_freq(gs, freq_units='uHz', kind='summary'):
-    if kind == 'summary':
-        if 'Re(omega)' in gs.columns:
-            dimless_to_Hz = calc_dimless_to_Hz(gs) * {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}[freq_units]
-            freq_name = 'Re(omega)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
-        elif 'Re(freq)' in gs.columns:  # Assumes freq already in uHz.
-            dimless_to_Hz = {'uHz': 1e0, 'mHz': 1e-3, 'Hz': 1e-6}[freq_units]
-            freq_name = 'Re(freq)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
-        else:
-            raise ValueError(f"Can't find frequency column in {gs}.")
-        return gs.data[freq_name] * dimless_to_Hz
-    elif kind == 'mode':
-        if 'Re(freq)' in gs.header:  # Assumes freq already in uHz.
-            dimless_to_Hz = {'uHz': 1, 'mHz': 1e-3, 'Hz': 1e-6}[freq_units]
-            freq_name = 'Re(freq)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
-        elif 'Re(omega)' in gs.header:
-            dimless_to_Hz = calc_dimless_to_Hz(gs) * {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}[freq_units]
-            freq_name = 'Re(omega)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
-        else:
-            raise ValueError(f"Can't find frequency column in {gs}.")
-        return gs.header[freq_name] * dimless_to_Hz
-    else:
-        raise ValueError(f'{kind} is not summary or mode.')
-    
     
 def get_gridnum(hist):
     return int(os.path.split(hist.LOGS)[0][-4:])
@@ -1266,7 +1224,7 @@ def calc_FeH(hist, ZX_sol=0.0178, use_mask=None):
 def calc_deltanu(gs, hist, prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz'):
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
     hist_i = hist.get_model_num(pnum)[0][2]
-    nu_all = get_freq(gs, freq_units)
+    nu_all = gs.get_frequencies(freq_units)
 
     mask = gs.data.l == 0
     mask = np.logical_and(mask, gs.data.n_pg > 0)
@@ -1287,7 +1245,7 @@ def calc_deltaPg(gs, hist, l, prefix='profile', suffix='.data.GYRE.sgyre_l'):
         raise ValueError('Cannot use l=0 for period spacing.')
     
     mask = gs.data.l == l
-    nu = get_freq(gs, 'Hz')[mask]
+    nu = gs.get_frequencies('Hz')[mask]
     dPi = -np.diff(nu ** -1)
 
     fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))

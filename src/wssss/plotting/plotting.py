@@ -510,7 +510,7 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
     
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
     hist_i = hist.get_model_num(pnum)[0][2]
-    nu_all = uf.get_freq(gs, freq_units)
+    nu_all = gs.get_frequencies(freq_units)
     
     if type(delta_nu) == str:
         delta_nu = delta_nu.lower()
@@ -624,7 +624,7 @@ def make_period_echelle(gs, hist, ax=None,
 
 def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, legend_loc='upper right', scale_marker=False):
     f, ax = get_figure(ax)
-    freqs = uf.get_freq(gs, freq_units)
+    freqs = gs.get_frequencies(freq_units)
     
     mask = gs.data.l == 0
     E_l0 = gs.get('E_norm')[mask]
@@ -775,7 +775,7 @@ def make_age_nu(hist, gss, l=1, ax=None, gyre_summary_prefix='profile',
     for i, gs in enumerate(gss):
         mask = gs.data.l == l
         mask = np.logical_and(mask, gs.data.n_pg > 0)
-        nu = uf.get_freq(gs, 'uHz')[mask]
+        nu = gs.get_frequencies('uHz')[mask]
 
         age = ages[i] * np.ones_like(nu)
         ax.plot(age, nu, marker)
@@ -826,8 +826,8 @@ def make_mesa_gyre_delta_nu(hist, gss, l_list=(0, 1, 2), xaxis='model_number', g
         for l in l_list:
             mask = gs.data.l == l
             mask = np.logical_and(mask, gs.data.n_pg > 0)
-        
-            delta_nus.extend(np.diff(uf.get_freq(gs, 'uHz')[mask]))
+
+            delta_nus.extend(np.diff(gs.get_frequencies('uHz')[mask]))
         
         median_delta_nu = np.mean(delta_nus)
         mean_delta_nu = np.median(delta_nus)
@@ -1001,7 +1001,7 @@ def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', s
         if l == 0:  # No radial g-modes
             continue
         mask = gs.data.l == l
-        nu = uf.get_freq(gs, freq_units)[mask]
+        nu = gs.get_frequencies(freq_units)[mask]
         dPi = -np.diff((nu * {'uHz': 1e-6, 'mHz': 1e-3, 'Hz': 1}[freq_units]) ** -1)
         
         # ax.plot(dPi, nu[:-1] % hist.get('delta_Pg')[hist_i], f'C{l}.', label=fr'$\ell={l}$')

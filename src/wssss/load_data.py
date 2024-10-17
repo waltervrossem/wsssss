@@ -9,6 +9,8 @@ import dill
 import numpy as np
 
 from . import functions as uf
+from .constants import post15140
+from .constants import pre15140
 import ast
 
 
@@ -374,7 +376,23 @@ class Profile(_Mesa):
             {key: self.header[key] for key in try_to_get})
 
 
-class GyreSummary(_Data):
+class _Gyre(_Data):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+    def _dimless_to_Hz(self):
+        if 'M_star' in self.header.keys():
+            M_star = self.header['M_star']
+            R_star = self.header['R_star']
+            G = pre15140.standard_cgrav
+        else:
+            M_star = self.get('M_star')[0]
+            R_star = self.get('R_star')[0]
+            G = post15140.standard_cgrav
+        return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
+
+class GyreSummary(_Gyre):
     def __init__(self, *args, gyre_version='6', **kwargs):
         super().__init__(*args, **kwargs)
         self.gyre_version = gyre_version
@@ -384,7 +402,18 @@ class GyreSummary(_Data):
         return f'GyreSummary loaded from {self.path}'
 
 
-class GyreMode(_Data):
+    def get_frequencies(self, freq_units):
+        if 'Re(omega)' in self.columns:
+            dimless_to_Hz = self.calc_dimless_to_Hz() * {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}[freq_units]
+            freq_name = 'Re(omega)'
+            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
+        elif 'Re(freq)' in self.columns:  # Assumes freq already in uHz.
+            dimless_to_Hz = {'uHz': 1e0, 'mHz': 1e-3, 'Hz': 1e-6}[freq_units]
+            freq_name = 'Re(freq)'
+            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
+        return self.data[freq_name] * dimless_to_Hz
+
+class GyreMode(_Gyre):
     def __init__(self, *args, gyre_version='6', **kwargs):
         super().__init__(*args, **kwargs)
         self.gyre_version = gyre_version
@@ -392,6 +421,19 @@ class GyreMode(_Data):
 
     def __repr__(self):
         return f'GyreMode loadedd from {self.path}'
+
+
+    def get_frequencies(self, freq_units):
+        if 'Re(omega)' in self.header:
+            dimless_to_Hz = self.calc_dimless_to_Hz() * {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}[freq_units]
+            freq_name = 'Re(omega)'
+            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
+        elif 'Re(freq)' in self.header:  # Assumes freq already in uHz.
+            dimless_to_Hz = {'uHz': 1e0, 'mHz': 1e-3, 'Hz': 1e-6}[freq_units]
+            freq_name = 'Re(freq)'
+            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
+        return self.data[freq_name] * dimless_to_Hz
+
 
 def load_profs(hist, prefix='profile', suffix='.data', only_RC=False, save_dill=False, mask=None, mask_kwargs={}):
     if hist.index is None:
