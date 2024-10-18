@@ -14,106 +14,6 @@ from .constants import post15140
 from .constants import pre15140
 
 
-def _read_data_file_header_columns(path):
-    """Read a mesa history or profile file and return the header and columns."""
-    lines = []
-    with open(path, 'r') as handle:
-        lines.extend(handle.readline() for _ in range(7))
-
-    if lines[0].strip() == '':
-        lines[:3] = lines[1:4]
-        lines[3] = '\n'
-
-    header_columns = lines[1].split()
-    header_data = [ast.literal_eval(_) for _ in lines[2].split()]
-    header = {k: v for k, v in zip(header_columns, header_data)}
-
-    columns = lines[5].split()
-    first_row = lines[6].split()
-
-    formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
-    first_line = np.rec.array(first_row, dtype={'names': columns, 'formats': formats})
-
-    return header, columns, first_line
-
-
-def _fix_history(path):
-    with open(f'{path}', 'rb') as handle:
-        lines = handle.readlines()
-
-    expected_len = len(lines[6])
-
-    bad_lines = []
-    good_lines = []
-    for i, line in enumerate(lines):
-        if line.startswith(b'\x00'):
-            bad_lines.append(i)
-            bad_lines.append(i + 1)  # Line after line with \x00\x00... is garbled
-        else:
-            if len(line) != expected_len:
-                bad_lines.append(i)
-            else:
-                good_lines.append(line)
-    bad_lines = [i for i in bad_lines if i >= 6]  # skip header for bad lines
-    bad_lines = np.unique(bad_lines)
-
-    # for bad_line in bad_lines[::-1]:  # work back to front
-    #     _ = lines.pop(bad_line)
-    print(f'Removed {len(bad_lines)} lines:\n{bad_lines}')
-    return good_lines
-
-
-# noinspection PyTypeChecker
-def _read_data_file(path):
-    """Read a mesa history or profile file and return the header, columns, and data."""
-    lines = []
-    with open(path, 'r') as handle:
-        lines.extend(handle.readline() for _ in range(7))
-
-    if lines[0].strip() == '':
-        lines[:2] = lines[1:3]
-        lines[2] = '\n'
-
-    header_columns = lines[1].split()
-    header_data = [ast.literal_eval(_) for _ in lines[2].split()]
-    header = {k: v for k, v in zip(header_columns, header_data)}
-
-    columns = lines[5].split()
-    first_row = lines[6].split()
-
-    formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
-    try:
-        data = np.rec.array(np.loadtxt(path, skiprows=6, dtype={'names': columns, 'formats': formats}))
-    except ValueError as exc:
-        print(f"File {path} gave ValueError when reading:\n{exc.args[0]}\nTrying to fix.")
-
-        shutil.copy2(path, f'{path}_original')
-
-        lines = _fix_history(path)
-
-        with open(f'{path}_test', 'wb') as handle:  #
-            handle.writelines(lines)
-
-        data = np.rec.array(np.loadtxt(f'{path}_test', skiprows=6, dtype={'names': columns, 'formats': formats}))
-
-    return header, columns, data
-
-
-def _discard_columns_rec_array(rec_array, to_keep):
-    """Recreate a rec array from `rec_array` keeping only columns `to_keep`, and discarding other columns."""
-    names, formats = np.array(rec_array.dtype.descr).T
-    mask = (names != '') & np.in1d(names, to_keep)
-    names = names[mask]
-    formats = formats[mask]
-    return np.rec.array(rec_array[names].tolist(), dtype=dict(names=names, formats=formats))
-
-
-def _discard_rows_rec_array(rec_array, mask):
-    """Recreate a rec array from `rec_array` keeping only rows masked in `mask`, and discarding other rows."""
-    names, formats = np.array(rec_array.dtype.descr).T
-    return np.rec.array(rec_array[mask].tolist(), dtype=dict(names=names, formats=formats))
-
-
 class LazyProperty(object):
     def __init__(self, func):
         self._func = func
@@ -169,18 +69,18 @@ class _Data:
                     self._first_row = tmp.first_row
                     if self.keep_columns != 'all':
                         self.columns = self.keep_columns
-                        self.data = _discard_columns_rec_array(self.data, self.columns)
+                        self.data = self._discard_columns_rec_array(self.data, self.columns)
                     self.loaded = True
                 except Exception:
                     if self.verbose:
                         print("Failed to load dill from: \n{}".format(self.dill_path))
-                    header, columns, first_row = _read_data_file_header_columns(self.path)
+                    header, columns, first_row = self._read_data_file_header_columns()
                     self.header = header
                     self.columns = columns
                     self._first_row = first_row
 
         else:
-            header, columns, first_row = _read_data_file_header_columns(self.path)
+            header, columns, first_row = self._read_data_file_header_columns()
             self.header = header
             self.columns = columns
             self._first_row = first_row
@@ -200,16 +100,111 @@ class _Data:
     def __getitem__(self, mask):
         new_self = copy.copy(self)
         # new_self.data = self.data[mask]
-        new_self.data = _discard_rows_rec_array(self.data, mask)
+        new_self.data = self._discard_rows_rec_array(self.data, mask)
         mnum0, mnum1 = self.data.model_number[[0, -1]]
         if self.index is not None:
             idx_mask = (self.index[:, 0] >= mnum0) & (self.index[:, 0] <= mnum1)
             new_self.index = self.index[idx_mask]
         return new_self
 
+    def _read_data_file_header_columns(self):
+        """Read a mesa history or profile file and return the header and columns."""
+        lines = []
+        with open(self.path, 'r') as handle:
+            lines.extend(handle.readline() for _ in range(7))
+
+        if lines[0].strip() == '':
+            lines[:3] = lines[1:4]
+            lines[3] = '\n'
+
+        header_columns = lines[1].split()
+        header_data = [ast.literal_eval(_) for _ in lines[2].split()]
+        header = {k: v for k, v in zip(header_columns, header_data)}
+
+        columns = lines[5].split()
+        first_row = lines[6].split()
+
+        formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
+        first_line = np.rec.array(first_row, dtype={'names': columns, 'formats': formats})
+
+        return header, columns, first_line
+
+    def _fix_datafile(self):
+        with open(f'{self.path}', 'rb') as handle:
+            lines = handle.readlines()
+
+        expected_len = len(lines[6])
+
+        bad_lines = []
+        good_lines = []
+        for i, line in enumerate(lines):
+            if line.startswith(b'\x00'):
+                bad_lines.append(i)
+                bad_lines.append(i + 1)  # Line after line with \x00\x00... is garbled
+            else:
+                if len(line) != expected_len:
+                    bad_lines.append(i)
+                else:
+                    good_lines.append(line)
+        bad_lines = [i for i in bad_lines if i >= 6]  # skip header for bad lines
+        bad_lines = np.unique(bad_lines)
+
+        # for bad_line in bad_lines[::-1]:  # work back to front
+        #     _ = lines.pop(bad_line)
+        print(f'Removed {len(bad_lines)} lines:\n{bad_lines}')
+        return good_lines
+
+    # noinspection PyTypeChecker
+    def _read_data_file(self):
+        """Read a mesa history or profile file and return the header, columns, and data."""
+        lines = []
+        with open(self.path, 'r') as handle:
+            lines.extend(handle.readline() for _ in range(7))
+
+        if lines[0].strip() == '':
+            lines[:2] = lines[1:3]
+            lines[2] = '\n'
+
+        header_columns = lines[1].split()
+        header_data = [ast.literal_eval(_) for _ in lines[2].split()]
+        header = {k: v for k, v in zip(header_columns, header_data)}
+
+        columns = lines[5].split()
+        first_row = lines[6].split()
+
+        formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
+        try:
+            data = np.rec.array(np.loadtxt(path, skiprows=6, dtype={'names': columns, 'formats': formats}))
+        except ValueError as exc:
+            print(f"File {path} gave ValueError when reading:\n{exc.args[0]}\nTrying to fix.")
+
+            shutil.copy2(path, f'{path}_original')
+
+            lines = self._fix_datafile()
+
+            with open(f'{path}', 'wb') as handle:  #
+                handle.writelines(lines)
+
+            data = np.rec.array(np.loadtxt(f'{self.path}', skiprows=6, dtype={'names': columns, 'formats': formats}))
+
+        return header, columns, data
+
+    def _discard_columns_rec_array(self, rec_array, to_keep):
+        """Recreate a rec array from `rec_array` keeping only columns `to_keep`, and discarding other columns."""
+        names, formats = np.array(rec_array.dtype.descr).T
+        mask = (names != '') & np.in1d(names, to_keep)
+        names = names[mask]
+        formats = formats[mask]
+        return np.rec.array(rec_array[names].tolist(), dtype=dict(names=names, formats=formats))
+
+    def _discard_rows_rec_array(self, rec_array, mask):
+        """Recreate a rec array from `rec_array` keeping only rows masked in `mask`, and discarding other rows."""
+        names, formats = np.array(rec_array.dtype.descr).T
+        return np.rec.array(rec_array[mask].tolist(), dtype=dict(names=names, formats=formats))
+
     @LazyProperty
     def data(self):
-        header, columns, data = _read_data_file(self.path)
+        header, columns, data = self._read_data_file()
 
         if self.nanclip is not None:
             for col in columns:
@@ -235,7 +230,7 @@ class _Data:
 
         if self.keep_columns != 'all':
             self.columns = self.keep_columns
-            self.data = _discard_columns_rec_array(self.data, self.columns)
+            self.data = self._discard_columns_rec_array(self.data, self.columns)
             data = self.data
 
         return data
