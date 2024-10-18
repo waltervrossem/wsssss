@@ -1,0 +1,17 @@
+&star_job
+/ ! end of star_job namelist
+
+&eos
+    this_does_not_exist = 1d0
+/ ! end of eos namelist
+
+&kap
+/ ! end of kap namelist
+
+&controls
+    initial_mass = 1d0
+    initial_z = 0.01
+/ ! end of controls namelist
+
+&pgstar
+/ ! end of pgstar namelist

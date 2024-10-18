@@ -1,0 +1,7 @@
+&star_job
+    chem_isotopes_filename = 'isotopes.data'
+/ ! end of star_job namelist
+
+&controls
+    initial_mass = 3d0
+/ ! end of controls namelist

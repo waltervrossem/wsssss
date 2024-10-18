@@ -1,0 +1,7 @@
+&controls
+    read_extra_controls_inlist(5) = .true.
+    extra_controls_inlist_name(5) = 'inlist_3'
+
+    initial_mass = 2d0
+    initial_y = 0.25d0
+/ ! end of controls namelist
