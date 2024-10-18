@@ -36,6 +36,9 @@ def inlist_diff(dict1, dict2):
         if k in keys2:
             v2 = dict2[k]
 
+        if isinstance(v1, (f90nml.Namelist, dict)) or isinstance(v2, (f90nml.Namelist, dict)):
+            raise ValueError(f'Cannot compare nested dicts for key {k}.')
+
         if v1 == v2:
             result['same'][k] = v1
         else:
@@ -56,41 +59,50 @@ def evaluate_inlist(path):
 
 
 def _evaluate_inlist(inlist, inlist_dir):
-    to_read = []
-    use_kinds = []
-    for i, kind in enumerate(defaults.keys()):
-        to_read.append([])
+    to_read = {}
+
+    old_read_extra = 'read_extra_{}_inlist{}'
+    old_read_extra_filename = 'extra_{}_inlist{}_name'
+    new_read_extra = 'read_extra_{}_inlist'  # (:) part has been stripped off in inlist
+    new_read_extra_filename = 'extra_{}_inlist_name'
+
+    for kind in defaults.keys():
         if kind not in inlist.keys():
             continue
-        else:
-            use_kinds.append(kind)
-        for j in range(5):
-            if f'read_extra_{kind}_inlist{j + 1}' in inlist[kind].keys():
-                if inlist[kind][f'read_extra_{kind}_inlist{j + 1}']:
-                    to_read[i].append(inlist[kind][f'extra_{kind}_inlist{j + 1}_name'])
-            elif f'read_extra_{kind}_inlist' in inlist[kind].keys():
-                if inlist[kind][f'read_extra_{kind}_inlist'][j]:
-                    to_read[i].append(inlist[kind][f'extra_{kind}_inlist_name'][j])
+        to_read[kind] = []
 
-    inlists = []
-    for sub_to_read in to_read:
-        sub_inlists = []
-        for fname in sub_to_read:
-            if fname is None:
-                sub_inlists.append({})
-            else:
-                sub_inlists.append(parser.read(f'{inlist_dir}/{fname}'))
-        inlists.append(sub_inlists)
+        for i in range(5):
+            old_key = old_read_extra.format(kind, i+1)
+            new_key = new_read_extra.format(kind)
+            if old_key in inlist[kind].keys():
+                if inlist[kind][old_key]:
+                    to_read[kind].append(inlist[kind][old_read_extra_filename.format(kind, i+1)])
+            elif new_key in inlist[kind].keys():
+                if inlist[kind][new_key][i]:
+                    to_read[kind].append(inlist[kind][new_read_extra_filename.format(kind)][i])
 
-    out = f90nml.Namelist()
-    for i, kind in enumerate(defaults):
-        if kind not in use_kinds:
-            continue
-        out[kind] = f90nml.Namelist()
-        for nml in inlists[i]:
-            for k, v in nml[kind].items():
-                out[kind][k] = v
+    inlists = {}
+    for kind, fnames in to_read.items():
+        inlists[kind] = []
+        old_key = old_read_extra.format(kind, i + 1)
+        new_key = new_read_extra.format(kind)
+        for fname in fnames:
+            sub_inlist = parser.read(os.path.join(inlist_dir, fname))
+            if (old_key in sub_inlist.keys()) or (new_key in sub_inlist.keys()):
+                sub_inlist = _evaluate_inlist(sub_inlist, inlist_dir)
 
+            if kind in sub_inlist.keys():
+                inlists[kind].append(sub_inlist[kind])
+
+    out = f90nml.Namelist(inlist)
+    for kind, sub_inlists in inlists.items():
+        for sub_inlist in sub_inlists:
+            out[kind].update(sub_inlist)
+        old_key = old_read_extra.format(kind, i + 1)
+        new_key = new_read_extra.format(kind)
+        for key in [old_key, new_key, old_read_extra_filename.format(kind, i+1), new_read_extra_filename.format(kind)]:
+            if key in out[kind].keys():
+                _ = out[kind].pop(key)
     return out
 
 
