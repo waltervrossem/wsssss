@@ -204,7 +204,7 @@ class MesaGrid:
         file_not_found = []
         # Check for history/profile column files.
         for i, dirname in enumerate(self.dirnames):
-            run_dir = os.path.join(grid_path, self.dirname)
+            run_dir = os.path.join(grid_path, dirname)
             inlist = evaluate_inlist(os.path.join(run_dir, self.inlist[f'{non_mesa_key_start}filename']))
             for (kind, key) in self.inlist_option_files_to_validate:
                 if kind in inlist.keys():
@@ -375,6 +375,9 @@ class MesaGrid:
         """
         inlist_string = ''
 
+        if len([_ for _ in inlist_dict.keys() if not _.startswith(non_mesa_key_start)]) == 0:
+            return inlist_string
+
         inlist_type = inlist_dict[f'{non_mesa_key_start}type']
         if inlist_type == 'master':
             for key in inlist_dict.keys():
@@ -409,7 +412,7 @@ class MesaGrid:
                 parsed_value = self._parse_value(value)
                 sub_str += f'    {key} = {parsed_value}\n'
 
-            sub_str += rf'/ ! end of {inlist_type} namelist\n'
+            sub_str += f'/ ! end of {inlist_type} namelist\n'
 
             inlist_string += sub_str
 
