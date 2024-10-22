@@ -14,7 +14,7 @@ non_mesa_key_start = '!PY_KEY_'
 
 
 class MesaGrid:
-    def __init__(self, version='', inlist_filename='inlist', starjob_filename='inlist_project',
+    def __init__(self, mesa_dir='', inlist_filename='inlist', starjob_filename='inlist_project',
                  controls_filename='inlist_project', eos_filename='inlist_project', kap_filename='inlist_project',
                  pgstar_filename='inlist_project'):
 
@@ -22,13 +22,12 @@ class MesaGrid:
             raise ValueError(
                 '`inlist_filename` cannot be the same as `starjob_filename`, `controls_filename`, `eos_filename`, `kap_filename`, or `pgstar_filename`.')
 
-        version = str(version)
-        if version == '':
+        if mesa_dir == '':
             self.mesa_dir = os.environ['MESA_DIR']
             self.version = get_mesa_version(self.mesa_dir)
         else:
-            self.mesa_dir = None
-            self.version = version
+            self.version = get_mesa_version(mesa_dir)
+            self.mesa_dir = mesa_dir
 
         if self.version >= '15140':
             self.namelists = ('star_job', 'eos', 'kap', 'controls', 'pgstar')
@@ -118,9 +117,9 @@ class MesaGrid:
         """Set the function which is called in each grid directory."""
         self.griddir_finalize_function = function
 
-    def create_grid(self, grid_path, mesa_dir=None):
+    def create_grid(self, grid_path):
         """Create a grid for MESA in `grid_path`."""
-        self.validate_inlists(mesa_dir=mesa_dir)
+        self.validate_inlists()
 
         self.unpack_inlists()
 
@@ -168,10 +167,7 @@ class MesaGrid:
 
         # Get available MESA options from mesa_dir
         if mesa_dir is None:
-            if self.mesa_dir is None:
-                self.mesa_dir = os.environ['MESA_DIR']
-            else:
-                mesa_dir = self.mesa_dir
+            mesa_dir = self.mesa_dir
         available_options = {}
         for namelist in self.namelists:
             available_options[namelist] = self._get_available_options(f'{mesa_dir}/{defaults[namelist]}')
@@ -303,10 +299,14 @@ class MesaGrid:
                         lengths.append(len(item))
                         items.append(inlist_dict[key])
                 continue
-            if type(item) in [list, tuple, np.ndarray] and len(item) > 1:
-                contains_list.append(key)
-                lengths.append(len(item))
-                items.append(inlist_dict[key])
+            if type(item) in [list, tuple, np.ndarray]:
+                if len(item) > 1:
+                    contains_list.append(key)
+                    lengths.append(len(item))
+                    items.append(inlist_dict[key])
+                elif len(item) == 1:  # Remove item from list
+                    inlist_dict[key] = item[0]
+
 
         if len(lengths) == 0:
             out_inlist = inlist_dict.copy()
@@ -366,8 +366,13 @@ class MesaGrid:
             dirpath = os.path.join(grid_path, dirname)
             unpacked = self.unpacked[i]
             for namelist in unpacked.keys():
-                with open(os.path.join(dirpath, unpacked[namelist][f'{non_mesa_key_start}filename']), 'w') as handle:
-                    handle.write(self._generate_inlist_string(self.unpacked[i][namelist]))
+                file_path = os.path.join(dirpath, unpacked[namelist][f'{non_mesa_key_start}filename'])
+                if not os.path.exists(file_path):
+                    prepend = 'Created using wssss.create_grid module.\n'
+                else:
+                    prepend = ''
+                with open(file_path, 'a') as handle:
+                    handle.write(prepend + self._generate_inlist_string(self.unpacked[i][namelist]))
 
     def _generate_inlist_string(self, inlist_dict):
         """
