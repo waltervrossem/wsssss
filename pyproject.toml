@@ -7,11 +7,11 @@ include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ['src']
-include = ["src/wssss/*"]
+include = ["src/wsssss/*"]
 exclude = ["docs*", "tests*", "dev"]
 
 [project]
-name = "wssss"
+name = "wsssss"
 version = "0.0.8"
 authors = [
   { name="Walter van Rossem", email="walter_v_rossem@hotmail.com" },
@@ -37,11 +37,11 @@ classifiers = [
 license = {file = "LICENSE"}
 
 [project.scripts]
-gyre-driver = "wssss._bin.gyre_driver:gyre_driver.run"
-mesa-go = "wssss._bin:mesa_go.run"
-check-grid = "wssss._bin:check_grid.run"
+gyre-driver = "wsssss._bin.gyre_driver:gyre_driver.run"
+mesa-go = "wsssss._bin:mesa_go.run"
+check-grid = "wsssss._bin:check_grid.run"
 
 [project.urls]
-Homepage = "https://github.com/waltervrossem/wssss"
-Issues = "https://github.com/waltervrossem/wssss/issues"
-Source = "https://github.com/waltervrossem/wssss"
+Homepage = "https://github.com/waltervrossem/wsssss"
+Issues = "https://github.com/waltervrossem/wsssss/issues"
+Source = "https://github.com/waltervrossem/wsssss"
