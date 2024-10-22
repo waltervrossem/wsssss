@@ -7,8 +7,8 @@ import sys
 import time
 import unittest
 
-from wssss.inlists import create_grid as cg
-from wssss.inlists import inlists as inl
+from wsssss.inlists import create_grid as cg
+from wsssss.inlists import inlists as inl
 
 this_file = __file__
 

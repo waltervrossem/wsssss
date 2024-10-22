@@ -5,7 +5,7 @@ import os
 import sys
 import io
 
-from wssss.inlists import inlists as inl
+from wsssss.inlists import inlists as inl
 
 test_data = os.path.join(os.path.dirname(__file__), '..', 'data', 'inlists')
 
@@ -55,8 +55,8 @@ class TestInlists(unittest.TestCase):
         sys.stdout = capturedOutput  # Redirect stdout.
         inl.compare_inlist(os.path.join(test_data, 'inlist_3'), os.path.join(test_data, 'inlist_1'))
         sys.stdout = sys.__stdout__ # Reset redirect.
-        expected = ("left : /home/walter/Github/wssss/tests/test_inlists/../data/inlists/inlist_3\n"
-                    "right: /home/walter/Github/wssss/tests/test_inlists/../data/inlists/inlist_1\n"
+        expected = ("left : /home/walter/Github/wsssss/tests/test_inlists/../data/inlists/inlist_3\n"
+                    "right: /home/walter/Github/wsssss/tests/test_inlists/../data/inlists/inlist_1\n"
                     "\n"
                     "####### star_job differences #######\n"
                     "chem_isotopes_filename: ('isotopes.data', None)\n"

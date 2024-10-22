@@ -11,8 +11,8 @@ from scipy import integrate as ig
 from scipy import interpolate as ip
 from scipy import stats
 from scipy.optimize import newton
-from wssss.constants import post15140
-from wssss.constants import pre15140
+from .constants import post15140
+from .constants import pre15140
 
 
 def get_mesa_version(mesa_dir):
