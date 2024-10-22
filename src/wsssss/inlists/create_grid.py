@@ -7,7 +7,7 @@ import shutil
 
 import numpy as np
 
-from .inlists import defaults, evaluate_inlist, variable_to_inlist
+from .inlists import defaults, evaluate_inlist, variable_to_string
 from ..functions import get_mesa_version
 
 non_mesa_key_start = '!PY_KEY_'
@@ -396,7 +396,7 @@ class MesaGrid:
                 for sub_key, sub_value in key_dat.items():
                     if sub_key.startswith(non_mesa_key_start):
                         continue
-                    parsed_sub_value = variable_to_inlist(sub_value)
+                    parsed_sub_value = variable_to_string(sub_value)
                     sub_str += f'    {sub_key} = {parsed_sub_value}\n'
 
                 sub_str += rf'/ ! end of {key} namelist'
@@ -414,7 +414,7 @@ class MesaGrid:
                         continue
                 elif key.startswith('#'):
                     continue
-                parsed_value = variable_to_inlist(value)
+                parsed_value = variable_to_string(value)
                 sub_str += f'    {key} = {parsed_value}\n'
 
             sub_str += f'/ ! end of {inlist_type} namelist\n'

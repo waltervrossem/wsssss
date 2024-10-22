@@ -5,6 +5,8 @@ import os
 
 import f90nml
 
+from ..functions import get_mesa_version
+
 parser = f90nml.Parser()
 parser.global_start_index = 1
 
@@ -13,6 +15,7 @@ defaults = {'star_job': 'star/defaults/star_job.defaults',
             'kap': 'kap/defaults/kap.defaults',
             'controls': 'star/defaults/controls.defaults',
             'pgstar': 'star/defaults/pgstar.defaults',
+            'astero': ['star/astero/defaults/astero_search.defaults', 'astero/defaults/astero_search.defaults']
             }
 
 
@@ -118,7 +121,7 @@ def _evaluate_inlist(inlist, inlist_dir):
     return out
 
 
-def variable_to_inlist(value):
+def variable_to_string(value):
     """
     Takes `value` and makes it compatible for use in an inlist.
     """
@@ -142,9 +145,7 @@ def write_inlist(inlist, path, header='', mode='w'):
     for name in inlist.keys():
         s += f'&{name} ! start\n'
         for key, value in inlist[name].items():
-            # if key.startswith('!'):
-            #     continue
-            s += f'    {key} = {variable_to_inlist(value)}\n'
+            s += f'    {key} = {variable_to_string(value)}\n'
 
         s += f'/ !{name} end\n'
 
@@ -178,3 +179,98 @@ def compare_inlist(path1, path2, show_same=False):
     if show_same:
         print('####### controls same #######')
         print_dict(controls['same'])
+
+def get_mesa_defaults(mesa_dir):
+    version = get_mesa_version(mesa_dir)
+    if version >= '15140':
+        namelists = ('star_job', 'eos', 'kap', 'controls', 'astero', 'pgstar')
+        separate_eoskap = True
+        astero_index = 1
+    else:
+        namelists = ('star_job', 'controls', 'pgstar')
+        separate_eoskap = False
+        astero_index = 0
+
+    if version >= 'r23.05.1':
+        extra_inlist_as_list = True
+    else:
+        extra_inlist_as_list = False
+
+
+    keys_defaults = {}
+    for nml_type in namelists:
+        if nml_type == 'astero':
+            path_to_file = os.path.join(mesa_dir, defaults[nml_type][astero_index])
+        else:
+            path_to_file = os.path.join(mesa_dir, defaults[nml_type])
+
+        with open(path_to_file, 'r') as handle:
+            s_raw = handle.read()
+
+        # Get rid of empty lines and comments
+        s = s_raw.lower().splitlines()
+        s = [_ for _ in s if not _.strip().startswith('!')]  # Get rid of fortran comments
+        s = [_ for _ in s if _]  # Get rid of ''
+        s_no_com = '\n'.join(s)
+
+        keys = [_.split('=')[0].strip() for _ in s]
+        keys_defaults[nml_type] = keys
+    return keys_defaults
+
+
+def check_inlist(path, mesa_dir):
+    version = get_mesa_version(mesa_dir)
+    if version >= '15140':
+        separate_eoskap = True
+    else:
+        separate_eoskap = False
+
+    nml = evaluate_inlist(path)
+    keys_defaults = get_mesa_defaults(mesa_dir)
+
+    all_checked = {}
+    for nml_type, sub_nml in nml.items():
+        if nml_type not in keys_defaults.keys():
+            all_checked[nml_type] = {f'!namelist {nml_type}': 'not in defaults'}
+            continue
+        key_arr = [key for key in sub_nml.keys()]
+
+        def_key = keys_defaults[nml_type]
+
+        in_default = {key: key in def_key for key in key_arr}
+
+        in_default = {}
+        for key in key_arr:
+            key_to_check = key
+            if nml_type == 'controls':
+                if 'ctrl(' in key:
+                    key_to_check = key.split('(')[0] + '(1:num_x_ctrls)'
+            in_default[key] = key_to_check in def_key
+
+        to_remove = [key for key in key_arr if not in_default[key]]
+
+        orders = {key: 'not in defaults' for key in to_remove}
+        # Check if have to move from star_job/controls to eos or kap
+        if (nml_type in ['star_job', 'controls']) and separate_eoskap:
+            for key in to_remove:
+                for new_nml_type in ['eos', 'kap']:
+                    if key in keys_defaults[new_nml_type]:
+                        orders[key] = f'move to {new_nml_type}'
+                        break
+                    else:
+                        if key.startswith('kappa'):
+                            new_key = 'kap' + key[5:]
+                            if new_key in keys_defaults[new_nml_type]:
+                                orders[key] = f'rename to {new_key} and move to {new_nml_type}'
+        all_checked[nml_type] = orders
+
+    # Print nicely
+    for nml_type, orders in all_checked.items():
+        if len(orders) == 0:
+            continue
+        print(nml_type, len(orders))
+        for key, order in orders.items():
+            print(f'    {key}: {order}')
+        print()
+
+    return all_checked

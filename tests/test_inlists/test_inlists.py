@@ -8,6 +8,7 @@ import io
 from wsssss.inlists import inlists as inl
 
 test_data = os.path.join(os.path.dirname(__file__), '..', 'data', 'inlists')
+mesa_dir = os.environ['MESA_DIR']
 
 class TestInlists(unittest.TestCase):
     def setUp(self):
@@ -26,6 +27,8 @@ class TestInlists(unittest.TestCase):
         correct['controls'] = dict([('initial_mass', 3.0), ('initial_z', 0.01), ('initial_y', 0.25)])
         correct['pgstar'] = {}
         self.correct = correct
+
+        self.mesa_version = inl.get_mesa_version(mesa_dir)
 
 
     def test_evaluate_inlist(self):
@@ -68,12 +71,12 @@ class TestInlists(unittest.TestCase):
         self.assertEqual(expected, capturedOutput.getvalue())
 
 
-    def test_parse_value(self):
-        self.assertEqual('1d10', inl.variable_to_inlist(1e10))
-        self.assertEqual('1d0', inl.variable_to_inlist(1))
-        self.assertEqual('.true.', inl.variable_to_inlist(True))
-        self.assertEqual('.false.', inl.variable_to_inlist(False))
-        self.assertEqual("'abc'", inl.variable_to_inlist('abc'))
+    def test_variable_to_string(self):
+        self.assertEqual('1d10', inl.variable_to_string(1e10))
+        self.assertEqual('1d0', inl.variable_to_string(1))
+        self.assertEqual('.true.', inl.variable_to_string(True))
+        self.assertEqual('.false.', inl.variable_to_string(False))
+        self.assertEqual("'abc'", inl.variable_to_string('abc'))
 
     def test_round_trip(self):
         path = os.path.join(test_data, 'write_inlist')
@@ -83,3 +86,13 @@ class TestInlists(unittest.TestCase):
         for key in self.correct.keys():
             self.assertDictEqual(self.inlist[key], read_inlist[key])
         os.remove(path)
+
+    def test_check_inlist(self):
+        checked = inl.check_inlist(os.path.join(test_data, 'inlist'), mesa_dir)
+        num_incorrect = 0
+        for nml_type in checked.keys():
+            num_incorrect += len(checked[nml_type])
+        if self.mesa_version >= '15140':
+            self.assertEqual(0, num_incorrect)
+        else:
+            self.assertEqual(2, num_incorrect)
