@@ -5,10 +5,8 @@ import os
 import sys
 import io
 
-from f90nml import Namelist
 from wssss.inlists import inlists as inl
 
-test_data = '../data/inlists'
 test_data = os.path.join(os.path.dirname(__file__), '..', 'data', 'inlists')
 
 class TestInlists(unittest.TestCase):
@@ -21,24 +19,25 @@ class TestInlists(unittest.TestCase):
         self.inlist = inlist
         self.sub_inlists = [in1, in2, in3]
 
-        correct = Namelist()
-        correct['star_job'] = Namelist()
-        correct['eos'] = Namelist()
-        correct['kap'] = Namelist()
-        correct['controls'] = Namelist([('initial_mass', 2.0), ('initial_z', 0.01), ('initial_y', 0.25)])
-        correct['pgstar'] = Namelist()
+        correct = {}
+        correct['star_job'] = {}
+        correct['eos'] = {}
+        correct['kap'] = {}
+        correct['controls'] = dict([('initial_mass', 3.0), ('initial_z', 0.01), ('initial_y', 0.25)])
+        correct['pgstar'] = {}
         self.correct = correct
 
 
     def test_evaluate_inlist(self):
-        self.assertDictEqual(self.correct, self.inlist)
-
+        for key in self.correct.keys():
+            self.assertDictEqual(dict(self.correct[key]), dict(self.inlist[key]))
 
     def test_evaluate_inlist_str(self):
         with open(os.path.join(test_data, 'inlist'), 'r') as handle:
             inlist_str = handle.read()
         inlist = inl.evaluate_inlist_str(inlist_str, test_data)
-        self.assertDictEqual(self.correct, inlist)
+        for key in self.correct.keys():
+            self.assertDictEqual(dict(self.correct[key]), dict(inlist[key]))
 
 
     def test_inlist_diff(self):
@@ -68,8 +67,19 @@ class TestInlists(unittest.TestCase):
                     )
         self.assertEqual(expected, capturedOutput.getvalue())
 
+
+    def test_parse_value(self):
+        self.assertEqual('1d10', inl.variable_to_inlist(1e10))
+        self.assertEqual('1d0', inl.variable_to_inlist(1))
+        self.assertEqual('.true.', inl.variable_to_inlist(True))
+        self.assertEqual('.false.', inl.variable_to_inlist(False))
+        self.assertEqual("'abc'", inl.variable_to_inlist('abc'))
+
     def test_round_trip(self):
-        self.inlist.write(os.path.join(test_data, 'write_inlist'), force=True)
-        read_inlist = inl.evaluate_inlist(os.path.join(test_data, 'write_inlist'))
-        self.assertDictEqual(self.inlist, read_inlist)
-        os.remove(os.path.join(test_data, 'write_inlist'))
+        path = os.path.join(test_data, 'write_inlist')
+        inl.write_inlist(self.inlist, path)
+        read_inlist = inl.evaluate_inlist(path)
+
+        for key in self.correct.keys():
+            self.assertDictEqual(self.inlist[key], read_inlist[key])
+        os.remove(path)

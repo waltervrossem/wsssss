@@ -7,7 +7,7 @@ import shutil
 
 import numpy as np
 
-from .inlists import defaults, evaluate_inlist
+from .inlists import defaults, evaluate_inlist, variable_to_inlist
 from ..functions import get_mesa_version
 
 non_mesa_key_start = '!PY_KEY_'
@@ -391,7 +391,7 @@ class MesaGrid:
                 for sub_key, sub_value in key_dat.items():
                     if sub_key.startswith(non_mesa_key_start):
                         continue
-                    parsed_sub_value = self._parse_value(sub_value)
+                    parsed_sub_value = variable_to_inlist(sub_value)
                     sub_str += f'    {sub_key} = {parsed_sub_value}\n'
 
                 sub_str += rf'/ ! end of {key} namelist'
@@ -409,7 +409,7 @@ class MesaGrid:
                         continue
                 elif key.startswith('#'):
                     continue
-                parsed_value = self._parse_value(value)
+                parsed_value = variable_to_inlist(value)
                 sub_str += f'    {key} = {parsed_value}\n'
 
             sub_str += f'/ ! end of {inlist_type} namelist\n'
@@ -418,20 +418,7 @@ class MesaGrid:
 
         return inlist_string
 
-    def _parse_value(self, value):
-        """
-        Takes `value` and makes it compatible for use in an inlist.
-        """
 
-        if type(value) == bool:
-            parsed = f'.{str(value).lower()}.'
-        elif type(value) == str:
-            parsed = f"'{value}'"
-        else:
-            parsed = f'{value:g}'.replace('e', 'd')
-            if 'd' not in parsed:
-                parsed += 'd0'
-        return parsed
 
     def _copy_extra_files_and_dirs(self, grid_path):
         for dirname in self.dirnames:

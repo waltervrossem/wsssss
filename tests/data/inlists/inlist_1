@@ -1,4 +1,6 @@
 &star_job
+    read_extra_star_job_inlist(5) = .false.
+    extra_star_job_inlist_name(5) = 'inlist_3'
 / ! end of star_job namelist
 
 &eos

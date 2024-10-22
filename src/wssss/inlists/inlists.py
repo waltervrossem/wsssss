@@ -59,52 +59,97 @@ def evaluate_inlist(path):
 
 
 def _evaluate_inlist(inlist, inlist_dir):
+
+    out = {}
+    key_type = 'old'
+    for kind in defaults.keys():
+        if kind not in inlist.keys():
+            continue
+
+        for key, item in list(inlist[kind].items()):
+            if isinstance(item, list):
+                key_type = 'new'
+                inlist[kind].pop(key)
+                for i in range(len(item)):
+                    if item[i] is not None:
+                        inlist[kind][f'{key}({i + 1})'] = item[i]
+
+        out[kind] = dict(inlist[kind])
+
+    if key_type == 'old':
+        read_extra = 'read_extra_{}_inlist{}'
+        read_extra_filename = 'extra_{}_inlist{}_name'
+    else:
+        read_extra = 'read_extra_{}_inlist({})'
+        read_extra_filename = 'extra_{}_inlist_name({})'
+
     to_read = {}
-
-    old_read_extra = 'read_extra_{}_inlist{}'
-    old_read_extra_filename = 'extra_{}_inlist{}_name'
-    new_read_extra = 'read_extra_{}_inlist'  # (:) part has been stripped off in inlist
-    new_read_extra_filename = 'extra_{}_inlist_name'
-
     for kind in defaults.keys():
         if kind not in inlist.keys():
             continue
         to_read[kind] = []
 
         for i in range(5):
-            old_key = old_read_extra.format(kind, i+1)
-            new_key = new_read_extra.format(kind)
-            if old_key in inlist[kind].keys():
-                if inlist[kind][old_key]:
-                    to_read[kind].append(inlist[kind][old_read_extra_filename.format(kind, i+1)])
-            elif new_key in inlist[kind].keys():
-                if inlist[kind][new_key][i]:
-                    to_read[kind].append(inlist[kind][new_read_extra_filename.format(kind)][i])
+            key = read_extra.format(kind, i+1)
+            if key in inlist[kind].keys():
+                if inlist[kind][key]:
+                    to_read[kind].append(inlist[kind][read_extra_filename.format(kind, i+1)])
 
     inlists = {}
     for kind, fnames in to_read.items():
         inlists[kind] = []
-        old_key = old_read_extra.format(kind, i + 1)
-        new_key = new_read_extra.format(kind)
         for fname in fnames:
             sub_inlist = parser.read(os.path.join(inlist_dir, fname))
-            if (old_key in sub_inlist.keys()) or (new_key in sub_inlist.keys()):
-                sub_inlist = _evaluate_inlist(sub_inlist, inlist_dir)
+            sub_inlist = _evaluate_inlist(sub_inlist, inlist_dir)
 
             if kind in sub_inlist.keys():
                 inlists[kind].append(sub_inlist[kind])
 
-    out = f90nml.Namelist(inlist)
     for kind, sub_inlists in inlists.items():
+        if kind not in inlist.keys():
+            out[kind] = {}
         for sub_inlist in sub_inlists:
             out[kind].update(sub_inlist)
-        old_key = old_read_extra.format(kind, i + 1)
-        new_key = new_read_extra.format(kind)
-        for key in [old_key, new_key, old_read_extra_filename.format(kind, i+1), new_read_extra_filename.format(kind)]:
-            if key in out[kind].keys():
+
+    for kind in out.keys():
+        for key, value in list(out[kind].items()):  # Consume whole generator as we need to change the underlying dict.
+            if '_inlist' in key:  # Don't want read_extra inlist keys anymore.
                 _ = out[kind].pop(key)
     return out
 
+
+def variable_to_inlist(value):
+    """
+    Takes `value` and makes it compatible for use in an inlist.
+    """
+
+    if type(value) == bool:
+        parsed = f'.{str(value).lower()}.'
+    elif type(value) == str:
+        parsed = f"'{value}'"
+    else:
+        parsed = f'{value:g}'.replace('e', 'd').replace('d+', 'd')
+        if 'd' not in parsed:
+            parsed += 'd0'
+    return parsed
+
+
+def write_inlist(inlist, path, header='', mode='w'):
+    if header and not header.startswith('!'):
+        header = '!' + header
+    s = '' + header
+
+    for name in inlist.keys():
+        s += f'&{name} ! start\n'
+        for key, value in inlist[name].items():
+            # if key.startswith('!'):
+            #     continue
+            s += f'    {key} = {variable_to_inlist(value)}\n'
+
+        s += f'/ !{name} end\n'
+
+    with open(path, mode) as handle:
+        handle.write(s)
 
 def print_dict(to_print):
     for k, v in to_print.items():
