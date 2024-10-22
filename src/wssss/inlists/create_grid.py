@@ -195,7 +195,7 @@ class MesaGrid:
             s = []
             for namelist in self.namelists:
                 if len(failed_options[namelist]) > 0:
-                    s.append(f'Option not in available {namelist} keys: {", ".join(failed_options[namelist])}.')
+                    s.append(f'Option(s) not in available {namelist} keys: {", ".join(failed_options[namelist])}.')
             s = ' '.join(s)
             raise KeyError(s)
 
@@ -386,7 +386,7 @@ class MesaGrid:
                 elif key.startswith('#'):
                     continue
                 key_dat = inlist_dict[key]
-                sub_str = f'&{key}\n'
+                sub_str = f'\n&{key}\n'
 
                 for sub_key, sub_value in key_dat.items():
                     if sub_key.startswith(non_mesa_key_start):
@@ -395,11 +395,11 @@ class MesaGrid:
                     sub_str += f'    {sub_key} = {parsed_sub_value}\n'
 
                 sub_str += rf'/ ! end of {key} namelist'
-                sub_str += '\n\n'
+                sub_str += '\n'
 
                 inlist_string += sub_str
         else:
-            sub_str = f'&{inlist_type}\n'
+            sub_str = f'\n&{inlist_type}\n'
             for key, value in inlist_dict.items():
                 if key.startswith(non_mesa_key_start):
                     if key == 'note':
@@ -432,6 +432,7 @@ class MesaGrid:
 
     def summary(self):
         """Print a summary of which variables change."""
+        raise NotImplementedError()
         if not self.unpacked:
             self.unpack_inlists()
 
