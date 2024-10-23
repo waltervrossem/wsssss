@@ -66,7 +66,7 @@ class _Data:
                     self.header = tmp.header
                     self.columns = tmp.columns
                     self.data = tmp.data
-                    self._first_row = tmp.first_row
+                    self._first_row = tmp._first_row
                     if self.keep_columns != 'all':
                         self.columns = self.keep_columns
                         self.data = self._discard_columns_rec_array(self.data, self.columns)
@@ -174,11 +174,11 @@ class _Data:
 
         formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
         try:
-            data = np.rec.array(np.loadtxt(path, skiprows=6, dtype={'names': columns, 'formats': formats}))
+            data = np.rec.array(np.loadtxt(self.path, skiprows=6, dtype={'names': columns, 'formats': formats}))
         except ValueError as exc:
             print(f"File {path} gave ValueError when reading:\n{exc.args[0]}\nTrying to fix.")
 
-            shutil.copy2(path, f'{path}_original')
+            shutil.copy2(self.path, f'{self.path}_original')
 
             lines = self._fix_datafile()
 
@@ -225,8 +225,7 @@ class _Data:
         self.loaded = True
 
         if self.save_dill:
-            with open(self.dill_path, 'wb') as handle:
-                dill.dump(self, handle)
+            self.dump()
 
         if self.keep_columns != 'all':
             self.columns = self.keep_columns
@@ -235,7 +234,16 @@ class _Data:
 
         return data
 
-    def dump(self, path_to_dump):
+    def dump(self, path_to_dump=''):
+        if not self.loaded:  # Temporarily turn off save_dill so the lazy load of data don't write a dill file.
+            save_dill = self.save_dill
+            self.save_dill = False
+            _ = self.data
+            self.save_dill = save_dill
+
+        if path_to_dump == '':
+            path_to_dump = self.dill_path
+
         with open(path_to_dump, 'wb') as handle:
             dill.dump(self, handle)
 
@@ -255,8 +263,10 @@ class _Data:
 
 
 class _Mesa(_Data):
-    def __init__(self, *args, index_name='profiles.index', **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
+                 verbose=False, nanval=-1e99, nanclip=None):
+        super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip)
+
         self.LOGS = self.directory
         if os.path.isfile(index_name):
             self.index_path = os.path.abspath(index_name)
@@ -285,8 +295,9 @@ class _Mesa(_Data):
 
 
 class History(_Mesa):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
+                 verbose=False, nanval=-1e99, nanclip=None):
+        super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip)
 
     def __repr__(self):
         initial_model = self._first_row['model_number']
@@ -327,8 +338,11 @@ class History(_Mesa):
             hist_ind = []
         return pnum, pmod, hist_ind
 
-    def get_model_num(self, profile_nums):
-        """Returns the profile number, model number, and model index"""
+
+    def get_profile_index(self, profile_nums):
+        """Returns the corresponding indeces of `profile_nums`.
+        `profile_nums` can be an integer, a list of integers,
+        a `Profile`, or a list of `Profile`s."""
         if hasattr(profile_nums, '__len__'):
             if isinstance(profile_nums, Profile):
                 profile_nums = [profile_nums]
@@ -339,7 +353,22 @@ class History(_Mesa):
         idxs = np.where(np.in1d(self.index[:, 2], profile_nums))
         model_nums = self.index[:, 0][idxs]
         data_idx = np.where(np.in1d(self.data['model_number'], model_nums))[0]
-        return np.array(list(zip(profile_nums, model_nums, data_idx)), dtype=int)
+        return data_idx
+
+
+    # def get_model_num(self, profile_nums):
+    #     """Returns the profile number, model number, and model index"""
+    #     if hasattr(profile_nums, '__len__'):
+    #         if isinstance(profile_nums, Profile):
+    #             profile_nums = [profile_nums]
+    #     else:
+    #         profile_nums = [profile_nums]
+    #     if isinstance(profile_nums[0], Profile):
+    #         profile_nums = [p.profile_num for p in profile_nums]
+    #     idxs = np.where(np.in1d(self.index[:, 2], profile_nums))
+    #     model_nums = self.index[:, 0][idxs]
+    #     data_idx = np.where(np.in1d(self.data['model_number'], model_nums))[0]
+    #     return np.array(list(zip(profile_nums, model_nums, data_idx)), dtype=int)
 
     def _scrub_hist(self):
         """Scrub history data for backups and retries."""
@@ -353,8 +382,10 @@ class History(_Mesa):
 
 
 class Profile(_Mesa):
-    def __init__(self, *args, load_GyreProfile=False, suffix_GyreProfile='.GYRE', **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, path, index_name='profiles.index', keep_columns='all', load_GyreProfile=False,
+                 suffix_GyreProfile='.GYRE', save_dill=False, reload=False, verbose=False, nanval=-1e99,
+                 nanclip=None):
+        super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip)
         self.LOGS = self.directory
 
         if self.index is not None:
@@ -372,17 +403,21 @@ class Profile(_Mesa):
 
 
 class _Gyre(_Data):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+    def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
+                 nanval=-1e99, nanclip=None):
+        super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip)
+        self.gyre_version = gyre_version
 
 
 class GyreSummary(_Gyre):
-    def __init__(self, *args, gyre_version='6', **kwargs):
-        super().__init__(*args, **kwargs)
-        self.gyre_version = gyre_version
+
+    def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
+                 nanval=-1e99, nanclip=None):
+        super().__init__(path, keep_columns, gyre_version, save_dill, reload, verbose, nanval, nanclip)
 
     def __repr__(self):
-        return f'GyreSummary loaded from {self.path}'
+        return f'GyreSummary at {self.path}'
 
     def _dimless_to_Hz(self):
         if 'M_star' in self.header.keys():
@@ -408,12 +443,13 @@ class GyreSummary(_Gyre):
 
 
 class GyreMode(_Gyre):
-    def __init__(self, *args, gyre_version, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.gyre_version = gyre_version
+
+    def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
+                 nanval=-1e99, nanclip=None):
+        super().__init__(path, keep_columns, gyre_version, save_dill, reload, verbose, nanval, nanclip)
 
     def __repr__(self):
-        return f'GyreMode loaded from {self.path}'
+        return f'GyreMode at {self.path}'
 
     def _dimless_to_Hz(self):
         M_star = self.header['M_star']
@@ -473,6 +509,9 @@ class GyreProfile:
 
         self.loaded = False
 
+    def __repr__(self):
+        return 'GyreProfile data file at {}'.format(self.path) + '\n' + str(self.header)
+
     def _load_gyre_profile(self):
         data = np.rec.array(
             np.loadtxt(f'{self.path}', skiprows=1, dtype={'names': self.columns, 'formats': self.formats}))
@@ -480,7 +519,7 @@ class GyreProfile:
 
     @LazyProperty
     def data(self):
-        self.data = self._load_gyre_profile()
+        data = self._load_gyre_profile()
         self.loaded = True
         return data
 
@@ -520,7 +559,8 @@ def load_profs(hist, prefix='profile', suffix='.data', only_RC=False, save_dill=
 
 
 def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre_summary_suffix='.data.GYRE.sgyre_l',
-             return_pnums=False, only_RC=False, use_mask=None):
+             return_pnums=False, only_RC=False, use_mask=None, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99,
+                         nanclip=None):
     dirpath = os.path.abspath(os.path.join(hist.LOGS, '..', gyre_data_dir))
 
     if only_RC:
@@ -545,14 +585,17 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
     gss = []
     for pnum in pnums:
         fname = '{}{}{}'.format(gyre_summary_prefix, pnum, gyre_summary_suffix)
-        gss.append(GyreSummary(os.path.join(dirpath, fname)))
+        path = os.path.join(dirpath, fname)
+        gss.append(GyreSummary(path, keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
+                     verbose=verbose, nanval=nanval, nanclip=nanclip))
 
     if return_pnums:
         return list(zip(gss, np.array(pnums)))
     return gss
 
 
-def load_modes_from_profile(prof, gyre_version, gyre_data_dir='gyre_out', mode_prefix='', mode_suffix='.mgyre'):
+def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode_suffix='.mgyre', keep_columns='all',
+                            gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
     dirpath = os.path.abspath(os.path.join(prof.LOGS, '..', gyre_data_dir))
     fnames = os.listdir(dirpath)
 
@@ -563,12 +606,14 @@ def load_modes_from_profile(prof, gyre_version, gyre_data_dir='gyre_out', mode_p
     for fname in fnames:
         if fname.startswith(mode_prefix):
             if fname.endswith(mode_suffix):
-                modes.append(GyreMode(os.path.join(dirpath, fname), gyre_version))
+                path = os.path.join(dirpath, fname)
+                modes.append(GyreMode(path, keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload, verbose=verbose, nanval=nanval, nanclip=nanclip))
     return modes
 
 
-def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
-                         gyre_summary_suffix='.data.GYRE.sgyre_l'):
+def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='', gyre_summary_suffix='.data.GYRE.sgyre_l',
+                         keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99,
+                         nanclip=None):
     dirpath = os.path.abspath(os.path.join(prof.LOGS, '..', gyre_data_dir))
     fnames = os.listdir(dirpath)
 
@@ -581,76 +626,83 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
         else:
             fname = ''
 
-    gs = GyreSummary(os.path.join(dirpath, fname))
+    path = os.path.join(dirpath, fname)
+    gs = GyreSummary(path, keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
+                     verbose=verbose, nanval=nanval, nanclip=nanclip)
     return gs
 
 
-def load_modes(hist, gyre_version, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile',
-               gyre_summary_suffix='.data.GYRE.sgyre_l', mode_dir='gyre_out/detail',
-               mode_prefix='profile{}.', mode_suffix='.mgyre'):
-    gss, pnums = load_gss(hist, gyre_summary_dir, gyre_summary_prefix, gyre_summary_suffix, return_pnums=True)
-
-    dirpath = os.path.abspath(os.path.join(hist.LOGS, '..', mode_dir))
-    fnames = os.listdir(dirpath)
-
-    mode_info = []
-    modes = []
-
-    i = 0
-    for fname in fnames:
-        fname = os.path.split(fname)[-1]
-        prefix_parts = mode_prefix.split('{}')
-        pnum = int(fname[len(prefix_parts[0]):fname.index(prefix_parts[1])])
-        mode_prefix_pnum = mode_prefix.format(pnum)
-        if fname.startswith(mode_prefix_pnum) and fname.endswith(mode_suffix):
-            md = GyreMode(os.path.join(dirpath, fname), gyre_version)
-            nu = uf.get_freq(md, kind='mode')
-            l = md.header['l']
-            order_names = ['n_p', 'n_g', 'n_pg']
-            if sum(np.in1d(order_names, list(md.header.keys()))) > 1:
-
-                try:
-                    n_p = md.header['n_p']
-                except KeyError:
-                    n_p = md.header['n_pg'] + md.header['n_g']
-                    md.header['n_p'] = n_p
-
-                try:
-                    n_g = md.header['n_g']
-                except KeyError:
-                    n_g = md.header['n_p'] - md.header['n_pg']
-                    md.header['n_g'] = n_g
-
-                try:
-                    n_pg = md.header['n_pg']
-                except KeyError:
-                    n_pg = md.header['n_p'] - md.header['n_g']
-                    md.header['n_pg'] = n_pg
-
-            else:
-                raise ValueError('Not enough information in header to determine n_p, n_g, and n_pg.')
-
-            md.header['profile_number'] = pnum
-
-            for key in ['n_p', 'n_g', 'n_pg']:
-                if key in md.header and key in locals().keys():
-                    if md.header[key] != locals()[key]:
-                        raise ValueError(f'Mismatch between mode {key} and calculated {key}!')
-
-                else:
-                    md.header[key] = locals()[key]
-
-            mode_info.append([pnum, l, nu, n_pg, n_p, n_g, i])
-            modes.append(md)
-            i += 1
-
-    mode_info = np.rec.array(mode_info, names=['pnum', 'l', 'nu', 'n_pg', 'n_p', 'n_g', 'i'])
-    mode_info = np.sort(mode_info, order=['pnum', 'l', 'nu', 'n_pg'])
-    modes = np.asarray([modes[i] for i in mode_info.i], dtype=object)
-
-    mode_info.i = np.arange(len(mode_info))
-
-    return modes
+# def load_modes(hist, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile', gyre_summary_suffix='.data.GYRE.sgyre_l',
+#                mode_dir='gyre_out/detail', mode_prefix='profile{}.', mode_suffix='.mgyre', keep_columns='all',
+#                gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
+#
+#     gss, pnums = load_gss(hist, gyre_summary_dir, gyre_summary_prefix, gyre_summary_suffix, return_pnums=True,
+#                           keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
+#                           verbose=verbose, nanval=nanval, nanclip=nanclip)
+#
+#     dirpath = os.path.abspath(os.path.join(hist.LOGS, '..', mode_dir))
+#     fnames = os.listdir(dirpath)
+#
+#     mode_info = []
+#     modes = []
+#
+#     i = 0
+#     for fname in fnames:
+#         fname = os.path.split(fname)[-1]
+#         prefix_parts = mode_prefix.split('{}')
+#         pnum = int(fname[len(prefix_parts[0]):fname.index(prefix_parts[1])])
+#         mode_prefix_pnum = mode_prefix.format(pnum)
+#         if fname.startswith(mode_prefix_pnum) and fname.endswith(mode_suffix):
+#             path = os.path.join(dirpath, fname)
+#             md = GyreMode(path, keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
+#                           verbose=verbose, nanval=nanval, nanclip=nanclip)
+#             nu = uf.get_freq(md, kind='mode')
+#             l = md.header['l']
+#             order_names = ['n_p', 'n_g', 'n_pg']
+#             if sum(np.in1d(order_names, list(md.header.keys()))) > 1:
+#
+#                 try:
+#                     n_p = md.header['n_p']
+#                 except KeyError:
+#                     n_p = md.header['n_pg'] + md.header['n_g']
+#                     md.header['n_p'] = n_p
+#
+#                 try:
+#                     n_g = md.header['n_g']
+#                 except KeyError:
+#                     n_g = md.header['n_p'] - md.header['n_pg']
+#                     md.header['n_g'] = n_g
+#
+#                 try:
+#                     n_pg = md.header['n_pg']
+#                 except KeyError:
+#                     n_pg = md.header['n_p'] - md.header['n_g']
+#                     md.header['n_pg'] = n_pg
+#
+#             else:
+#                 raise ValueError('Not enough information in header to determine n_p, n_g, and n_pg.')
+#
+#             md.header['profile_number'] = pnum
+#
+#             for key in ['n_p', 'n_g', 'n_pg']:
+#                 if key in md.header and key in locals().keys():
+#                     if md.header[key] != locals()[key]:
+#                         raise ValueError(f'Mismatch between mode {key} and calculated {key}!')
+#
+#                 else:
+#                     md.header[key] = locals()[key]
+#
+#             mode_info.append([pnum, l, nu, n_pg, n_p, n_g, i])
+#             modes.append(md)
+#             i += 1
+#
+#     mode_info = np.rec.array(mode_info, names=['pnum', 'l', 'nu', 'n_pg', 'n_p', 'n_g', 'i'])
+#     mode_info = np.sort(mode_info, order=['pnum', 'l', 'nu', 'n_pg'])
+#     modes = np.asarray([modes[i] for i in mode_info.i], dtype=object)
+#
+#     mode_info.i = np.arange(len(mode_info))
+#
+#     return modes
 
 
 def naive_merge_hists(base_hist, hists):
@@ -661,8 +713,10 @@ def naive_merge_hists(base_hist, hists):
 
 
 def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile',
-                     gyre_summary_suffix='.data.GYRE.sgyre_l', only_RC=False, use_mask=None):
-    return_pnums = True
-    hist.gsspnum = load_gss(hist, gyre_data_dir, gyre_summary_prefix, gyre_summary_suffix, return_pnums, only_RC,
-                            use_mask)
+                     gyre_summary_suffix='.data.GYRE.sgyre_l', only_RC=False, use_mask=None, keep_columns='all',
+                     gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
+    hist.gsspnum = load_gss(hist, gyre_data_dir=gyre_data_dir, gyre_summary_prefix=gyre_summary_prefix,
+                            gyre_summary_suffix=gyre_summary_suffix, return_pnums=True, only_RC=only_RC, use_mask=use_mask,
+                            keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
+                            verbose=verbose, nanval=nanval, nanclip=nanclip)
     return hist
