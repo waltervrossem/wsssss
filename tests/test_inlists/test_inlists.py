@@ -4,6 +4,7 @@ import unittest
 import os
 import sys
 import io
+import numpy as np
 
 from wsssss.inlists import inlists as inl
 
@@ -73,7 +74,9 @@ class TestInlists(unittest.TestCase):
 
     def test_variable_to_string(self):
         self.assertEqual('1d10', inl.variable_to_string(1e10))
-        self.assertEqual('1d0', inl.variable_to_string(1))
+        self.assertEqual('1d0', inl.variable_to_string(1.0))
+        self.assertEqual('1', inl.variable_to_string(1))
+        self.assertEqual('0', inl.variable_to_string(np.arange(1)[0]))
         self.assertEqual('.true.', inl.variable_to_string(True))
         self.assertEqual('.false.', inl.variable_to_string(False))
         self.assertEqual("'abc'", inl.variable_to_string('abc'))

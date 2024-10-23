@@ -4,6 +4,7 @@
 import os
 
 import f90nml
+import numpy as np
 
 from ..functions import get_mesa_version
 
@@ -131,9 +132,12 @@ def variable_to_string(value):
     elif type(value) == str:
         parsed = f"'{value}'"
     else:
-        parsed = f'{value:g}'.replace('e', 'd').replace('d+', 'd')
-        if 'd' not in parsed:
-            parsed += 'd0'
+        if isinstance(value, (int, np.int_)):
+            parsed = str(value)
+        else:
+            parsed = f'{value:g}'.replace('e', 'd').replace('d+', 'd')
+            if 'd' not in parsed:
+                parsed += 'd0'
     return parsed
 
 
