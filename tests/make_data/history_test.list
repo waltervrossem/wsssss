@@ -1,0 +1,42 @@
+model_number      ! counting from the start of the run
+elapsed_time      ! time since start of run (seconds)
+star_age          ! elapsed simulated time in years since the start of the run
+star_mass         ! in Msun units
+effective_T
+photosphere_L     ! Lsun units
+photosphere_r     ! Rsun units
+luminosity        ! luminosity in Lsun units
+radius            ! Rsun
+gravity
+center_T          ! temperature
+center_Rho        ! density
+center_P          ! pressure
+center_degeneracy ! the electron chemical potential in units of k*T
+center_mu
+center_ye
+add_center_abundances
+add_surface_abundances
+mass_conv_core    ! (Msun) mass coord of top of convective core.  0 if core is not convective
+he_core_mass
+he_core_radius
+co_core_mass
+co_core_radius
+log_LH ! log10 power_h_burn
+log_LHe ! log10 power_he_burn
+log_LZ ! log10 total burning power excluding LH and LHe and photodisintegrations
+log_extra_L ! log10 extra_L
+log_Lneu ! log10 power emitted in neutrinos, nuclear and thermal (in Lsun units)
+log_abs_Lgrav
+pp
+cno
+tri_alpha
+c_alpha
+n_alpha
+o_alpha
+delta_nu ! large frequency separation for p-modes (microHz)
+delta_Pg ! g-mode period spacing for l=1 (seconds)
+nu_max ! estimate from scaling relation (microHz)
+log_L
+
+mixing_regions 20
+burning_regions 30

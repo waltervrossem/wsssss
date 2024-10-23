@@ -1,3 +1,7 @@
+# Ignore test data/mesa as it is quite large, can be created with tests/make_data/make_data.sh and mesa 24.03.1 and gyre 7.1
+# I haven't tested how this data changes with other MESA and gyre versions
+tests/data/mesa
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

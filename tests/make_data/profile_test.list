@@ -1,0 +1,54 @@
+mass                  ! m/Msun. mass coordinate of outer boundary of cell.
+q                     ! fraction of star mass interior to outer boundary of this zone
+radius                ! radius in Rsun unity
+logRho                ! log10(density) at center of zone
+temperature           ! temperature at center of zone
+luminosity            ! luminosity at outer boundary of zone (in Lsun units)
+pressure              ! total pressure at center of zone (pgas + prad)
+pgas                  ! gas pressure at center of zone
+grav                  ! gravitational acceleration (cm sec^2)
+eps_grav              ! -T*ds/dt (negative for expansion)
+net_nuclear_energy    ! erg/gm/s from nuclear reactions minus all neutrino losses
+eps_nuc_plus_nuc_neu  ! erg/gm/s from nuclear reactions plus all neutrino losses
+velocity              ! velocity at outer boundary of zone -- 0 if no velocity variable
+csound                ! sound speed
+eta                   ! electron degeneracy parameter (eta >> 1 for significant degeneracy)
+mu                    ! mean molecular weight per gas particle (ions + free electrons)
+gradT                 ! mlt value for required temperature gradient dlnT/dlnP
+grada                 ! dlnT_dlnP at constant S
+gradr                 ! dlnT/dlnP required for purely radiative transport
+mixing_type           ! mixing types are defined in mesa/mlt/public/mlt_def
+mlt_mixing_type       ! value returned by mlt
+mlt_mixing_length     ! mixing length for mlt (cm)
+gradL                 ! gradient for Ledoux criterion for convection
+log_D_mix             ! log10 diffusion coefficient for mixing in units of cm^2/second (Eulerian)
+pressure_scale_height ! in Rsun units
+cv                    ! specific heat at constant volume
+cp                    ! specific heat at constant total pressure
+gamma1                ! dlnP_dlnRho at constant S
+chiRho                ! dlnP_dlnRho at constant T
+chiT                  ! dlnP_dlnT at constant Rho
+opacity               ! opacity measured at center of zone
+add_abundances
+    !h1
+    !he3
+    !he4
+    !c12
+    !n14
+    !o16
+z                      ! Z
+!add_reaction_categories
+pp
+cno
+tri_alpha
+c_alpha
+n_alpha
+o_alpha
+brunt_N2              ! brunt-vaisala frequency squared
+brunt_A               ! N^2*r/g
+lamb_Sl1              ! for l=1; = sqrt(2)*csound/r   (microHz)
+brunt_B               ! smoothed numerical difference
+log_conv_vel          ! log10 convection velocity (cm/sec)
+brunt_N_div_r_integral ! integral from center of N*dr/r
+acoustic_radius        ! sound time from center to outer cell boundary (sec)
+logtau                 ! log10(optical depth) at center of zone
