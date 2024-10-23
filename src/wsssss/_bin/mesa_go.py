@@ -272,7 +272,9 @@ def main(args):
 
 
 def run():
-    args = " ".join(sys.argv[1:])
+    args = ' '
+    for arg in sys.argv[1:]:
+        args += f" '{arg}'"
     os.system(f'{__file__} {args}')
 
 
