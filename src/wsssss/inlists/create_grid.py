@@ -155,6 +155,12 @@ class MesaGrid:
 
                 if not read_extra_inlist_key in self.inlist[namelist].keys():
                     continue
+
+                if i == 5:  # If any options have been added, set read_extra_inlist_key to True
+                    nml_keys = [key for key in self.__dict__[namelist].keys() if not key.startswith(non_mesa_key_start)]
+                    if (len(nml_keys) > 0) and (self.inlist[namelist][read_extra_inlist_key] == False):
+                        self.inlist[namelist][read_extra_inlist_key] = True
+
                 if self.inlist[namelist][read_extra_inlist_key]:
                     read_extra_names.append(self.inlist[namelist][read_extra_inlist_name_key])
                     if self.inlist[f'{non_mesa_key_start}filename'] == self.inlist[namelist][
