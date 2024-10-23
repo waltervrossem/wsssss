@@ -221,10 +221,12 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
             # Gyre 5 uses capital P for pressure and the normalized rotation kernel changed to unnormalized.
             mode_item_list = mode_item_list.replace(',p,', ',P,').replace(',K', ',dbeta_dx')
 
-        mode_output = (f"   mode_template = '{mode_name_base}_l%l_%J_npg%N.mgyre'\n"
+        mode_output = (f"   mode_template = '{mode_name_base}_l%l_%J_np%p_ng%g.mgyre'\n"
                        f"   mode_file_format = 'TXT'\n"
                        f"   mode_item_list = '{mode_item_list}'"
                        f"/")
+        if args.gyre >= 'G7':
+            mode_output = mode_output.replace('mode_', 'detail_').replace('%J', '%ID')
     else:
         mode_output = '/'
 
