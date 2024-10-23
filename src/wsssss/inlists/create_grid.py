@@ -69,7 +69,7 @@ class MesaGrid:
             else:
                 read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
                 read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
-            self.inlist[namelist] = {read_extra_inlist_key: True,
+            self.inlist[namelist] = {read_extra_inlist_key: False,
                                      read_extra_inlist_name_key: namelist_filename}
 
         self.extra_files = []
