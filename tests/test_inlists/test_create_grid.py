@@ -91,7 +91,7 @@ class TestCreateGrid(unittest.TestCase):
         with open(os.path.join(grid_dir, 'test_time'), 'w') as handle:
             handle.write(time_now)
 
-        inlist_from_file = inl.evaluate_inlist(os.path.join(grid_dir, '0', 'inlist'))
+        inlist_from_file = inl.evaluate_inlist(os.path.join(grid_dir, '0000', 'inlist'))
         inlist_from_grid = self.grid.unpacked[0]
 
         for namelist in self.grid.namelists:

@@ -347,7 +347,7 @@ class MesaGrid:
         num_unpacked = len(self.unpacked)
         self.dirnames = []
         if self.name_funcion is None:
-            num_digits = max(1, np.ceil(np.log10(num_unpacked)).astype(int))
+            num_digits = max(4, np.ceil(np.log10(num_unpacked)).astype(int))
             for i in range(num_unpacked):
                 dirname = f'{i:0{num_digits}}'
                 self.dirnames.append(dirname)
