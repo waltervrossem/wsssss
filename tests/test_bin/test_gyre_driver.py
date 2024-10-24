@@ -11,9 +11,10 @@ from wsssss._bin.gyre_driver import gyre_driver
 test_data = os.path.join(os.path.dirname(__file__), '..', 'data', 'gyre')
 
 class TestGyreDriver(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         gs = ld.GyreSummary(os.path.join(test_data, 'profile10.data.GYRE.sgyre_l'))
-        self.gs = gs
+        cls.gs = gs
 
     def test_gyre_driver(self):
         os.chdir(test_data)
