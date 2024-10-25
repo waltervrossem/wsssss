@@ -20,6 +20,7 @@ mesa_dir = os.environ['MESA_DIR']
 class TestMesaGO(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.init_dir = os.path.abspath('.')
         cls.base_grid_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../data/mesago'))
         grid = cg.MesaGrid()
 
@@ -59,7 +60,9 @@ class TestMesaGO(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(f'{cls.base_grid_dir}')
+        if os.path.isdir(cls.base_grid_dir):
+            shutil.rmtree(f'{cls.base_grid_dir}')
+        os.chdir(cls.init_dir)
 
     def check_output(self):
         os.chdir(self.grid_dir)
