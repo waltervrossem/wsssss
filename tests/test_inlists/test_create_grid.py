@@ -11,7 +11,6 @@ import shutil
 from wsssss.inlists import create_grid as cg
 from wsssss.inlists import inlists as inl
 
-this_file = __file__
 
 must_have_environ = ['MESA_DIR']
 for env in must_have_environ:
@@ -21,7 +20,7 @@ for env in must_have_environ:
 class TestCreateGrid(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.grid_dir = os.path.join(os.path.dirname(this_file), '../data/grid')
+        cls.grid_dir = os.path.join(os.path.dirname(__file__), '../data/grid')
 
     @classmethod
     def tearDownClass(cls):
