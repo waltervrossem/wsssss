@@ -713,7 +713,7 @@ def get_parser():
 
 def run():
     args = " ".join(sys.argv[1:])
-    return os.system(f'{__file__} {args}')
+    return os.system(f'python {__file__} {args}')
 
 
 if __name__ == '__main__':

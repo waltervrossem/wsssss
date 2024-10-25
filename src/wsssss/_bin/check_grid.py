@@ -226,7 +226,7 @@ def invert_dict(dct, reference_key, filter_dct_keys=None, reverse_filter=False, 
 
 def run():
     args = " ".join(sys.argv[1:])
-    os.system(f'{__file__} {args}')
+    return os.system(f'python {__file__} {args}')
 
 
 if __name__ == "__main__":
