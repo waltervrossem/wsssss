@@ -125,7 +125,7 @@ class _Data:
         first_row = lines[6].split()
 
         formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
-        first_line = np.rec.array(first_row, dtype={'names': columns, 'formats': formats})
+        first_line = np.rec.array(first_row, dtype=list(zip(columns, formats)))
 
         return header, columns, first_line
 
@@ -174,7 +174,7 @@ class _Data:
 
         formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
         try:
-            data = np.rec.array(np.loadtxt(self.path, skiprows=6, dtype={'names': columns, 'formats': formats}))
+            data = np.rec.array(np.loadtxt(self.path, skiprows=6, dtype=list(zip(columns, formats))))
         except ValueError as exc:
             print(f"File {path} gave ValueError when reading:\n{exc.args[0]}\nTrying to fix.")
 
@@ -185,22 +185,22 @@ class _Data:
             with open(f'{path}', 'wb') as handle:  #
                 handle.writelines(lines)
 
-            data = np.rec.array(np.loadtxt(f'{self.path}', skiprows=6, dtype={'names': columns, 'formats': formats}))
+            data = np.rec.array(np.loadtxt(f'{self.path}', skiprows=6, dtype=list(zip(columns, formats))))
 
         return header, columns, data
 
     def _discard_columns_rec_array(self, rec_array, to_keep):
         """Recreate a rec array from `rec_array` keeping only columns `to_keep`, and discarding other columns."""
-        names, formats = np.array(rec_array.dtype.descr).T
-        mask = (names != '') & np.in1d(names, to_keep)
-        names = names[mask]
+        columns, formats = np.array(rec_array.dtype.descr).T
+        mask = (columns != '') & np.in1d(columns, to_keep)
+        columns = columns[mask]
         formats = formats[mask]
-        return np.rec.array(rec_array[names].tolist(), dtype=dict(names=names, formats=formats))
+        return np.rec.array(rec_array[columns].tolist(), dtype=list(zip(columns, formats)))
 
     def _discard_rows_rec_array(self, rec_array, mask):
         """Recreate a rec array from `rec_array` keeping only rows masked in `mask`, and discarding other rows."""
-        names, formats = np.array(rec_array.dtype.descr).T
-        return np.rec.array(rec_array[mask].tolist(), dtype=dict(names=names, formats=formats))
+        columns, formats = np.array(rec_array.dtype.descr).T
+        return np.rec.array(rec_array[mask].tolist(), dtype=list(zip(columns, formats)))
 
     @LazyProperty
     def data(self):
@@ -514,7 +514,7 @@ class GyreProfile:
 
     def _load_gyre_profile(self):
         data = np.rec.array(
-            np.loadtxt(f'{self.path}', skiprows=1, dtype={'names': self.columns, 'formats': self.formats}))
+            np.loadtxt(f'{self.path}', skiprows=1, dtype=list(zip(self.columns, self.formats))))
         return data
 
     @LazyProperty

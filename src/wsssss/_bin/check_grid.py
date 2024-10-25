@@ -12,7 +12,8 @@ from datetime import datetime
 
 import numpy as np
 
-
+import warnings
+warnings.filterwarnings("error")
 def get_parser():
     """"""
     _parser = ArgumentParser(description="""
@@ -54,21 +55,11 @@ def read_hist_first_last_row(fpath):
         size = f.tell()
         f.seek(size - len(first_row))
         last_row = f.readline()
+    first_row = tuple(first_row.strip().split())
+    last_row = tuple(last_row.strip().split())
     columns = columns.strip().split()
-    first_row = first_row.strip().split()
-    last_row = last_row.strip().split()
     formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in first_row]
-    return np.rec.array((first_row, last_row), dtype={'names': columns, 'formats': formats})
-
-
-def read_prof_header(fpath):
-    lines = []
-    with open(fpath, 'r') as f:
-        for i in range(3):
-            lines.append(f.readline().split())
-
-    formats = [np.array(ast.literal_eval(_)).dtype if _ != 'NaN' else np.float64 for _ in lines[2]]
-    return np.rec.array((lines[2],), dtype={'names': lines[1], 'formats': formats})
+    return np.rec.array([first_row, last_row], dtype=list(zip(columns, formats)))#dtype={'names': columns, 'formats': formats})
 
 
 def get_termination_code(lines):
