@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import unittest
+import shutil
 
 from wsssss.inlists import create_grid as cg
 from wsssss.inlists import inlists as inl
@@ -18,6 +19,14 @@ for env in must_have_environ:
         raise EnvironmentError(f'{env} not set.')
 
 class TestCreateGrid(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.grid_dir = os.path.join(os.path.dirname(this_file), '../data/grid')
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.grid_dir)
+
     def setUp(self):
         grid = cg.MesaGrid()
         grid.star_job['show_net_species_info'] = [True]
@@ -65,7 +74,7 @@ class TestCreateGrid(unittest.TestCase):
 
     def test_MesaGrid(self):
 
-        grid_dir = os.path.join(os.path.dirname(this_file), '../data/grid')
+        grid_dir = self.grid_dir
         time_now = str(int(time.time()))
         if os.path.exists(os.path.join(grid_dir, 'test_time')):
             with open(os.path.join(grid_dir, 'test_time'), 'r') as handle:
@@ -73,10 +82,10 @@ class TestCreateGrid(unittest.TestCase):
         else:
             prev_time = -1
 
-        def test_finalize_function(gridobj):
+        def finalize_function(gridobj):
             print(os.listdir('.'))
 
-        self.grid.set_griddir_finalize_function(test_finalize_function)
+        self.grid.set_griddir_finalize_function(finalize_function)
 
         capturedOutput = io.StringIO()
         sys.stdout = capturedOutput
