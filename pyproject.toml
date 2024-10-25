@@ -5,14 +5,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 include-package-data = false
 
-
 [project]
 name = "wsssss"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   { name="Walter van Rossem", email="walter_v_rossem@hotmail.com" },
 ]
-description = "Walter's set of scripts for studying stars."
+description = "Walter's set of scripts for studying simulated stars."
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
@@ -23,6 +22,7 @@ dependencies = [
     "matplotlib",
     "setproctitle",
 ]
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -31,6 +31,21 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
 ]
 license = {file = "LICENSE"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest-env",
+]
+
+[tool.pytest_env]
+
+MESA_DIR = {value = "{MESA_DIR}", transform = true, skip_if_set = true}
+MESASDK_ROOT = {value = "{MESASDK_ROOT}", transform = true, skip_if_set = true}
+GYRE_DIR = {value = "{GYRE_DIR}", transform = true, skip_if_set = true}
+PATH = {value = "{MESASDK_ROOT}/bin:{PATH}", transform = true}
+PGPLOT_DIR = {value = "{MESASDK_ROOT}/lib/pgplot", transform = true}
+VALGRIND_LIB = {value = "{MESASDK_ROOT}/lib/valgrind", transform = true}
+MESASDK_VERSION = {value = "{MESASDK_VERSION}", transform = true}
 
 [project.scripts]
 gyre-driver = "wsssss._bin.gyre_driver:gyre_driver.run"

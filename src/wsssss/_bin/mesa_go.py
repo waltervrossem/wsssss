@@ -272,10 +272,8 @@ def main(args):
 
 
 def run():
-    args = ' '
-    for arg in sys.argv[1:]:
-        args += f" '{arg}'"
-    os.system(f'{__file__} {args}')
+    args = ' '.join(sys.argv[1:])
+    return os.system(f'{__file__} {args}')
 
 
 if __name__ == "__main__":
