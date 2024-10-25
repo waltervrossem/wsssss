@@ -8,6 +8,11 @@ import numpy as np
 
 from wsssss.inlists import inlists as inl
 
+must_have_environ = ['MESA_DIR']
+for env in must_have_environ:
+    if env not in os.environ:
+        raise EnvironmentError(f'{env} not set.')
+
 test_data = os.path.join(os.path.dirname(__file__), '..', 'data', 'inlists')
 mesa_dir = os.environ['MESA_DIR']
 

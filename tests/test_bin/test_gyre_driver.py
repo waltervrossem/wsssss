@@ -10,6 +10,11 @@ from wsssss._bin.gyre_driver import gyre_driver
 
 test_data = os.path.join(os.path.dirname(__file__), '..', 'data', 'gyre')
 
+must_have_environ = ['GYRE_DIR']
+for env in must_have_environ:
+    if env not in os.environ:
+        raise EnvironmentError(f'{env} not set.')
+
 class TestGyreDriver(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

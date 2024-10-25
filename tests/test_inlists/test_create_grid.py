@@ -12,6 +12,10 @@ from wsssss.inlists import inlists as inl
 
 this_file = __file__
 
+must_have_environ = ['MESA_DIR']
+for env in must_have_environ:
+    if env not in os.environ:
+        raise EnvironmentError(f'{env} not set.')
 
 class TestCreateGrid(unittest.TestCase):
     def setUp(self):
