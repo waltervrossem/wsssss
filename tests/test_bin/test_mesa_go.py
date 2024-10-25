@@ -72,7 +72,6 @@ class TestMesaGO(unittest.TestCase):
                     "--------------------------------------------\n"
                     "\n")
         out_str = output.stdout.decode()
-        print(out_str)
         self.assertEqual(expected, out_str)
 
     def test_mesago(self):
@@ -91,7 +90,7 @@ class TestMesaGO(unittest.TestCase):
             self.assertEqual(131, len(lines))
 
     def test_mesago_each(self):
-        sys.argv[1] = '--cmd-pre-each "rm star; cp ../test_mesago/0000/star ./; touch preeach" --cmd-post-each "touch posteach"'
+        sys.argv[1] = '--cmd-pre-each "cp ../../test_mesago/0000/star ./; touch preeach" --cmd-post-each "touch posteach"'
         ierr = mesa_go.run()
         if ierr != 0:
             raise SystemError(ierr)
