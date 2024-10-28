@@ -7,6 +7,7 @@ import io
 import numpy as np
 
 from wsssss.inlists import inlists as inl
+from wsssss import functions as uf
 
 must_have_environ = ['MESA_DIR']
 for env in must_have_environ:
@@ -100,7 +101,7 @@ class TestInlists(unittest.TestCase):
         num_incorrect = 0
         for nml_type in checked.keys():
             num_incorrect += len(checked[nml_type])
-        if self.mesa_version >= '15140':
+        if uf.compare_version(self.mesa_version, '15140', '>='):
             self.assertEqual(0, num_incorrect)
         else:
             self.assertEqual(2, num_incorrect)

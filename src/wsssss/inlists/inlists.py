@@ -6,7 +6,7 @@ import os
 import f90nml
 import numpy as np
 
-from ..functions import get_mesa_version
+from ..functions import get_mesa_version, compare_version
 
 parser = f90nml.Parser()
 parser.global_start_index = 1
@@ -186,7 +186,7 @@ def compare_inlist(path1, path2, show_same=False):
 
 def get_mesa_defaults(mesa_dir):
     version = get_mesa_version(mesa_dir)
-    if version >= '15140':
+    if compare_version(version, '15140', '>='):
         namelists = ('star_job', 'eos', 'kap', 'controls', 'astero', 'pgstar')
         separate_eoskap = True
         astero_index = 1
@@ -195,7 +195,7 @@ def get_mesa_defaults(mesa_dir):
         separate_eoskap = False
         astero_index = 0
 
-    if version >= 'r23.05.1':
+    if compare_version(version, 'r23.05.1', '>='):
         extra_inlist_as_list = True
     else:
         extra_inlist_as_list = False
@@ -224,7 +224,7 @@ def get_mesa_defaults(mesa_dir):
 
 def check_inlist(path, mesa_dir):
     version = get_mesa_version(mesa_dir)
-    if version >= '15140':
+    if compare_version(version, '15140', '>='):
         separate_eoskap = True
     else:
         separate_eoskap = False

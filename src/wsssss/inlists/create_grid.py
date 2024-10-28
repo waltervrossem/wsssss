@@ -8,7 +8,7 @@ import shutil
 import numpy as np
 
 from .inlists import defaults, evaluate_inlist, variable_to_string
-from ..functions import get_mesa_version
+from ..functions import get_mesa_version, compare_version
 
 non_mesa_key_start = '!PY_KEY_'
 
@@ -29,14 +29,14 @@ class MesaGrid:
             self.version = get_mesa_version(mesa_dir)
             self.mesa_dir = mesa_dir
 
-        if self.version >= '15140':
+        if compare_version(self.version, '15140', '>='):
             self.namelists = ('star_job', 'eos', 'kap', 'controls', 'pgstar')
             self.separate_eoskap = True
         else:
             self.namelists = ('star_job', 'controls', 'pgstar')
             self.separate_eoskap = False
 
-        if self.version >= 'r23.05.1':
+        if compare_version(self.version, 'r23.05.1', '>='):
             self.extra_inlist_as_list = True
         else:
             self.extra_inlist_as_list = False

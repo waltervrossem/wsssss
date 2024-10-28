@@ -21,6 +21,46 @@ def get_mesa_version(mesa_dir):
     return version
 
 
+def compare_version(version1, version2, operator='<'):
+    allowed_ops = ['<', '>', '<=', '>=', '==', '!=']
+    if not operator in allowed_ops:
+        raise ValueError(f'`operator` must be one of: {", ".join(allowed_ops)}.')
+    i = allowed_ops.index(operator)
+
+    r_version1 = False
+    r_version2 = False
+    if version1.startswith('r'):
+        r_version1 = True
+    if version2.startswith('r'):
+        r_version2 = True
+
+    lt = None
+    gt = None
+    lte = None
+    gte = None
+    eq = None
+    neq = None
+
+    eq = version1 == version2
+    neq = not eq
+
+    # if version number starts with an r it is after 15140
+    if r_version1 and r_version2:
+        lt = version1 < version2
+    elif r_version1 and not r_version2:
+        lt = False
+    elif not r_version1 and r_version2:
+        lt = True
+    else:
+        lt = int(version1) < int(version2)
+
+    gte = not lt
+    gt = gte and neq
+    lte = not gt
+
+    return [lt, gt, lte, gte, eq, neq][i]
+
+
 def get_constants(p_or_hist):
     if 'version' in p_or_hist.header.keys():
         version = str(p_or_hist.header['version'])
@@ -655,7 +695,7 @@ def get_bottom_envelope(p, indeces_only=False):
     temperature = p.get('temperature')
     mix_type = p.get('mixing_type')
 
-    if version >= '15140':
+    if compare_version(version, '15140', '>='):
         prefix = 'post'
     else:
         prefix = 'pre'
