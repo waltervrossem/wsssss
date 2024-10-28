@@ -1218,8 +1218,8 @@ def check_approx_PQ(hist, prof, xname='s', linear_grad=False, axes=None, same_co
     else:
         raise ValueError('unknown xname')
 
-    intP_cols = [_ for _ in hist.cols if _.endswith('int_P')]
-    intQ_cols = [_ for _ in hist.cols if _.endswith('int_Q')]
+    intP_cols = [_ for _ in hist.columns if _.endswith('int_P')]
+    intQ_cols = [_ for _ in hist.columns if _.endswith('int_Q')]
     intP_cols.sort()
     intQ_cols.sort()
     int_P_poly = np.polynomial.Polynomial(hist.get(*intP_cols, mask=i_hist))
@@ -1227,8 +1227,8 @@ def check_approx_PQ(hist, prof, xname='s', linear_grad=False, axes=None, same_co
     int_dP_poly = int_P_poly.deriv()
     int_dQ_poly = int_Q_poly.deriv()
 
-    grdP_cols = [_ for _ in hist.cols if _.endswith('grd_P')]
-    grdQ_cols = [_ for _ in hist.cols if _.endswith('grd_Q')]
+    grdP_cols = [_ for _ in hist.columns if _.endswith('grd_P')]
+    grdQ_cols = [_ for _ in hist.columns if _.endswith('grd_Q')]
     grdP_cols.sort()
     grdQ_cols.sort()
     if grd_type == 0:
@@ -1572,8 +1572,8 @@ def make_anim(h, start=0, end=-1, grad=False, lngrad=False):
     ver1b = ax1.axvline(s0, 0, 1, color='grey', zorder=-1, ls='--')
     ver2b = ax1.axvline(-s0, 0, 1, color='grey', zorder=-1, ls='--')
 
-    grdP_cols = [_ for _ in h.cols if _.endswith('grd_P')]
-    grdQ_cols = [_ for _ in h.cols if _.endswith('grd_Q')]
+    grdP_cols = [_ for _ in h.columns if _.endswith('grd_P')]
+    grdQ_cols = [_ for _ in h.columns if _.endswith('grd_Q')]
     grdP_cols.sort()
     grdQ_cols.sort()
     if grad:

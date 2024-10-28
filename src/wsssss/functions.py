@@ -185,11 +185,11 @@ def get_radius(p, unit='cm'):
 
 
 def get_m_bot_CZ(hist, mask=None):
-    if 'm_botCZ' in hist.cols:
+    if 'm_botCZ' in hist.columns:
         return hist.get('m_botCZ', mask=mask)
     m_bot_CZ = np.zeros_like(hist.get('star_mass', mask=mask))
     n_mix = 0
-    for col in hist.cols:
+    for col in hist.columns:
         if col.startswith('mix_qtop'):
             n_mix += 1
     for i in range(n_mix):
@@ -297,9 +297,9 @@ def get_sgb_mask_old(hist, min_dmhecore_dlnt=0.05, min_Xc=1e-3, max_logT_lim=3.8
     if np.any(ms_mask):
         min_mod = hist.data.model_number[ms_mask][-1]
     else:
-        if 'center_Rho' in hist.cols:
+        if 'center_Rho' in hist.columns:
             center_Rho = hist.get('center_Rho')
-        elif 'log_center_Rho' in hist.cols:
+        elif 'log_center_Rho' in hist.columns:
             center_Rho = 10 ** hist.get('log_center_Rho')
         if np.log10(center_Rho[0]) >= 3.5:  # starts during or after SGB
             return np.zeros_like(ms_mask, dtype=bool)
@@ -350,9 +350,9 @@ def get_sgb_mask(hist, min_Xc=1e-3, fCZ=0.35):
     if np.any(ms_mask):
         min_mod = hist.data.model_number[ms_mask][-1]
     else:
-        if 'center_Rho' in hist.cols:
+        if 'center_Rho' in hist.columns:
             center_Rho = hist.get('center_Rho')
-        elif 'log_center_Rho' in hist.cols:
+        elif 'log_center_Rho' in hist.columns:
             center_Rho = 10 ** hist.get('log_center_Rho')
         if np.log10(center_Rho[0]) >= 3.5:  # starts during or after SGB
             return np.zeros_like(ms_mask, dtype=bool)
