@@ -62,8 +62,7 @@ def compare_version(version1, version2, operator='<'):
 
 
 def get_constants(p_or_hist):
-    if 'version' in p_or_hist.header.keys():
-        version = str(p_or_hist.header['version'])
+    version = str(p_or_hist.header['version_number'])
 
     if version < '15140':
         return pre15140
@@ -695,13 +694,13 @@ def get_bottom_envelope(p, indeces_only=False):
     else:
         prefix = 'pre'
     mix_type = np.array(list(map(mix_dict['merged'].get, map(mix_dict[f'{prefix}15140'].get, mix_type))))
-    mix_OS = mix_type == 103  # OS
-    mix_CV = mix_type == 101  # convective
+    mix_OS = mix_type == mix_dict['merged']['overshoot_mixing']  # OS
+    mix_CV = mix_type == mix_dict['merged']['convective_mixing']  # convective
     temp_mask = (temperature[1:] > p.header['Teff'] * 2)
     radiative = False
     try:
         bottom_of_CZ = np.where(mix_CV[:-1] & mix_OS[1:] & temp_mask)[0][0]
-        bottom_of_US = np.where(mix_OS[:-1] & (mix_type[1:] != 101) & (mix_type[1:] != 103) & temp_mask)[0][0]
+        bottom_of_US = np.where(mix_OS[:-1] & (mix_type[1:] != mix_dict['merged']['convective_mixing']) & (mix_type[1:] != mix_dict['merged']['overshoot_mixing']) & temp_mask)[0][0]
     except IndexError:
         radiative = True
         bottom_of_CZ = 0
@@ -725,11 +724,11 @@ def get_bottom_envelope(p, indeces_only=False):
 
 def get_lamb2(p, l=1):
     if 'lamb_S2' in p.columns:
-        lamb2 = p.data.lamb_S2
+        lamb2 = p.data.lamb_S2 * (l * (l + 1) / 2)
     elif 'lamb_Sl1' in p.columns:
-        lamb2 = (p.data.lamb_Sl1 / (1e6 / (2 * np.pi))) ** 2 * l * (l + 1) / 2  # l part to convert from l=1 to l=l
+        lamb2 = (p.data.lamb_Sl1 / (1e6 / (2 * np.pi))) ** 2 * (l * (l + 1) / 2)  # l part to convert from l=1 to l=l
     else:
-        radius = get_radius(p)
+        radius = get_radius(p, unit='cm')
         lamb2 = l * (l + 1) * (p.data.csound / radius) ** 2
     return lamb2
 
