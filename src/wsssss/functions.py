@@ -151,6 +151,7 @@ def calc_logQ(prof):
 
 
 def get_logTeffL(hist, mask=None):
+    teff_sun = get_constants(hist).teffsun
     if 'log_Teff' in hist.columns:
         logTeff = hist.get('log_Teff')
     elif 'effective_T' in hist.columns:
@@ -168,7 +169,7 @@ def get_logTeffL(hist, mask=None):
         if 'photosphere_r' in hist.columns:
             print('Calculating logL from Teff and R_photosphere.')
             R = hist.get('photosphere_r')
-            logL = 2 * np.log10(R) + 4 * logTeff - 4 * np.log10(5777)
+            logL = 2 * np.log10(R) + 4 * logTeff - 4 * np.log10(teff_sun)
         else:
             raise ValueError('log_L, luminosity, or photosphere_L not in history file.')
     mask = get_mask(hist, mask)
