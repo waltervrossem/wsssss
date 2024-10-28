@@ -352,7 +352,7 @@ def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
     elif xname == 's':
         if hist is None:
             raise ValueError("Need History for xname='s'.")
-        i_hist = uf.prof2i_hist(p, hist)[0][0]
+        i_hist = p.get_hist_index(hist)
         r1 = hist.data.r_1[i_hist]
         r2 = hist.data.r_2[i_hist]
         r0 = np.sqrt(r1 * r2)

@@ -196,7 +196,7 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
     lamb2 = uf.get_lamb2(p)
 
     if hist is not None:
-        i_hist = uf.prof2i_hist(p, hist)[0][0]
+        i_hist = p.get_hist_index(hist)
 
     if 'scale_height' in p.columns:
         H = p.data.scale_height * c.rsun
@@ -377,7 +377,7 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
         if hist is None:
             raise ValueError("Need History for xname='s'.")
         else:
-            i_hist = uf.prof2i_hist(p, hist)[0][0]
+            i_hist = p.get_hist_index(hist)
             r1 = hist.data.r_1[i_hist]
             r2 = hist.data.r_2[i_hist]
         r0 = np.sqrt(r1 * r2)
@@ -1113,7 +1113,7 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
                            x_lims=(1e-3, 0.5), prop_kwargs={}, inertia_kwargs={}):
     f, axes = plt.subplot_mosaic([list('AAADD'), list('BBBDD'), list('CCC..')])
     axes['A'].get_shared_x_axes().join(axes['A'], axes['B'], axes['C'])
-    i_hist = uf.prof2i_hist(prof, hist)[0][0]
+    i_hist = prof.get_hist_index(hist)
     if eig_y_lims is None:
         eig_y_lims = ((None, None), (None, None))
 
@@ -1186,7 +1186,7 @@ def check_approx_PQ(hist, prof, xname='s', linear_grad=False, axes=None, same_co
             raise ValueError('`axes` must contain 2 axes.')
         f = axes[0].figure
 
-    i_hist = uf.prof2i_hist(prof, hist)[0][0]
+    i_hist = prof.get_hist_index(hist)
     me = np.zeros_like(prof.get('radius'), dtype=bool)
     k_P = int(hist.data.k_P[i_hist] - 1)
     k_Q = int(hist.data.k_Q[i_hist] - 1)
@@ -1421,7 +1421,7 @@ def check_smoothing(prof, hist, axes=None, xname='s', return_raw=False, annotate
     ax = axes[0]
     ax1 = axes[1]
 
-    i_hist = uf.prof2i_hist(prof, hist)[0][0]
+    i_hist = prof.get_hist_index(hist)
     if annotate:
         text = f.text(0, 1, f'mnum={hist.data.model_number[i_hist]: 6}\n'
                             f'qs  ={hist.data.coupling_strong[i_hist]:5g}\n',
@@ -1680,7 +1680,7 @@ def make_prop_centered_r0(p, hist):
 
     l = 1
 
-    i_hist = uf.prof2i_hist(p, hist)[0][0]
+    i_hist = p.get_hist_index(hist)
     nu_max = hist.data.nu_max[i_hist]
     delta_nu = hist.data.delta_nu[i_hist]
     r_bCZ = hist.get('r_botCZ')[i_hist]

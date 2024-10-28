@@ -58,6 +58,8 @@ class TestLoadData(unittest.TestCase):
 
         prof = ld.Profile(os.path.join(test_data, '0000', 'LOGS', 'profile1.data'), load_GyreProfile=True)
 
+        self.assertEqual(prof.get_hist_index(hist), 0)
+
     def test_GyreSummary(self):
         gsum = ld.GyreSummary(os.path.join(test_data, '0000', 'gyre_out', 'profile10.data.GYRE.sgyre_l'))
         self.assertEqual(7, len(gsum.data[gsum.data['l'] == 0]))

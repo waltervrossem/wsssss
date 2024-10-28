@@ -137,11 +137,6 @@ def signed_log10(q):
     return np.sign(q) * np.log10(np.maximum(np.abs(q), 1))
 
 
-def prof2i_hist(prof, hist):
-    mod = prof.header['model_number']
-    return np.argwhere(hist.get('model_number') == mod)
-
-
 def calc_logQ(prof):
     return prof.get('logRho') - 2 * prof.get('logT') + 12
 

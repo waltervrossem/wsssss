@@ -401,6 +401,10 @@ class Profile(_Mesa):
         return 'MESA profile data file at {}'.format(self.path) + '\n' + str(
             {key: self.header[key] for key in try_to_get if key in self.header.keys()})
 
+    def get_hist_index(self, hist):
+        mod = self.header['model_number']
+        return np.argwhere(hist.get('model_number') == mod)[0][0]
+
 
 class _Gyre(_Data):
 
