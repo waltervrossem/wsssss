@@ -102,6 +102,16 @@ mix_dict = {'pre15140': {0: 'no_mixing',
                        'anonymous_mixing': 109},
             }
 
+def convert_mixing_type(mix_type, version, unknown_mixing=100):
+    if compare_version(version, '15140', '>='):
+        pre_post = 'post'
+    else:
+        pre_post = 'pre'
+    key = f'{pre_post}15140'
+    mix_names = np.vectorize(mix_dict[key].__getitem__)(mix_type)
+    return np.vectorize(mix_dict['merged'].get)(mix_names, unknown_mixing)
+
+
 
 def stackdiff(x1, x2):
     return np.diff(np.hstack((x1, x2)))
@@ -195,7 +205,9 @@ def get_m_bot_CZ(hist, mask=None):
     for i in range(n_mix):
         i += 1
         m_bot_CZ = np.maximum(m_bot_CZ,
-                              hist.get(f'mix_qtop_{i}', mask=mask) * (hist.get(f'mix_type_{i}', mask=mask) == 3))
+                              hist.get(f'mix_qtop_{i}', mask=mask) *
+                              (convert_mixing_type(hist.get(f'mix_type_{i}', mask=mask), hist.header['version']) ==
+                               mix_dict['merged']['overshoot_mixing']))
     return m_bot_CZ
 
 
