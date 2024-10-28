@@ -249,6 +249,7 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
 
     xfactor = 0.07 / 4 * yw / xw
 
+    # at this scale doesn't matter which constants are used
     const = 4 * np.pi * post15140.boltz_sigma / post15140.lsun * post15140.rsun ** 2
     log_const = np.log10(const)
     logTs = np.linspace(0, 6, 2)

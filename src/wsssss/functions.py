@@ -481,8 +481,7 @@ def get_agb_mask(hist):
 
 
 mask_functions = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_bump_mask, get_tip_mask, get_flashes_mask,
-                  get_cheb_mask,
-                  get_rc_mask, get_agb_mask]
+                  get_cheb_mask, get_rc_mask, get_agb_mask]
 mask_names = ['PMS', 'MS', 'SGB', 'RGB', 'RGBb', 'RGB tip', 'He flashes', 'CHeB', 'RC', 'post-CHeB']
 
 
