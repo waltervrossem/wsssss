@@ -112,11 +112,6 @@ def convert_mixing_type(mix_type, version, unknown_mixing=100):
     return np.vectorize(mix_dict['merged'].get)(mix_names, unknown_mixing)
 
 
-
-def stackdiff(x1, x2):
-    return np.diff(np.hstack((x1, x2)))
-
-
 def cell2face(val, dm, dm_is_m=False, m_center=0):
     if dm_is_m:
         dm = np.diff(dm, append=m_center)
@@ -743,21 +738,6 @@ def get_lamb2(p, l=1):
         radius = get_radius(p, unit='cm')
         lamb2 = l * (l + 1) * (p.data.csound / radius) ** 2
     return lamb2
-
-
-def calc_r0line_fCZ(freq, r, Nred, Sred, r_bCZ):  # assumes well behaved Nred, Sred
-    fNred = ip.interp1d(Nred, r, bounds_error=False)
-    fSred = ip.interp1d(Sred, r, bounds_error=False)
-
-    r1 = fSred(freq)
-    r2 = fNred(freq)
-    r0 = np.sqrt(r1 * r2)
-    s0 = 0.5 * (np.log(r1) - np.log(r2))
-    f_CZ = (s0 - np.log(r_bCZ / r0)) / (2 * s0)
-    f_CZ = np.minimum(f_CZ, 1)
-    f_CZ = np.maximum(f_CZ, 0)
-    return r0, f_CZ
-
 
 
 def calc_FeH(hist, ZX_sol=0.0178, use_mask=None):
