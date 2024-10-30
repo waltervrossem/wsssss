@@ -184,8 +184,8 @@ def get_m_bot_CZ(hist, mask=None):
     for i in range(n_mix):
         i += 1
         m_bot_CZ = np.maximum(m_bot_CZ,
-                              hist.get(f'mix_qtop_{i}', mask=mask) *
-                              (convert_mixing_type(hist.get(f'mix_type_{i}', mask=mask), hist.header['version']) ==
+                              hist.get('star_mass', mask=mask) * hist.get(f'mix_qtop_{i}', mask=mask) *
+                              (convert_mixing_type(hist.get(f'mix_type_{i}', mask=mask), hist.header['version_number']) ==
                                mix_dict['merged']['overshoot_mixing']))
     return m_bot_CZ
 
