@@ -349,11 +349,7 @@ def get_sgb_mask(hist, min_Xc=1e-3, fCZ=0.35):
             return np.zeros_like(ms_mask, dtype=bool)
         min_mod = hist.data.model_number[0]
 
-    try:
-        mask = hist.data.m_botCZ / hist.data.star_mass <= (1 - fCZ)
-    except AttributeError:
-        m_bot_CZ = get_m_bot_CZ(hist)
-        mask = m_bot_CZ / hist.data.star_mass <= (1 - fCZ)
+    mask = get_m_bot_CZ(hist) / hist.data.star_mass <= (1 - fCZ)
     mask = mask & (hist.data.model_number > min_mod)
     max_mod = hist.data.model_number[mask][0]
 
