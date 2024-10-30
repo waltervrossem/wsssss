@@ -124,26 +124,6 @@ def cell2face(val, dm, dm_is_m=False, m_center=0):
     return face
 
 
-def dlog10y_dlog10x(y, x):
-    return np.gradient(np.log10(y)) / np.gradient(np.log10(x))
-
-
-def dy_dx(y, x):
-    return np.gradient(y) / np.gradient(x)
-
-
-def dlog10y_dx(y, x):
-    return np.gradient(np.log10(y)) / np.gradient(x)
-
-
-def dy_dlog10x(y, x):
-    return np.gradient(y) / np.gradient(np.log10(x))
-
-
-def signed_log10(q):
-    return np.sign(q) * np.log10(np.maximum(np.abs(q), 1))
-
-
 def calc_logQ(prof):
     return prof.get('logRho') - 2 * prof.get('logT') + 12
 
