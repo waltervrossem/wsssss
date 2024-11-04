@@ -114,8 +114,8 @@ qconv  = ev2erg*1.0E6*avo
 boltz_sigma  = 5.670400E-5
 """boltzmann's sigma #  crad*clight/4 (erg cm^-2 K^-4 s^-1)"""
 
-crad  = boltz_sigma*4/clight, 7.5657673816464059E-15
-"""radiation density constant, a (erg cm^-3 K^-4)# Prad  #  crad * T^4 / 3"""
+crad  = boltz_sigma*4/clight
+"""radiation density constant, a (erg cm^-3 K^-4)# Prad  crad * T^4 / 3"""
 
 sige = 6.6524587158E-025
 """Thomson scattering electron cross section"""

@@ -52,6 +52,8 @@ for i, line in enumerate(lines):
     # Needed for 11701 constants
     if line == 'sige  = electron cross section for Thomson scattering':
         new_line = 'sige = 6.6524587158d-025 # Thomson scattering electron cross section'
+    elif line == 'crad  = boltz_sigma*4/clight, 7.5657673816464059d-15 # radiation density constant, a (erg cm^-3 K^-4)# Prad  = crad * T^4 / 3':
+        new_line = 'crad  = boltz_sigma*4/clight # radiation density constant, a (erg cm^-3 K^-4)# Prad  = crad * T^4 / 3'
     if line.count('=') == 0:
         parts = line.split(' ')
         new_line = f'{parts[0]} = {parts[2]} # ' + ' '.join(parts[3:])
