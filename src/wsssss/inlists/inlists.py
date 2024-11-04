@@ -7,6 +7,7 @@ import f90nml
 import numpy as np
 
 from ..functions import get_mesa_version, compare_version
+from ..constants import post15140 as const
 
 parser = f90nml.Parser()
 parser.global_start_index = 1
@@ -81,9 +82,11 @@ def _evaluate_inlist(inlist, inlist_dir):
         out[kind] = dict(inlist[kind])
 
     if key_type == 'old':
+        max_extra_inlists = 5  # Hard coded in MESA
         read_extra = 'read_extra_{}_inlist{}'
         read_extra_filename = 'extra_{}_inlist{}_name'
     else:
+        max_extra_inlists = const.max_extra_inlists
         read_extra = 'read_extra_{}_inlist({})'
         read_extra_filename = 'extra_{}_inlist_name({})'
 
@@ -93,7 +96,7 @@ def _evaluate_inlist(inlist, inlist_dir):
             continue
         to_read[kind] = []
 
-        for i in range(5):
+        for i in range(max_extra_inlists):
             key = read_extra.format(kind, i+1)
             if key in inlist[kind].keys():
                 if inlist[kind][key]:
