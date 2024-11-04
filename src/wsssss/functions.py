@@ -64,7 +64,7 @@ def compare_version(version1, version2, operator='<'):
 def get_constants(p_or_hist):
     version = str(p_or_hist.header['version_number'])
 
-    if version < '15140':
+    if compare_version(version, '15140', '<'):
         return pre15140
     else:
         return post15140
