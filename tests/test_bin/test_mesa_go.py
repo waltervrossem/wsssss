@@ -60,8 +60,8 @@ class TestMesaGO(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        # if os.path.isdir(cls.base_grid_dir):
-        #     shutil.rmtree(f'{cls.base_grid_dir}')
+        if os.path.isdir(cls.base_grid_dir):
+            shutil.rmtree(f'{cls.base_grid_dir}')
         os.chdir(cls.init_dir)
 
     def check_output(self):
