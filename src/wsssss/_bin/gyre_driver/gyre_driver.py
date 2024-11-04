@@ -14,6 +14,9 @@ from scipy.integrate import trapezoid as trapz
 
 np.seterr(all='ignore')
 
+if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
+    import wsssss
+    __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
 print(__file__)
 
 _version = '0.1.1'
@@ -157,7 +160,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
     """Create the gyre inlist."""
 
     reduced_name = model_name.name
-    gyre_adin = gyre_adin_template + reduced_name + f'_l{l}' + suffix
+    gyre_adin = args.gyre_adin_template + reduced_name + f'_l{l}' + suffix
     summary_file = summary_path(model_name, l, suffix, args)
     if args.out_dir == '':
         mode_name_base = model_name
@@ -291,7 +294,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
 def run_gyre(model_name, l, suffix, args):
     """Run gyre an instance of gyre."""
     reduced_name = model_name.name
-    gyre_adin = gyre_adin_template + reduced_name + f'_l{l}' + suffix
+    gyre_adin = args.gyre_adin_template + reduced_name + f'_l{l}' + suffix
     summary_file = summary_path(model_name, l, suffix, args)
 
     gyre_exec = get_gyre(args, True)[0]
@@ -662,7 +665,9 @@ def check_args(args):
     checked_gyre = get_gyre(args, True, True)[1]
     args.gyre = checked_gyre
 
-    return args, gyre_adin_template, original_gyre
+    args.gyre_adin_template = gyre_adin_template
+    args.original_gyre = original_gyre
+    return args
 
 
 def get_parser():
@@ -711,12 +716,12 @@ def get_parser():
     return parser
 
 
-def run():
-    args = " ".join(sys.argv[1:])
-    return os.system(f'python {__file__} {args}')
 
 
 if __name__ == '__main__':
+    run()
+
+def run():
     t_start = time.time()
     cwd = os.getcwd()
 
@@ -764,7 +769,7 @@ if __name__ == '__main__':
         os.environ.update(environ_used)
     environ_used = os.environ.copy()
 
-    args, gyre_adin_template, original_gyre = check_args(args)
+    args = check_args(args)
 
     if args.verbose:
         print('Processed inputs:')
@@ -784,9 +789,9 @@ if __name__ == '__main__':
     t_taken = t_end - t_start
     print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
 
-    if original_gyre != args.gyre:
+    if args.original_gyre != args.gyre:
         print('###################################################################')
-        print(f'Could not find the required gyre version `{original_gyre}` in $GYRE_DIR.\n'
+        print(f'Could not find the required gyre version `{args.original_gyre}` in $GYRE_DIR.\n'
               f'Used gyre version `{args.gyre}` instead.')
         print('###################################################################')
         print()
@@ -794,3 +799,4 @@ if __name__ == '__main__':
     # Reset to the old environment variables.
     os.environ.clear()
     os.environ.update(environ_original)
+    return 0

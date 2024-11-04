@@ -117,7 +117,7 @@ def get_timedelta(lines):
     return timedelta
 
 
-def get_mesa_termcode(sub_dir):
+def get_mesa_termcode(sub_dir, args):
     out_file = os.path.join(args.grid_dir, sub_dir, args.out_file).format(sub_dir)
     if os.path.exists(out_file):
         with open(out_file, 'r') as handle:
@@ -133,7 +133,7 @@ def get_mesa_termcode(sub_dir):
     return sub_dir, term_code
 
 
-def get_slurm_stats(stats_lines):
+def get_slurm_stats(stats_lines, args):
     info_dict = {}
     if args.no_slurm:
         info_dict['jobid'] = ''
@@ -224,12 +224,12 @@ def invert_dict(dct, reference_key, filter_dct_keys=None, reverse_filter=False, 
     return out_dict
 
 
-def run():
-    args = " ".join(sys.argv[1:])
-    return os.system(f'python {__file__} {args}')
 
 
 if __name__ == "__main__":
+    run()
+
+def run():
     parser = get_parser()
     args = parser.parse_args()
 
@@ -282,7 +282,7 @@ if __name__ == "__main__":
         else:
             with open(slurm_stats_file, 'r') as handle:
                 lines = handle.readlines()
-        _ = get_slurm_stats(lines)
+        _ = get_slurm_stats(lines, args)
         jobid = _['jobid']
         taskjob = _['taskjob']
         taskid = _['taskid']
@@ -307,7 +307,7 @@ if __name__ == "__main__":
 
     for subdir in args.subdirs:
         hist_path = os.path.join(args.grid_dir, subdir, f'LOGS/{args.history_file.format(subdir, subdir)}')
-        mesa_termcode = get_mesa_termcode(subdir)[1]
+        mesa_termcode = get_mesa_termcode(subdir, args)[1]
         if os.path.exists(hist_path) and (mesa_termcode != 'NotRun'):
             data = read_hist_first_last_row(hist_path)
             run_info[subdir]['mesa_termcode'] = mesa_termcode
@@ -478,3 +478,4 @@ if __name__ == "__main__":
 
         with open(os.path.join(args.grid_dir, 'grid_restart'), 'w') as f:
             f.writelines((' '.join(line) + '\n' for line in grid_restart_photos))
+    return 0

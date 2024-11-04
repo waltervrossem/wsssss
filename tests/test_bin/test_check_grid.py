@@ -18,7 +18,7 @@ class TestCheckGrid(unittest.TestCase):
 
     def test_check_grid(self):
         os.chdir(test_data)
-        output = subprocess.run(['check-grid', '--no-slurm --out-file ../out_{}'], stdout=subprocess.PIPE)
+        output = subprocess.run(['check-grid', '--no-slurm',  '--out-file', '../out_{}'], stdout=subprocess.PIPE)
 
         expected = ("--------------------------------------------\n"
                     "  termination_code                   count\n"

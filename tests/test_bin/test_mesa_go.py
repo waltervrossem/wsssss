@@ -60,13 +60,13 @@ class TestMesaGO(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if os.path.isdir(cls.base_grid_dir):
-            shutil.rmtree(f'{cls.base_grid_dir}')
+        # if os.path.isdir(cls.base_grid_dir):
+        #     shutil.rmtree(f'{cls.base_grid_dir}')
         os.chdir(cls.init_dir)
 
     def check_output(self):
         os.chdir(self.grid_dir)
-        output = subprocess.run(['check-grid', '--no-slurm --out-file ../out_{}'], stdout=subprocess.PIPE)
+        output = subprocess.run(['check-grid', '--no-slurm', '--out-file', '../out_{}'], stdout=subprocess.PIPE)
 
         expected = ("--------------------------------------------\n"
                     "  termination_code                   count\n"
@@ -78,7 +78,7 @@ class TestMesaGO(unittest.TestCase):
         self.assertEqual(expected, out_str)
 
     def test_mesago(self):
-        sys.argv[1] = '--cmd-pre "touch pre" --cmd-post "touch post"'
+        sys.argv = ['mesa-go', '--verbose', '--cmd-pre', 'touch pre', '--cmd-post', 'touch post']
         ierr = mesa_go.run()
         if ierr != 0:
             raise SystemError(ierr)
@@ -93,7 +93,7 @@ class TestMesaGO(unittest.TestCase):
             self.assertEqual(131, len(lines))
 
     def test_mesago_each(self):
-        sys.argv[1] = '--cmd-pre-each "cp ../../test_mesago/0000/star ./; touch preeach" --cmd-post-each "touch posteach"'
+        sys.argv = ['mesa-go', '--verbose', '--cmd-pre-each', 'cp ../../test_mesago/0000/star ./; touch preeach', '--cmd-post-each', 'touch posteach']
         ierr = mesa_go.run()
         if ierr != 0:
             raise SystemError(ierr)
@@ -110,7 +110,7 @@ class TestMesaGO(unittest.TestCase):
             self.assertEqual(131, len(lines))
 
     def test_mesago_restart(self):
-        sys.argv[1] = '--restart'
+        sys.argv = ['mesa-go', '--verbose', '--restart']
         for dirname in self.grid.dirnames:
             os.makedirs(f'{self.grid_dir}/{dirname}/photos/')
             shutil.copy2(os.path.join(self.base_grid_dir, 'test_mesago', dirname, 'photos/x008'),
