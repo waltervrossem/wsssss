@@ -17,6 +17,28 @@ class MesaGrid:
     def __init__(self, mesa_dir='', inlist_filename='inlist', starjob_filename='inlist_project',
                  controls_filename='inlist_project', eos_filename='inlist_project', kap_filename='inlist_project',
                  pgstar_filename='inlist_project'):
+        """
+        `MesaGrid` class which contains all inlist settings for a grid.
+
+        Args:
+            mesa_dir (str): ``$``MESA_DIR`` root directory to be used with this grid.
+            inlist_filename (str, optional): Defaults to 'inlist'.
+            starjob_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
+            controls_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
+            eos_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
+            kap_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
+            pgstar_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
+
+        Attributes:
+            star_job (dict): Options for ``star_job``.
+            controls (dict): Options for ``controls``.
+            pgstar (dict): Options for ``pgstar``.
+            kap (dict): Options for ``kap``. Only exists if `mesa_dir` version is later than or equal to 15140.
+            eos (dict): Options for ``eos``. Only exists if `mesa_dir` version is later than or equal to 15140.
+
+        Todo:
+            * Add astero namelist and include in tests.
+        """
 
         if inlist_filename in [starjob_filename, controls_filename, eos_filename, kap_filename, pgstar_filename]:
             raise ValueError(
@@ -48,6 +70,9 @@ class MesaGrid:
         self.controls = {f'{non_mesa_key_start}filename': controls_filename,
                          f'{non_mesa_key_start}type': 'controls',
                          f'{non_mesa_key_start}group_unpack': []}
+        # self.astero = {f'{non_mesa_key_start}filename': astero_filename,
+        #                  f'{non_mesa_key_start}type': 'astero',
+        #                  f'{non_mesa_key_start}group_unpack': []}
         if self.separate_eoskap:
             self.eos = {f'{non_mesa_key_start}filename': eos_filename,
                         f'{non_mesa_key_start}type': 'eos',
@@ -89,41 +114,91 @@ class MesaGrid:
         return s
 
     def add_file(self, path):
-        """Add a file which will be copied into each grid directory."""
+        """
+        Add a file which will be copied into each run directory.
+
+        Args:
+            path (str): Path to file to be added to every run directory.
+        """
         if os.path.isfile(path):
             self.extra_files.append(path)
         else:
             raise FileNotFoundError(f'{path} is not a file.')
 
-    def add_inlist_option_file_check(self, namelist, filename):
-        """Check that the `filename` is in a grid directory."""
-        if namelist not in self.namelists:
-            raise ValueError(f'`namelist` {namelist} must be one of {", ".join(self.namelists)}.')
-        self.inlist_option_files_to_validate.append((namelist, filename))
-
     def add_dir(self, path):
-        """Add a directory which will be copied into each grid directory."""
+        """
+        Add a directory which will be copied into each run directory.
+
+        Args:
+            path (str): Path to directory to be added to every run directory.
+        """
         if os.path.isdir(path):
             self.extra_dirs.append(path)
         else:
             raise NotADirectoryError(f'{path} is not a directory.')
 
+    def add_inlist_option_file_check(self, namelist, option):
+        """
+        Add a check that the file specified in the `namelist[option]` must exist in each run directory,
+        e.g. controls['history_columns_filename'], which is included by default as well as ``profile_columns_filename``.
+
+        Args:
+            namelist (str):
+            option (str):
+
+        """
+        if namelist not in self.namelists:
+            raise ValueError(f'`namelist` {namelist} must be one of {", ".join(self.namelists)}.')
+        self.inlist_option_files_to_validate.append((namelist, option))
+
     def set_inlist_finalize_function(self, function):
-        """Set the function which is applied to all unpacked namelists.
-        Each namelist will have the `type` key to identify its type."""
+        """
+        Set the function which is applied to all unpacked namelists.
+        Each namelist will have the `type` key to identify its type.
+
+        The function must accept a single `namelist` and return a single `namelist`.
+
+        Args:
+            function (function):
+
+        """
         self.inlist_finalize_function = function
 
     def set_griddir_finalize_function(self, function):
-        """Set the function which is called in each grid directory."""
+        """
+        Set the function which is called in each grid directory.
+
+        Args:
+            function (function):
+
+        """
         self.griddir_finalize_function = function
 
+    def set_name_function(self, function):
+        """
+        Set the function which is used to generate the name of each run directory.
+        It recieves a fully unpacked inlist (dict of dicts) and returns a string.
+        It should generate a unique name for each inlist.
+
+        Args:
+            function (function):
+
+        """
+        self.name_funcion = function
+
     def create_grid(self, grid_path):
-        """Create a grid for MESA in `grid_path`."""
+        """
+        Create the MESA grid in `grid_path`. The inlist options are validated and extra files and directories copied to
+        each run directory.
+        Args:
+            grid_path: Path to grid directory.
+
+        """
         self.validate_inlists()
 
         self.unpack_inlists()
 
-        self.check_copy(grid_path)
+        self.check_copy()
 
         self._setup_directories(grid_path)
 
@@ -141,7 +216,13 @@ class MesaGrid:
         self.validate_files(grid_path)
 
     def validate_inlists(self, mesa_dir=None):
-        """Check if all options in the inlists are valid MESA keys."""
+        """
+        Check if all options in the inlists are valid MESA keys.
+
+        Args:
+            mesa_dir (str, optional): MESA root directory to check against. Defaults to None, which will use ``$MESA_DIR``.
+
+        """
         # Check if all extra namelists filenames are unique and different from the main inlist name.
         for namelist in self.namelists:
             read_extra_names = []
@@ -176,7 +257,7 @@ class MesaGrid:
             mesa_dir = self.mesa_dir
         available_options = {}
         for namelist in self.namelists:
-            available_options[namelist] = self._get_available_options(f'{mesa_dir}/{defaults[namelist]}')
+            available_options[namelist] = self._get_available_options(f'{mesa_dir}/{defaults[namelist]}')  # TODO: replace with inlists.get_mesa_defaults
 
         # Find which options are not in MESA options.
         failed_options = {}
@@ -202,9 +283,14 @@ class MesaGrid:
             raise KeyError(s)
 
     def validate_files(self, grid_path):
+        """
+        Check if all specified files are accounted for.
+        Args:
+            grid_path (str): Grid directory.
+        """
 
         file_not_found = []
-        # Check for history/profile column files.
+
         for i, dirname in enumerate(self.dirnames):
             run_dir = os.path.join(grid_path, dirname)
             inlist = evaluate_inlist(os.path.join(run_dir, self.inlist[f'{non_mesa_key_start}filename']))
@@ -224,6 +310,14 @@ class MesaGrid:
             raise FileNotFoundError(s)
 
     def _get_available_options(self, path):
+        """
+        TODO: Replace with inlists.get_mesa_defaults
+        Args:
+            path:
+
+        Returns:
+
+        """
         with open(path, 'r') as handle:
             lines = handle.readlines()
         lines = [_.strip() for _ in lines]
@@ -233,8 +327,12 @@ class MesaGrid:
         lines = [_.replace('(:)', '') for _ in lines]
         return lines
 
-    def check_copy(self, grid_path):
-        """Check if all files specified exists."""
+    def check_copy(self):
+        """
+        Check if all files and directories which are to be copied exist.
+
+        """
+
         file_not_found = []
         for fpath in self.extra_files:
             if not os.path.isfile(fpath):
@@ -259,6 +357,10 @@ class MesaGrid:
             raise FileNotFoundError(s)
 
     def unpack_inlists(self):
+        """
+        Unpack all inlists. Will place them in the `unpacked` attribute as a tuple.
+
+        """
         generators = []
         for namelist in ['inlist', *self.namelists]:
             generators.append(self._make_inlist_generator(self.__dict__[namelist]))
@@ -276,6 +378,12 @@ class MesaGrid:
         Create a generator which yields all unique inlists with all combinations of any lists, tuples, or numpy arrays of length greater than 1.
         Can handle groups of variables which must change together by appending a list of `dict`s in the `group_unpack` key. If multiple lists of
         `dict`s are appended, they are treated as separate variables.
+        Args:
+            inlist_dict (dict):
+
+        Yields:
+            dict: Unpacked inlist.
+
         """
 
         if inlist_dict[f'{non_mesa_key_start}type'] == 'master':
@@ -344,6 +452,13 @@ class MesaGrid:
             yield new_inlist
 
     def _setup_directories(self, grid_path):
+        """
+        Create the directory structure for a grid at ``grid_path``.
+
+        Args:
+            grid_path (str): Path which will contain the grid.
+
+        """
         num_unpacked = len(self.unpacked)
         self.dirnames = []
         if self.name_funcion is None:
@@ -354,6 +469,8 @@ class MesaGrid:
         else:
             for i in range(num_unpacked):
                 dirname = self.name_funcion(self.unpacked[i])
+                if dirname in self.dirnames:
+                    raise ValueError(f'`dirname` {dirname} has already been generated.')
                 self.dirnames.append(dirname)
         self.dirnames = tuple(self.dirnames)
 
@@ -368,6 +485,13 @@ class MesaGrid:
             os.makedirs(os.path.join(grid_path, dirname))
 
     def _write_inlists(self, grid_path):
+        """
+        Write the unpacked inlists to ``grid_path`` in their respective directories.
+
+        Args:
+            grid_path (str): Path which will contain the grid.
+
+        """
         for i, dirname in enumerate(self.dirnames):
             dirpath = os.path.join(grid_path, dirname)
             unpacked = self.unpacked[i]
@@ -383,6 +507,12 @@ class MesaGrid:
     def _generate_inlist_string(self, inlist_dict):
         """
         Generates an inlist string from `inlist_dict`. Which is an unpacked controls etc dict.
+
+        Args:
+            inlist_dict (dict): Dictionary containing a set of inlist options.
+
+        Returns:
+            inlist_str (str): A string representation of ``inlist_dict`` readable by MESA.
         """
         inlist_string = ''
 
@@ -429,9 +559,14 @@ class MesaGrid:
 
         return inlist_string
 
-
-
     def _copy_extra_files_and_dirs(self, grid_path):
+        """
+        Copy extra files and directories specified in ``MesaGrid.extra_files`` and ``MesaGrid.extra_dirs`` to each
+        run directory.
+
+        Args:
+            grid_path:
+        """
         for dirname in self.dirnames:
             dirpath = os.path.join(grid_path, dirname)
             for fpath in self.extra_files:
@@ -442,7 +577,9 @@ class MesaGrid:
                 shutil.copytree(dpath, os.path.join(dirpath, dname))
 
     def summary(self):
-        """Print a summary of which variables change."""
+        """
+        Print a summary of which variables change.
+        """
         raise NotImplementedError()
         if not self.unpacked:
             self.unpack_inlists()

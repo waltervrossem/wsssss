@@ -12,6 +12,7 @@ from ..constants import post15140 as const
 parser = f90nml.Parser()
 parser.global_start_index = 1
 
+# Locations of *.defaults files in $MESA_DIR.
 defaults = {'star_job': 'star/defaults/star_job.defaults',
             'eos': 'eos/defaults/eos.defaults',
             'kap': 'kap/defaults/kap.defaults',
@@ -22,6 +23,17 @@ defaults = {'star_job': 'star/defaults/star_job.defaults',
 
 
 def inlist_diff(dict1, dict2):
+    """
+    Compare two inlists and show which items change or remain the same.
+
+    Args:
+        dict1 (dict):
+        dict2 (dict):
+
+    Returns:
+        dict: Items which remain the same are in ``result['same']``,
+            and those which changed in ``result['changed']``.
+    """
     keys1 = list(dict1.keys())
     keys2 = list(dict2.keys())
 
@@ -53,18 +65,50 @@ def inlist_diff(dict1, dict2):
 
 
 def evaluate_inlist_str(inlist_str, inlist_dir):
+    """
+    Fully evaluate `inlist_str` as if it were written in `inlist_dir`, following all ``read_extra_*_inlist`` if
+    they are ``.true..``.
+
+    Args:
+        inlist_str (str): `str` form of an inlist.
+        inlist_dir (str): Reference directory for reading other files.
+
+    Returns:
+        dict: Evaluated inlist.
+
+    """
     inlist = parser.reads(inlist_str)
     return _evaluate_inlist(inlist, inlist_dir)
 
 
 def evaluate_inlist(path):
+    """
+    Fully evaluate the inlist at `path`, following all ``read_extra_*_inlist`` if they are ``.true..``.
+    Args:
+        path (str): Path to `inlist`.
+
+    Returns:
+        dict: Evaluated inlist.
+
+    """
     inlist = parser.read(path)
     inlist_dir = os.path.dirname(path)
     return _evaluate_inlist(inlist, inlist_dir)
 
 
 def _evaluate_inlist(inlist, inlist_dir):
+    """
+    Fully evaluate `inlist` as if it were written in `inlist_dir`, following all ``read_extra_*_inlist`` if
+    they are ``.true..``.
 
+    Args:
+        inlist (dict): Inlist dictionary.
+        inlist_dir (str): Directory which contains `inlist`.
+
+    Returns:
+        dict: Evaluated inlist.
+
+    """
     out = {}
     key_type = 'old'
     for kind in defaults.keys():
@@ -127,7 +171,13 @@ def _evaluate_inlist(inlist, inlist_dir):
 
 def variable_to_string(value):
     """
-    Takes `value` and makes it compatible for use in an inlist.
+    Convert `value` to a fortran-compatible string. Can be a `string`, `bool`, `int`, or `float`.
+
+    Args:
+        value (str, bool, int, or float): Value to convert.
+
+    Returns:
+        str: Fortran-compatible string.
     """
 
     if type(value) == bool:
@@ -145,6 +195,16 @@ def variable_to_string(value):
 
 
 def write_inlist(inlist, path, header='', mode='w'):
+    """
+    Write the `inlist` to `path`. `header` is prepended to the string which is written. `mode` is passed to ``open``.
+
+    Args:
+        inlist (dict):
+        path (str): Inlist file path.
+        header (str):
+        mode (str): File mode passed to ``open``.
+
+    """
     if header and not header.startswith('!'):
         header = '!' + header
     s = '' + header
@@ -160,6 +220,12 @@ def write_inlist(inlist, path, header='', mode='w'):
         handle.write(s)
 
 def print_dict(to_print):
+    """
+    Print the dict `to_print` with a key and value on every line.
+
+    Args:
+        to_print (dict):
+    """
     for k, v in to_print.items():
         print(f'{k}: {v}')
 
@@ -188,6 +254,15 @@ def compare_inlist(path1, path2, show_same=False):
         print_dict(controls['same'])
 
 def get_mesa_defaults(mesa_dir):
+    """
+    Get the available MESA inlist options for the version of MESA installed in `mesa_dir`.
+
+    Args:
+        mesa_dir (str): ``$``MESA_DIR`` root directory.
+
+    Returns:
+        dict: List of keys for each inlist type (e.g. ``star_job``, ``controls``, etc.).
+    """
     version = get_mesa_version(mesa_dir)
     if compare_version(version, '15140', '>='):
         namelists = ('star_job', 'eos', 'kap', 'controls', 'astero', 'pgstar')
@@ -226,6 +301,17 @@ def get_mesa_defaults(mesa_dir):
 
 
 def check_inlist(path, mesa_dir):
+    """
+    Check whether the options in the inlist at `path` are available in the version of mesa specified in `mesa_dir`.
+    Will try to detect if the options have been moved to ``eos`` or ``kap`` from ``star_job`` or ``controls``.
+
+    Args:
+        path (str): Path to an inlist.
+        mesa_dir (str): ``$``MESA_DIR`` root directory.
+
+    Returns:
+        dict: For each inlist option, states whether it is available in the version of mesa specified in `mesa_dir`.
+    """
     version = get_mesa_version(mesa_dir)
     if compare_version(version, '15140', '>='):
         separate_eoskap = True

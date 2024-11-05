@@ -14,8 +14,14 @@ from .constants import post15140
 from .constants import pre15140
 
 
-class LazyProperty(object):
+class _LazyProperty(object):
     def __init__(self, func):
+        """
+        Lazily load the attribute decorated by this class.
+        Args:
+            func: function
+                Function which returns the property when called.
+        """
         self._func = func
         self.__name__ = func.__name__
         self.__doc__ = func.__doc__
@@ -28,10 +34,21 @@ class LazyProperty(object):
 
 
 class _Data:
-    """Common methods and attributes for History, Profile, and GyreSummary."""
 
     def __init__(self, path, keep_columns='all', save_dill=False, reload=False, verbose=False,
                  nanval=-1e99, nanclip=None):
+        """
+        Common methods and attributes for History, Profile, and GyreSummary.
+
+        Args:
+            path (str): Path to the MESA history data file. If ending with `.dill`, will strip it and set that as `path`.
+            keep_columns (list of str, optional): Which columns of the history data file to keep.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+            reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
+            verbose (bool, optional): Print extra information.
+            nanval (float, optional): Set all values equal to this to NaN.
+            nanclip (2 floats, optional): Set all values outside this range to NaN.
+        """
         self.path = os.path.abspath(path)
         if os.path.isfile(self.path):
             self.fname = os.path.basename(self.path)
@@ -99,16 +116,17 @@ class _Data:
 
     def __getitem__(self, mask):
         new_self = copy.copy(self)
-        # new_self.data = self.data[mask]
         new_self.data = self._discard_rows_rec_array(self.data, mask)
-        mnum0, mnum1 = self.data.model_number[[0, -1]]
-        if self.index is not None:
-            idx_mask = (self.index[:, 0] >= mnum0) & (self.index[:, 0] <= mnum1)
-            new_self.index = self.index[idx_mask]
         return new_self
 
     def _read_data_file_header_columns(self):
-        """Read a mesa history or profile file and return the header and columns."""
+        """
+        Read a data file and return the header, columns, and first row of data.
+
+        Returns:
+            A tuple (header, columns, first_line), where header is a dict containing the header of the data file,
+            columns is a list of column names, and first_line a np.rec.array containing the first row of data.
+        """
         lines = []
         with open(self.path, 'r') as handle:
             lines.extend(handle.readline() for _ in range(7))
@@ -130,6 +148,12 @@ class _Data:
         return header, columns, first_line
 
     def _fix_datafile(self):
+        """
+        Check for corrupted data in history. This can happen if, for example, MESA was killed when writing to the history.
+
+        Returns:
+            good_lines (list of str): Lines which do not have unexpected data.
+        """
         with open(f'{self.path}', 'rb') as handle:
             lines = handle.readlines()
 
@@ -149,14 +173,17 @@ class _Data:
         bad_lines = [i for i in bad_lines if i >= 6]  # skip header for bad lines
         bad_lines = np.unique(bad_lines)
 
-        # for bad_line in bad_lines[::-1]:  # work back to front
-        #     _ = lines.pop(bad_line)
         print(f'Removed {len(bad_lines)} lines:\n{bad_lines}')
         return good_lines
 
-    # noinspection PyTypeChecker
     def _read_data_file(self):
-        """Read a mesa history or profile file and return the header, columns, and data."""
+        """
+        Read a data file and return the header, columns, and data.
+
+        Returns:
+            A tuple (header, columns, data), where header is a dict containing the header of the data file,
+            columns is a list of column names, and data a np.rec.array containing the data.
+        """
         lines = []
         with open(self.path, 'r') as handle:
             lines.extend(handle.readline() for _ in range(7))
@@ -190,7 +217,16 @@ class _Data:
         return header, columns, data
 
     def _discard_columns_rec_array(self, rec_array, to_keep):
-        """Recreate a rec array from `rec_array` keeping only columns `to_keep`, and discarding other columns."""
+        """
+        Recreate a record array from `rec_array` keeping only columns `to_keep`, and discarding other columns.
+
+        Args:
+            rec_array (np.rec.array): Record array from which to discard columns.
+            to_keep (list of str): Columns names to keep.
+
+        Returns:
+            np.rec.array: New ``np.rec.array`` without discarded columns.
+        """
         columns, formats = np.array(rec_array.dtype.descr).T
         mask = (columns != '') & np.in1d(columns, to_keep)
         columns = columns[mask]
@@ -198,12 +234,27 @@ class _Data:
         return np.rec.array(rec_array[columns].tolist(), dtype=list(zip(columns, formats)))
 
     def _discard_rows_rec_array(self, rec_array, mask):
-        """Recreate a rec array from `rec_array` keeping only rows masked in `mask`, and discarding other rows."""
+        """
+        Recreate a rec array from `rec_array` keeping only rows masked in `mask`, and discarding other rows.
+
+        Args:
+            rec_array (np.rec.array):
+            mask (np.array): Mask to apply to column(s).
+
+        Returns:
+            np.rec.array: New record array without discarded rows.
+        """
         columns, formats = np.array(rec_array.dtype.descr).T
         return np.rec.array(rec_array[mask].tolist(), dtype=list(zip(columns, formats)))
 
-    @LazyProperty
+    @_LazyProperty
     def data(self):
+        """
+        Data loading function. Sets the `header`` and ``column_names`` attributes and returns the main data.
+
+        Returns:
+            np.rec.array: Record array of the main data.
+        """
         header, columns, data = self._read_data_file()
 
         if self.nanclip is not None:
@@ -235,7 +286,13 @@ class _Data:
         return data
 
     def dump(self, path_to_dump=''):
-        if not self.loaded:  # Temporarily turn off save_dill so the lazy load of data don't write a dill file.
+        """
+        Dump a ``_Data`` object to disk as a ``.dill`` file.
+
+        Args:
+            path_to_dump (str, optional): Path where to write the file. If ``''``, will write at ``self.dill_path``.
+        """
+        if not self.loaded:  # Temporarily turn off save_dill so the lazy load of data won't write a dill file.
             save_dill = self.save_dill
             self.save_dill = False
             _ = self.data
@@ -247,14 +304,21 @@ class _Data:
         with open(path_to_dump, 'wb') as handle:
             dill.dump(self, handle)
 
-    def get(self, *args, **kwargs):
-        if 'mask' not in kwargs:
+    def get(self, *args, mask=None):
+        """
+        Get a single or multiple columns from ``data``.
+
+        Args:
+            *args (str): Column name(s) to get.
+            mask (np.array): Mask to apply to column(s).
+
+        Returns:
+            ``np.rec.array`` or list of ``np.rec.array``: Column(s) of ``data``.
+
+
+        """
+        if mask is None:
             mask = ...
-        else:
-            if kwargs['mask'] is None:
-                mask = ...
-            else:
-                mask = kwargs['mask']
 
         if len(args) == 1:
             return self.data[args[0]][mask]
@@ -263,8 +327,22 @@ class _Data:
 
 
 class _Mesa(_Data):
+
     def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
                  verbose=False, nanval=-1e99, nanclip=None):
+        """
+        Methods specific to History and Profile.
+
+        Args:
+            path (str): Path to the MESA history data file. If ending with `.dill`, will strip it and set that as `path`.
+            index_name (str, optional): Filename of the profile index.
+            keep_columns (list of str, optional): Which columns of the history data file to keep.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+            reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
+            verbose (bool, optional): Print extra information.
+            nanval (float, optional): Set all values equal to this to NaN.
+            nanclip (2 floats, optional): Set all values outside this range to NaN.
+        """
         super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip)
 
         self.LOGS = self.directory
@@ -297,7 +375,30 @@ class _Mesa(_Data):
 class History(_Mesa):
     def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
                  verbose=False, nanval=-1e99, nanclip=None):
+        """
+        Load a MESA history.
+
+        Args:
+            path (str): Path to the MESA history data file. If ending with `.dill`, will strip it and set that as `path`.
+            index_name (str, optional): Filename of the profile index.
+            keep_columns (list of str, optional): Which columns of the history data file to keep.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+            reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
+            verbose (bool, optional): Print extra information.
+            nanval (float, optional): Set all values equal to this to NaN.
+            nanclip (2 floats, optional): Set all values outside this range to NaN.
+        """
         super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip)
+
+    def __getitem__(self, mask):
+        new_self = copy.copy(self)
+        new_self.data = self._discard_rows_rec_array(self.data, mask)
+        if hasattr(self, 'index'):
+            if self.index is not None:
+                mnum0, mnum1 = self.data.model_number[[0, -1]]
+                idx_mask = (self.index[:, 0] >= mnum0) & (self.index[:, 0] <= mnum1)
+                new_self.index = self.index[idx_mask]
+        return new_self
 
     def __repr__(self):
         initial_model = self._first_row['model_number']
@@ -307,8 +408,21 @@ class History(_Mesa):
         return 'MESA history data file at {}'.format(self.path) + '\n' + star_info
 
     def get_profile_num(self, model_num, method='closest', earlier=True):
-        """Returns the `closest` (by default) or `previous` or `next` profile number for a given model number.
-        If earlier is True, and there are two closest profiles, return the one with a lower model number. """
+        """
+        Returns the `closest` (by default) or `previous` or `next` profile number for a given model number.
+        If earlier is True, and there are two closest profiles, return the one with a lower model number.
+
+        Args:
+            model_num (int):
+            method (str): Must be one of `closest` or `previous`.
+            earlier (bool):
+        Returns:
+            A tuple (header, columns, first_line), where header is a dict containing the header of the data file,
+            columns is a list of column names, and first_line a np.rec.array containing the first row of data.
+        Returns:
+            A tuple (pnum, pmod, hist_ind), where pnum is the profile number, pmod is the model number of Profile, and
+            hist_ind the index in History of Profile.
+        """
 
         if method == 'closest':
             model_diff = np.abs(self.index[:, 0] - model_num)
@@ -340,9 +454,18 @@ class History(_Mesa):
 
 
     def get_profile_index(self, profile_nums):
-        """Returns the corresponding indeces of `profile_nums`.
+        """
+        Returns the corresponding indeces of `profile_nums`.
         `profile_nums` can be an integer, a list of integers,
-        a `Profile`, or a list of `Profile`s."""
+        a `Profile`, or a list of `Profile`s.
+
+        Args:
+            profile_nums (int or list of int): Profile numbers to calculate the indeces of.
+
+        Returns:
+            int or np.array of int: Indeces of profile_nums in History.
+
+        """
         if hasattr(profile_nums, '__len__'):
             if isinstance(profile_nums, Profile):
                 profile_nums = [profile_nums]
@@ -355,23 +478,10 @@ class History(_Mesa):
         data_idx = np.where(np.in1d(self.data['model_number'], model_nums))[0]
         return data_idx
 
-
-    # def get_model_num(self, profile_nums):
-    #     """Returns the profile number, model number, and model index"""
-    #     if hasattr(profile_nums, '__len__'):
-    #         if isinstance(profile_nums, Profile):
-    #             profile_nums = [profile_nums]
-    #     else:
-    #         profile_nums = [profile_nums]
-    #     if isinstance(profile_nums[0], Profile):
-    #         profile_nums = [p.profile_num for p in profile_nums]
-    #     idxs = np.where(np.in1d(self.index[:, 2], profile_nums))
-    #     model_nums = self.index[:, 0][idxs]
-    #     data_idx = np.where(np.in1d(self.data['model_number'], model_nums))[0]
-    #     return np.array(list(zip(profile_nums, model_nums, data_idx)), dtype=int)
-
     def _scrub_hist(self):
-        """Scrub history data for backups and retries."""
+        """
+        Scrub history data for backups and retries.
+        """
         max_model = self.data['model_number'][-1]
         scrubbed = self.data[self.data['model_number'] <= max_model]
 
@@ -385,6 +495,21 @@ class Profile(_Mesa):
     def __init__(self, path, index_name='profiles.index', keep_columns='all', load_GyreProfile=False,
                  suffix_GyreProfile='.GYRE', save_dill=False, reload=False, verbose=False, nanval=-1e99,
                  nanclip=None):
+        """
+        Load a MESA profile.
+
+        Args:
+            path (str): Path to the MESA profile data file. If ending with `.dill`, will strip it and set that as `path`.
+            index_name (str, optional): Filename of the profile index.
+            keep_columns (list of str, optional): Which columns of the history data file to keep.
+            load_GyreProfile (bool): If True, will also load the corresponding GyreProfile into Profile.GyreProfile.
+            suffix_GyreProfile (str, optional): Suffix of GyreProfile. Defaults to '.GYRE'.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+            reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
+            verbose (bool, optional): Print extra information.
+            nanval (float, optional): Set all values equal to this to NaN.
+            nanclip (2 floats, optional): Set all values outside this range to NaN.
+        """
         super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip)
         self.LOGS = self.directory
 
@@ -394,6 +519,8 @@ class Profile(_Mesa):
             self.profile_num = None
         if load_GyreProfile:
             self.GyreProfile = GyreProfile(f'{self.path}{suffix_GyreProfile}')
+        else:
+            self.GyreProfile = None
 
     def __repr__(self):
         try_to_get = ['model_number', 'num_zones', 'star_mass', 'star_age', 'Teff', 'photosphere_L',
@@ -402,6 +529,15 @@ class Profile(_Mesa):
             {key: self.header[key] for key in try_to_get if key in self.header.keys()})
 
     def get_hist_index(self, hist):
+        """
+        Get the index of this profile in the `History` hist.
+
+        Args:
+            hist (History):
+
+        Returns:
+            int: Index of profile in hist.
+        """
         mod = self.header['model_number']
         return np.argwhere(hist.get('model_number') == mod)[0][0]
 
@@ -410,6 +546,19 @@ class _Gyre(_Data):
 
     def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
                  nanval=-1e99, nanclip=None):
+        """
+        Common methods and attributes for GyreSummary and GyreMode.
+
+        Args:
+            path (str): Path to the Gyre summary or mode data file. If ending with `.dill`, will strip it and set that as `path`.
+            keep_columns (list of str, optional): Which columns of the history data file to keep.
+            gyre_version (str): Gyre version.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+            reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
+            verbose (bool, optional): Print extra information.
+            nanval (float, optional): Set all values equal to this to NaN.
+            nanclip (2 floats, optional): Set all values outside this range to NaN.
+        """
         super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip)
         self.gyre_version = gyre_version
 
@@ -418,12 +567,30 @@ class GyreSummary(_Gyre):
 
     def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
                  nanval=-1e99, nanclip=None):
+        """
+        Gyre summary output.
+
+        Args:
+            path (str): Path to the Gyre summary data file. If ending with `.dill`, will strip it and set that as `path`.
+            keep_columns (list of str, optional): Which columns of the history data file to keep.
+            gyre_version (str): Gyre version.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+            reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
+            verbose (bool, optional): Print extra information.
+            nanval (float, optional): Set all values equal to this to NaN.
+            nanclip (2 floats, optional): Set all values outside this range to NaN.
+        """
         super().__init__(path, keep_columns, gyre_version, save_dill, reload, verbose, nanval, nanclip)
 
     def __repr__(self):
         return f'GyreSummary at {self.path}'
 
     def _dimless_to_Hz(self):
+        """
+        Returns:
+            float: Conversion factor between dimensionless frequency and Hz.
+
+        """
         if 'M_star' in self.header.keys():
             M_star = self.header['M_star']
             R_star = self.header['R_star']
@@ -434,15 +601,23 @@ class GyreSummary(_Gyre):
             G = post15140.standard_cgrav  # This changed in version 6.
         return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
 
-    def get_frequencies(self, freq_units):
+    def get_frequencies(self, freq_units, Re_freq_unit='uHz'):
+        """
+        Get frequencies in the specicied units. Will use 'Re(omega)' first and 'Re(freq)' otherwise.
+        Args:
+            freq_units (str): Unit to convert to, must be one of 'uHz', 'mHz', or 'Hz'.
+            Re_freq_unit (str, optional): Unit of the 'Re(freq)' column, must be one of 'uHz', 'mHz', or 'Hz'.
+
+        Returns:
+            np.rec.array: Frequencies in unit specified by Re_freq_unit.
+        """
+        unit_dict = {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}
         if 'Re(omega)' in self.columns:
-            dimless_to_Hz = self.calc_dimless_to_Hz() * {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}[freq_units]
+            dimless_to_Hz = self._calc_dimless_to_Hz() * unit_dict[freq_units]
             freq_name = 'Re(omega)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
         elif 'Re(freq)' in self.columns:  # Assumes freq already in uHz.
-            dimless_to_Hz = {'uHz': 1e0, 'mHz': 1e-3, 'Hz': 1e-6}[freq_units]
+            dimless_to_Hz = unit_dict[freq_units] / unit_dict[Re_freq_unit]
             freq_name = 'Re(freq)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
         return self.data[freq_name] * dimless_to_Hz
 
 
@@ -451,11 +626,29 @@ class GyreMode(_Gyre):
     def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
                  nanval=-1e99, nanclip=None):
         super().__init__(path, keep_columns, gyre_version, save_dill, reload, verbose, nanval, nanclip)
+        """
+        Gyre mode detail file.
+
+        Args:
+            path (str): Path to the Gyre mode data file. If ending with `.dill`, will strip it and set that as `path`.
+            keep_columns (list of str, optional): Which columns of the `GyreMode` data file to keep.
+            gyre_version (str): Gyre version.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `GyreMode` data.
+            reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the mode file.
+            verbose (bool, optional): Print extra information.
+            nanval (float, optional): Set all values equal to this to NaN.
+            nanclip (2 floats, optional): Set all values outside this range to NaN.
+        """
 
     def __repr__(self):
         return f'GyreMode at {self.path}'
 
     def _dimless_to_Hz(self):
+        """
+        Returns:
+            float: Conversion factor between dimensionless frequency and Hz.
+
+        """
         M_star = self.header['M_star']
         R_star = self.header['R_star']
         if self.gyre_version < '6':
@@ -465,19 +658,33 @@ class GyreMode(_Gyre):
         return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
 
     def get_frequencies(self, freq_units):
+        """
+        Get frequencies in the specicied units. Will use 'Re(omega)' first and 'Re(freq)' otherwise.
+        Args:
+            freq_units (str): Unit to convert to, must be one of 'uHz', 'mHz', or 'Hz'.
+            Re_freq_unit (str, optional): Unit of the 'Re(freq)' column, must be one of 'uHz', 'mHz', or 'Hz'.
+
+        Returns:
+            np.rec.array: Frequencies in unit specified by Re_freq_unit.
+        """
+        unit_dict = {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}
         if 'Re(omega)' in self.header:
-            dimless_to_Hz = self.calc_dimless_to_Hz() * {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}[freq_units]
+            dimless_to_Hz = self._calc_dimless_to_Hz() * unit_dict[freq_units]
             freq_name = 'Re(omega)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
         elif 'Re(freq)' in self.header:  # Assumes freq already in uHz.
-            dimless_to_Hz = {'uHz': 1e0, 'mHz': 1e-3, 'Hz': 1e-6}[freq_units]
+            dimless_to_Hz = unit_dict[freq_units] / unit_dict[Re_freq_unit]
             freq_name = 'Re(freq)'
-            freq_unit = {'uHz': r'\mu', 'mHz': 'm', 'Hz': ''}[freq_units]
         return self.data[freq_name] * dimless_to_Hz
 
 
 class GyreProfile:
     def __init__(self, path):
+        """
+        Gyre profile created by MESA.
+
+        Args:
+            path: Path to gyre profile file.
+        """
         self.path = path
         if os.path.isfile(path):
             self.fname = os.path.basename(self.path)
@@ -521,27 +728,36 @@ class GyreProfile:
             np.loadtxt(f'{self.path}', skiprows=1, dtype=list(zip(self.columns, self.formats))))
         return data
 
-    @LazyProperty
+    @_LazyProperty
     def data(self):
         data = self._load_gyre_profile()
         self.loaded = True
         return data
 
 
-def load_profs(hist, prefix='profile', suffix='.data', only_RC=False, save_dill=False, mask=None, mask_kwargs={}):
+def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=None, mask_kwargs=None):
+    """
+    Load profiles associated with `History` hist.
+
+    Args:
+        hist (History):
+        prefix (str, optional): Part of profile name before the profile number. Defaults to 'profile'.
+        suffix (str, optional): Part of profile name after the profile number. Defaults to '.data'.
+        save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+        mask (array of bool or function): Mask to apply to column(s).
+        mask_kwargs (dict, optional): kwargs to pass to mask if it is a function.
+
+    Returns:
+        list of Profile: All profiles in hist.index or those which satisfy mask.
+    """
     if hist.index is None:
         return []
     pnums = hist.index[:, 2]
-    if only_RC:
-        mask_RC = uf.get_rc_mask(hist)
-        min_RC = min(hist.get('model_number')[mask_RC])
-        max_RC = max(hist.get('model_number')[mask_RC])
-        pnums = pnums[np.logical_and(hist.index[:, 0] >= min_RC, hist.index[:, 0] <= max_RC)]
 
     if mask is not None:
-        if only_RC:
-            raise ValueError('only_RC and mask cannot be defined at the same time.')
         if hasattr(mask, '__call__'):
+            if mask_kwargs is None:
+                mask_kwargs = {}
             mask = mask(hist, **mask_kwargs)
         valid_mod = hist.get('model_number')[mask]
         pnums = hist.index[:, 2][np.in1d(hist.index[:, 0], valid_mod)]
@@ -563,12 +779,32 @@ def load_profs(hist, prefix='profile', suffix='.data', only_RC=False, save_dill=
 
 
 def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre_summary_suffix='.data.GYRE.sgyre_l',
-             return_pnums=False, only_RC=False, use_mask=None, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99,
+             return_pnums=False, use_mask=None, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99,
                          nanclip=None):
+    """
+    Load `GyreSummary` associated with `History` hist.
+    Args:
+        hist:
+        gyre_data_dir: Directory containing gyre summary files.
+        gyre_summary_prefix (str, optional): Part of gyre summary name before the profile number. Defaults to 'profile'.
+        gyre_summary_suffix (str, optional): Part of gyre summary name after the profile number. Defaults to '.data.GYRE.sgyre_l'.
+        return_pnums (bool, optional): Defaults to False. If True, will also return profile numbers.
+        use_mask (bool, np.array, or function, optional): If True, will exclude pre-main sequence.
+                If an array of bools will use that as mask. If a function, will call function(hist) and use that as the mask.
+        keep_columns (list of str, optional): Which columns of the history data file to keep.
+        gyre_version (str): Gyre version.
+        save_dill (bool, optional): If True, will write a `.dill` file containing the `GyreSummary` data.
+        reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the gyre summary file.
+        verbose (bool, optional): Print extra information.
+        nanval (float, optional): Set all values equal to this to NaN.
+        nanclip (2 floats, optional): Set all values outside this range to NaN.
+
+    Returns:
+        list of GyreSummary or list of list of GyreSummary: If return_pnums is False returns only `GyreSummary`.
+            If return_pnums is True also return profile numbers.
+    """
     dirpath = os.path.abspath(os.path.join(hist.LOGS, '..', gyre_data_dir))
 
-    if only_RC:
-        use_mask = uf.get_rc_mask
     use_mask = uf.get_mask(hist, use_mask)
 
     min_mod, max_mod = hist.get('model_number')[use_mask][[0, -1]]
@@ -600,6 +836,27 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
 
 def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode_suffix='.mgyre', keep_columns='all',
                             gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
+    """
+    Load all `GyreMode` associated with `Profile` prof.
+
+    Args:
+        prof:
+        gyre_data_dir: Directory containing gyre summary files.
+        mode_prefix (str, optional): First part of the mode filename.
+            If an empty string will use the profile name. Defaults to ''.
+        mode_suffix (str, optional): Last part of the gyre mode filename. Defaults to '.mgyre'.
+        keep_columns (list of str, optional): Which columns of the mode data file to keep.
+        gyre_version (str): Gyre version.
+        save_dill (bool, optional): If True, will write a `.dill` file containing the `GyreMode` data.
+        reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the mode file.
+        verbose (bool, optional): Print extra information.
+        nanval (float, optional): Set all values equal to this to NaN.
+        nanclip (2 floats, optional): Set all values outside this range to NaN.
+
+
+    Returns:
+        list of GyreMode:
+    """
     dirpath = os.path.abspath(os.path.join(prof.LOGS, '..', gyre_data_dir))
     fnames = os.listdir(dirpath)
 
@@ -618,6 +875,25 @@ def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode
 def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='', gyre_summary_suffix='.data.GYRE.sgyre_l',
                          keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99,
                          nanclip=None):
+    """
+    Load the `GyreSummary` associated with `Profile` prof.
+
+    Args:
+        prof (Profile):
+        gyre_data_dir: Directory containing gyre summary files.
+        gyre_summary_prefix (str, optional): First part of gyre summary name. First part of the gyre summary filename.
+            If an empty string will use the profile name. Defaults to ''.
+        gyre_summary_suffix (str, optional): Part of gyre summary name after the profile number. Defaults to '.data.GYRE.sgyre_l'.
+        keep_columns (list of str, optional): Which columns of the history data file to keep.
+        gyre_version (str): Gyre version.
+        save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+        reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
+        verbose (bool, optional): Print extra information.
+        nanval (float, optional): Set all values equal to this to NaN.
+        nanclip (2 floats, optional): Set all values outside this range to NaN.
+    Returns:
+        GyreSummary:
+    """
     dirpath = os.path.abspath(os.path.join(prof.LOGS, '..', gyre_data_dir))
     fnames = os.listdir(dirpath)
 
@@ -710,7 +986,16 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
 
 
 def naive_merge_hists(base_hist, hists):
-    """Naive hist merging"""
+    """
+    Merge two `History` object. This function simply stacks the history data onto a new copy of base_hist.
+
+    Args:
+        base_hist (History):
+        hists (list of History): Histories to stack.
+
+    Returns:
+        History
+    """
     new_hist = copy.copy(base_hist)
     new_hist.data = np.lib.recfunctions.stack_arrays([h.data for h in hists], asrecarray=True, usemask=False)
     return new_hist
@@ -719,6 +1004,28 @@ def naive_merge_hists(base_hist, hists):
 def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile',
                      gyre_summary_suffix='.data.GYRE.sgyre_l', only_RC=False, use_mask=None, keep_columns='all',
                      gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
+    """
+    Load `GyreSummary` and profile numbers associated with `History` hist and place in the attribute History.gsspnum.
+    This is equivalent to doing ``hist.gsspnum = load_gss(..., return_pnums=True, ...)``.
+    Args:
+        hist:
+        gyre_data_dir: Directory containing gyre summary files.
+        gyre_summary_prefix (str, optional): Part of gyre summary name before the profile number. Defaults to 'profile'.
+        gyre_summary_suffix (str, optional): Part of gyre summary name after the profile number. Defaults to '.data.GYRE.sgyre_l'.
+        use_mask (bool, np.array, or function, optional): If True, will exclude pre-main sequence.
+                If an array of bools will use that as mask. If a function, will call function(hist) and use that as the mask.
+        keep_columns (list of str, optional): Which columns of the history data file to keep.
+        gyre_version (str): Gyre version.
+        save_dill (bool, optional): If True, will write a `.dill` file containing the `GyreSummary` data.
+        reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the gyre summary file.
+        verbose (bool, optional): Print extra information.
+        nanval (float, optional): Set all values equal to this to NaN.
+        nanclip (2 floats, optional): Set all values outside this range to NaN.
+
+    Returns:
+        list of GyreSummary or list of list of GyreSummary: If return_pnums is False returns only `GyreSummary`.
+            If return_pnums is True also return profile numbers.
+    """
     hist.gsspnum = load_gss(hist, gyre_data_dir=gyre_data_dir, gyre_summary_prefix=gyre_summary_prefix,
                             gyre_summary_suffix=gyre_summary_suffix, return_pnums=True, only_RC=only_RC, use_mask=use_mask,
                             keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
