@@ -1013,16 +1013,17 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
     deltanus = []
     deltaPs = []
     for gs, pnum in gsspnum:
-        i_hist = hist.get_profile_index(pnum)[0]
+        i_hist = hist.get_profile_index(pnum)
         if len(i_hist) == 0:  # pnum not in history
             continue
+        i_hist = i_hist[0]
         mnum = hist.data.model_number[i_hist]
         if (mnum <= mnum_min) or (mnum >= mnum_max):
             continue
         if do_deltanu:
             deltanu = calc_deltanu(gs, hist, prefix=prefix, suffix=suffix)
             deltanus.append(deltanu)
-            h_deltanu = hist.data.delta_nu[hist_i]
+            h_deltanu = hist.data.delta_nu[i_hist]
             y_nu.append(deltanu / h_deltanu)
 
         if do_deltaP:
@@ -1031,7 +1032,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
             h_deltaP = hist.data.delta_Pg[hist_i]
             y_P.append(deltaP / h_deltaP)
 
-        x.append(hist.get(xname)[hist_i])
+        x.append(hist.get(xname)[i_hist])
     x = np.array(x)
     y_nu = np.array(y_nu)
     y_P = np.array(y_P)

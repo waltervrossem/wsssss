@@ -52,8 +52,20 @@ class TestFunctions(unittest.TestCase):
     def test_masks(self):
         for mask_func in uf.mask_functions:
             mask = mask_func(self.hist)
-        mask = uf.get_mask(self.hist, mask_func)
+        mask = uf.get_ms_mask(self.hist)
         self.assertEqual(len(self.hist), len(mask))
+        self.assertEqual(len(self.hist[mask]), sum(mask))
 
+    def test_calc_deltanu(self):
+        gss = ld.load_gss(self.hist)
+        gs = gss[0]
+        uf.calc_deltanu(gs, self.hist)
 
+    def test_calc_deltaPg(self):
+        gss = ld.load_gss(self.hist)
+        gs = gss[0]
+        uf.calc_deltaPg(gs, self.hist, 1)
+
+    def test_correct_seismo(self):
+        uf.correct_seismo(self.hist, ld.load_gss(self.hist, return_pnums=True), uf.get_ms_mask, 'star_age')
 
