@@ -22,7 +22,7 @@ class MesaGrid:
         `MesaGrid` class which contains all inlist settings for a grid.
 
         Args:
-            mesa_dir (str): ``$``MESA_DIR`` root directory to be used with this grid.
+            mesa_dir (str): ``$MESA_DIR`` root directory to be used with this grid.
             inlist_filename (str, optional): Defaults to 'inlist'.
             starjob_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
             controls_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
@@ -37,7 +37,17 @@ class MesaGrid:
             kap (dict): Options for ``kap``. Only exists if `mesa_dir` version is later than or equal to 15140.
             eos (dict): Options for ``eos``. Only exists if `mesa_dir` version is later than or equal to 15140.
 
-        Todo:
+        Examples:
+            Creating a grid of MESA runs with initial masses of 1 and 2 Msol.
+
+            >>> import os
+            >>> from wssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.controls['initial_mass'] = [1, 2]
+            >>> grid.create_grid('path/to/grid')
+            >>> os.listdir('path/to/grid')
+            ['0000', '0001]
+        TODO:
             * Add astero namelist and include in tests.
         """
 
@@ -100,7 +110,7 @@ class MesaGrid:
 
         self.extra_files = []
         self.extra_dirs = []
-        self.inlist_finalize_function = lambda unpacked_namelist: unpacked_namelist
+        self.inlist_finalize_function = lambda unpacked_inlist: unpacked_inlist
         self.griddir_finalize_function = lambda dirname: None
         self.name_funcion = None
         self.unpacked = False
@@ -116,10 +126,18 @@ class MesaGrid:
 
     def add_file(self, path):
         """
-        Add a file which will be copied into each run directory.
+        Add a file which will be copied into each run directory. Will raise a FileNotFoundError if the file at
+        `path` does not exist.
 
         Args:
             path (str): Path to file to be added to every run directory.
+
+        Examples:
+            Copy the file at ``path/to/file`` to each run directory when the grid is created.
+
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.add_file('path/to/file')
         """
         if os.path.isfile(path):
             self.extra_files.append(path)
@@ -132,6 +150,13 @@ class MesaGrid:
 
         Args:
             path (str): Path to directory to be added to every run directory.
+
+        Examples:
+            Copy the directory at ``path/to/directory`` to each run directory when the grid is created.
+
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.add_dir('path/to/directory')
         """
         if os.path.isdir(path):
             self.extra_dirs.append(path)
@@ -147,6 +172,12 @@ class MesaGrid:
             namelist (str):
             option (str):
 
+        Examples:
+
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.add_inlist_option_file_check('controls', 'history_columns_file')
+
         """
         if namelist not in self.namelists:
             raise ValueError(f'`namelist` {namelist} must be one of {", ".join(self.namelists)}.')
@@ -154,23 +185,57 @@ class MesaGrid:
 
     def set_inlist_finalize_function(self, function):
         """
-        Set the function which is applied to all unpacked namelists.
-        Each namelist will have the `type` key to identify its type.
+        Set the function which is applied to all unpacked inlists.
 
-        The function must accept a single `namelist` and return a single `namelist`.
+        The function must accept a single `inlist` and return a single `inlist`.
 
         Args:
             function (function):
+
+        Examples:
+            Change an option in `star_job` depending on ``initial_mass`` in ``controls``. This could also be accomplished using the
+            ``f'{non_mesa_key_start}group_unpack'`` key.
+            
+            >>> import numpy as np
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.star_job['change_initial_net'] = True
+            >>> grid.star_job['new_net_name'] = 'pp_extras.net'
+            >>> grid.controls['initial_mass'] = np.linspace(1, 2, 6)
+            >>> def finalize_function(unpacked_inlist):
+            ...     if unpacked_inlist['controls']['initial_mass'] > 1.3:
+            ...         unpacked_inlist['star_job']['new_net_name'] = 'pp_cno_extras.net'
+            ...     return unpacked_inlist
+            >>> grid.set_inlist_finalize_function(finalize_function)
+            >>> grid.unpack_inlists()
+            >>> grid.unpacked[0]['star_job']['new_net_name']
+            ... 'pp_extras.net'
+            >>> grid.unpacked[-1]['star_job']['new_net_name']
+            ... 'pp_cno_extras.net'
 
         """
         self.inlist_finalize_function = function
 
     def set_griddir_finalize_function(self, function):
         """
-        Set the function which is called in each grid directory.
+        Set the function which is called in each grid directory. The arguments to the function are a MesaGrid object and
+        the run index.
 
         Args:
             function (function):
+
+        Examples:
+
+            >>> import os
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.controls['initial_mass'] = [1, 2]
+            >>> def griddir_finalize_function(grid, i):
+            ...     os.system("pwd")
+            >>> grid.set_griddir_finalize_function(griddir_finalize_function)
+            >>> grid.create_grid('path/to/grid')
+            ... /home/walter/Github/wsssss/path/to/grid/0000
+            ... /home/walter/Github/wsssss/path/to/grid/0000
 
         """
         self.griddir_finalize_function = function
@@ -184,6 +249,18 @@ class MesaGrid:
         Args:
             function (function):
 
+        Examples:
+
+            >>> import os
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.controls['initial_mass'] = [1, 2]
+            >>> def name_function(unpacked_inlist):
+            ...     return f'm{unpacked_inlist["controls"]["initial_mass"]:.3f}'
+            >>> grid.set_name_function(name_function)
+            >>> grid.create_grid('path/to/grid')
+            >>> os.listdir('path/to/grid')
+            ... ['m1.000', 'm2.000']
         """
         self.name_funcion = function
 
@@ -194,6 +271,15 @@ class MesaGrid:
         Args:
             grid_path: Path to grid directory.
 
+        Examples:
+
+            >>> import os
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.controls['initial_mass'] = [1, 2]
+            >>> grid.create_grid('path/to/grid')
+            >>> os.listdir('path/to/grid')
+            ... ['0000', '0001']
         """
         self.validate_inlists()
 
@@ -223,6 +309,12 @@ class MesaGrid:
         Args:
             mesa_dir (str, optional): MESA root directory to check against. Defaults to None, which will use ``$MESA_DIR``.
 
+        Examples:
+
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.controls['this_option_does_not_exist'] = 1
+            ... KeyError: 'Option(s) not in available controls keys: this_option_does_not_exist.'
         """
         # Check if all extra namelists filenames are unique and different from the main inlist name.
         for namelist in self.namelists:
@@ -288,6 +380,7 @@ class MesaGrid:
         Check if all specified files are accounted for.
         Args:
             grid_path (str): Grid directory.
+
         """
 
         file_not_found = []
