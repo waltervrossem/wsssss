@@ -250,7 +250,7 @@ class _Data:
     @_LazyProperty
     def data(self):
         """
-        Data loading function. Sets the `header`` and ``column_names`` attributes and returns the main data.
+        Data loading function. Sets the ``header`` and ``column_names`` attributes and returns the main data.
 
         Returns:
             np.rec.array: Record array of the main data.
@@ -457,10 +457,10 @@ class History(_Mesa):
         """
         Returns the corresponding indeces of `profile_nums`.
         `profile_nums` can be an integer, a list of integers,
-        a `Profile`, or a list of `Profile`s.
+        a `Profile`, or a list of `Profile`\ s.
 
         Args:
-            profile_nums (int or list of int): Profile numbers to calculate the indeces of.
+            profile_nums (int or list of int): Profile numbers for which to calculate the indeces.
 
         Returns:
             int or np.array of int: Indeces of profile_nums in History.
@@ -783,6 +783,7 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
                          nanclip=None):
     """
     Load `GyreSummary` associated with `History` hist.
+
     Args:
         hist:
         gyre_data_dir: Directory containing gyre summary files.
@@ -1007,6 +1008,7 @@ def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profil
     """
     Load `GyreSummary` and profile numbers associated with `History` hist and place in the attribute History.gsspnum.
     This is equivalent to doing ``hist.gsspnum = load_gss(..., return_pnums=True, ...)``.
+
     Args:
         hist:
         gyre_data_dir: Directory containing gyre summary files.
