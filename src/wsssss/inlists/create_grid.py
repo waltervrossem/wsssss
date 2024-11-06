@@ -295,12 +295,12 @@ class MesaGrid:
 
         curdir = os.path.abspath('.')
         abs_grid_path = os.path.abspath(grid_path)
-        for dirname in self.dirnames:
+        for i, dirname in enumerate(self.dirnames):
             os.chdir(os.path.join(abs_grid_path, dirname))
-            self.griddir_finalize_function(self)
+            self.griddir_finalize_function(self, i)
         os.chdir(curdir)
 
-        self.validate_files(grid_path)
+        self._validate_files(grid_path)
 
     def validate_inlists(self, mesa_dir=None):
         """
@@ -375,7 +375,7 @@ class MesaGrid:
             s = ' '.join(s)
             raise KeyError(s)
 
-    def validate_files(self, grid_path):
+    def _validate_files(self, grid_path):
         """
         Check if all specified files are accounted for.
         Args:
@@ -502,7 +502,7 @@ class MesaGrid:
             yield inlist_dict
             return
 
-        inlist_dict[f'{non_mesa_key_start}unpacknumber'] = 0
+        inlist_dict[f'{non_mesa_key_start}unpackindex'] = 0
         inlist_dict[f'{non_mesa_key_start}unpacknumber_total'] = 1
 
         contains_list = []  # Keys which need to be unpacked
@@ -557,7 +557,7 @@ class MesaGrid:
                     new_inlist.update(value)
                 else:
                     new_inlist[contains_list[j]] = value
-            new_inlist[f'{non_mesa_key_start}unpacknumber'] = i
+            new_inlist[f'{non_mesa_key_start}unpackindex'] = i
             yield new_inlist
 
     def _setup_directories(self, grid_path):
