@@ -235,7 +235,7 @@ class MesaGrid:
             >>> grid.set_griddir_finalize_function(griddir_finalize_function)
             >>> grid.create_grid('path/to/grid')
             ... /home/walter/Github/wsssss/path/to/grid/0000
-            ... /home/walter/Github/wsssss/path/to/grid/0000
+            ... /home/walter/Github/wsssss/path/to/grid/0001
 
         """
         self.griddir_finalize_function = function
