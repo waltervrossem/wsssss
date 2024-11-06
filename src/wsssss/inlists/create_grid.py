@@ -209,9 +209,9 @@ class MesaGrid:
             >>> grid.set_inlist_finalize_function(finalize_function)
             >>> grid.unpack_inlists()
             >>> grid.unpacked[0]['star_job']['new_net_name']
-            ... 'pp_extras.net'
+            'pp_extras.net'
             >>> grid.unpacked[-1]['star_job']['new_net_name']
-            ... 'pp_cno_extras.net'
+            'pp_cno_extras.net'
 
         """
         self.inlist_finalize_function = function
@@ -234,8 +234,8 @@ class MesaGrid:
             ...     os.system("pwd")
             >>> grid.set_griddir_finalize_function(griddir_finalize_function)
             >>> grid.create_grid('path/to/grid')
-            ... /home/walter/Github/wsssss/path/to/grid/0000
-            ... /home/walter/Github/wsssss/path/to/grid/0001
+            /home/walter/Github/wsssss/path/to/grid/0000
+            /home/walter/Github/wsssss/path/to/grid/0001
 
         """
         self.griddir_finalize_function = function
@@ -260,7 +260,7 @@ class MesaGrid:
             >>> grid.set_name_function(name_function)
             >>> grid.create_grid('path/to/grid')
             >>> os.listdir('path/to/grid')
-            ... ['m1.000', 'm2.000']
+            ['m1.000', 'm2.000']
         """
         self.name_funcion = function
 
@@ -279,7 +279,7 @@ class MesaGrid:
             >>> grid.controls['initial_mass'] = [1, 2]
             >>> grid.create_grid('path/to/grid')
             >>> os.listdir('path/to/grid')
-            ... ['0000', '0001']
+            ['0000', '0001']
         """
         self.validate_inlists()
 
@@ -314,7 +314,7 @@ class MesaGrid:
             >>> from wsssss.inlists import create_grid as cg
             >>> grid = cg.MesaGrid()
             >>> grid.controls['this_option_does_not_exist'] = 1
-            ... KeyError: 'Option(s) not in available controls keys: this_option_does_not_exist.'
+            KeyError: 'Option(s) not in available controls keys: this_option_does_not_exist.'
         """
         # Check if all extra namelists filenames are unique and different from the main inlist name.
         for namelist in self.namelists:
