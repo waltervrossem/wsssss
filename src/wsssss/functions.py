@@ -267,10 +267,10 @@ def get_m_bot_CZ(hist, mask=None):
             n_mix += 1
     for i in range(n_mix):
         i += 1
+        mix_type = convert_mixing_type(hist.get(f'mix_type_{i}', mask=mask), hist.header['version_number'])
         m_bot_CZ = np.maximum(m_bot_CZ,
                               hist.get('star_mass', mask=mask) * hist.get(f'mix_qtop_{i}', mask=mask) *
-                              (convert_mixing_type(hist.get(f'mix_type_{i}', mask=mask), hist.header['version_number']) ==
-                               mix_dict['merged']['overshoot_mixing']))
+                              (mix_type == mix_dict['merged']['no_mixing']) * (hist.get(f'mix_qtop_{i}', mask=mask) <= 0.999))
     return m_bot_CZ
 
 
