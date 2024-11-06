@@ -373,6 +373,22 @@ class MesaGrid:
             all_unpacked.append(finalized_unpacked)
         self.unpacked = tuple(all_unpacked)
 
+        num_unpacked = len(self.unpacked)
+        self.dirnames = []
+        if self.name_funcion is None:
+            num_digits = max(4, np.ceil(np.log10(num_unpacked)).astype(int))
+            for i in range(num_unpacked):
+                dirname = f'{i:0{num_digits}}'
+                self.dirnames.append(dirname)
+        else:
+            for i in range(num_unpacked):
+                dirname = self.name_funcion(self.unpacked[i])
+                if dirname in self.dirnames:
+                    i_already_exists = self.dirnames.index(dirname)
+                    raise ValueError(f'`dirname` {dirname} for inlist {i} has already been generated for inlist {i_already_exists}.')
+                self.dirnames.append(dirname)
+        self.dirnames = tuple(self.dirnames)
+
     def _make_inlist_generator(self, inlist_dict):
         """
         Create a generator which yields all unique inlists with all combinations of any lists, tuples, or numpy arrays of length greater than 1.
@@ -459,20 +475,6 @@ class MesaGrid:
             grid_path (str): Path which will contain the grid.
 
         """
-        num_unpacked = len(self.unpacked)
-        self.dirnames = []
-        if self.name_funcion is None:
-            num_digits = max(4, np.ceil(np.log10(num_unpacked)).astype(int))
-            for i in range(num_unpacked):
-                dirname = f'{i:0{num_digits}}'
-                self.dirnames.append(dirname)
-        else:
-            for i in range(num_unpacked):
-                dirname = self.name_funcion(self.unpacked[i])
-                if dirname in self.dirnames:
-                    raise ValueError(f'`dirname` {dirname} has already been generated.')
-                self.dirnames.append(dirname)
-        self.dirnames = tuple(self.dirnames)
 
         if os.path.isfile(grid_path):
             raise FileExistsError(f'Expected `grid_path` {grid_path} is a file.')
