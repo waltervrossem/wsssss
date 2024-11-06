@@ -4,6 +4,7 @@
 import itertools
 import os
 import shutil
+import copy
 
 import numpy as np
 
@@ -367,10 +368,9 @@ class MesaGrid:
 
         all_unpacked = []
         for i, unpacked in enumerate(itertools.product(*generators)):
-            unpacked = list(unpacked)
-            for j, unpacked_namelist in enumerate(unpacked):
-                unpacked[j] = self.inlist_finalize_function(unpacked_namelist)
-            all_unpacked.append(dict(zip(['inlist', *self.namelists], unpacked)))
+            unpacked = dict(zip(['inlist', *self.namelists], list(unpacked)))
+            finalized_unpacked = self.inlist_finalize_function(copy.deepcopy(unpacked))
+            all_unpacked.append(finalized_unpacked)
         self.unpacked = tuple(all_unpacked)
 
     def _make_inlist_generator(self, inlist_dict):
