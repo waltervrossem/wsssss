@@ -936,12 +936,12 @@ def calc_deltanu(gs, hist, prefix='profile', suffix='.data.GYRE.sgyre_l', freq_u
         float: Large frequency separation \\Delta\\nu.
     """
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_profile_index(pnum)[0]
+    i_hist = hist.get_profile_index(pnum)[0]
     nu_all = gs.get_frequencies(freq_units)
 
     mask = gs.data.l == 0
     mask = np.logical_and(mask, gs.data.n_pg > 0)
-    nu_max = hist.get('nu_max')[hist_i]
+    nu_max = hist.get('nu_max')[i_hist]
     fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))
     w = np.exp(-((nu_all[mask][:-1] - nu_max) / fsig) ** 2)
     delta_nus = np.diff(nu_all[mask])
@@ -963,8 +963,8 @@ def calc_deltaPg(gs, hist, l, prefix='profile', suffix='.data.GYRE.sgyre_l'):
         float: Period spacing Delta P.
     """
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_profile_index(pnum)[0]
-    nu_max = hist.get('nu_max')[hist_i]
+    i_hist = hist.get_profile_index(pnum)[0]
+    nu_max = hist.get('nu_max')[i_hist]
 
     if l == 0:
         raise ValueError('Cannot use l=0 for period spacing.')
@@ -1029,7 +1029,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
         if do_deltaP:
             deltaP = calc_deltaPg(gs, hist, 1)
             deltaPs.append(deltaP)
-            h_deltaP = hist.data.delta_Pg[hist_i]
+            h_deltaP = hist.data.delta_Pg[i_hist]
             y_P.append(deltaP / h_deltaP)
 
         x.append(hist.get(xname)[i_hist])
