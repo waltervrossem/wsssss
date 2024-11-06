@@ -936,7 +936,7 @@ def calc_deltanu(gs, hist, prefix='profile', suffix='.data.GYRE.sgyre_l', freq_u
         float: Large frequency separation \\Delta\\nu.
     """
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_model_num(pnum)[0][2]
+    hist_i = hist.get_profile_index(pnum)[0]
     nu_all = gs.get_frequencies(freq_units)
 
     mask = gs.data.l == 0
@@ -963,7 +963,7 @@ def calc_deltaPg(gs, hist, l, prefix='profile', suffix='.data.GYRE.sgyre_l'):
         float: Period spacing Delta P.
     """
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_model_num(pnum)[0][2]
+    hist_i = hist.get_profile_index(pnum)[0]
     nu_max = hist.get('nu_max')[hist_i]
 
     if l == 0:
