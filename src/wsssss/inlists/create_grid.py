@@ -17,7 +17,7 @@ non_mesa_key_start = '!PY_KEY_'
 class MesaGrid:
     def __init__(self, mesa_dir='', inlist_filename='inlist', starjob_filename='inlist_project',
                  controls_filename='inlist_project', eos_filename='inlist_project', kap_filename='inlist_project',
-                 pgstar_filename='inlist_project'):
+                 pgstar_filename='inlist_project', add_base_workdir=False):
         """
         `MesaGrid` class which contains all inlist settings for a grid.
 
@@ -29,6 +29,7 @@ class MesaGrid:
             eos_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
             kap_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
             pgstar_filename (str, optional): Cannot be the same as `inlist_filename`. Defaults to 'inlist_project'.
+            add_base_workdir (bool, optional): Add minimum required files from $MESA_DIR/star/work to each run directory (make/, src/, mk, re, rn, clean).
 
         Attributes:
             star_job (dict): Options for ``star_job``.
@@ -117,6 +118,12 @@ class MesaGrid:
 
         self.inlist_option_files_to_validate = [('star_job', 'history_columns_file'),
                                                 ('star_job', 'profile_columns_file')]
+
+        if add_base_workdir:
+            for fname in ['mk', 'clean', 'rn', 're']:
+                self.extra_files.append(os.path.join(f'{self.mesa_dir}/star/work', fname))
+            for dname in ['make', 'src']:
+                self.extra_dirs.append(os.path.join(f'{self.mesa_dir}/star/work', dname))
 
     def __repr__(self):
         s = f'MESA Grid for version {self.version}.'
