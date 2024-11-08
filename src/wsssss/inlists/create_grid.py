@@ -111,7 +111,7 @@ class MesaGrid:
         self.extra_files = []
         self.extra_dirs = []
         self.inlist_finalize_function = lambda unpacked_inlist: unpacked_inlist
-        self.griddir_finalize_function = lambda dirname: None
+        self.griddir_finalize_function = lambda gridobj, i: None
         self.name_funcion = None
         self.unpacked = False
 
@@ -666,10 +666,41 @@ class MesaGrid:
             dirpath = os.path.join(grid_path, dirname)
             for fpath in self.extra_files:
                 fname = os.path.basename(fpath)
-                shutil.copy2(fpath, os.path.join(dirpath, fname))
+                shutil.copy2(os.path.abspath(fpath), os.path.join(dirpath, fname))
             for dpath in self.extra_dirs:
                 dname = os.path.basename(dpath)
-                shutil.copytree(dpath, os.path.join(dirpath, dname))
+                shutil.copytree(os.path.abspath(dpath), os.path.join(dirpath, dname))
+
+            # Also copy files specified in inlist_option_files_to_validate if they are missing in the run directory.
+            for namelist, option in self.inlist_option_files_to_validate:
+                if not option in self.__dict__[namelist]:
+                    continue
+                fpath = self.__dict__[namelist][option]
+                if fpath == '':
+                    pass
+                else:
+                    fname = os.path.basename(fpath)
+                    if os.path.isfile(os.path.join(dirpath, fname)):
+                        pass
+                    else:
+                        shutil.copy2(os.path.abspath(fpath), os.path.join(dirpath, fname))
+
+            # Copy extra inlist files if specified.
+            for namelist in self.namelists:
+                for i in range(4):
+                    i += 1
+                    if self.extra_inlist_as_list:
+                        read_extra_inlist_key = f'read_extra_{namelist}_inlist({i})'
+                        read_extra_inlist_name_key = f'extra_{namelist}_inlist_name({i})'
+                    else:
+                        read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
+                        read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
+
+                    if read_extra_inlist_key in self.inlist[namelist].keys():
+                        if self.inlist[namelist][read_extra_inlist_key]:
+                            fname = os.path.basename(self.inlist[namelist][read_extra_inlist_name_key])
+                            shutil.copy2(os.path.abspath(fname), os.path.join(dirpath, fname))
+
 
     def summary(self):
         """

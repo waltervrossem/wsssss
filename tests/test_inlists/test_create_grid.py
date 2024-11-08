@@ -81,7 +81,7 @@ class TestCreateGrid(unittest.TestCase):
         else:
             prev_time = -1
 
-        def finalize_function(gridobj):
+        def finalize_function(gridobj, i):
             print(os.listdir('.'))
 
         self.grid.set_griddir_finalize_function(finalize_function)
