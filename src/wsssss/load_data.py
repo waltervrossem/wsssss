@@ -315,7 +315,6 @@ class _Data:
         Returns:
             ``np.rec.array`` or list of ``np.rec.array``: Column(s) of ``data``.
 
-
         """
         if mask is None:
             mask = ...

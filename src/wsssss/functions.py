@@ -24,6 +24,10 @@ def get_mesa_version(mesa_dir):
 
     Returns:
         str: Version string
+
+    Examples:
+        >>> get_mesa_version(os.environ['MESA_DIR'])
+        '24.03.1'
     """
     with open(f'{mesa_dir}/data/version_number', 'r') as handle:
         version = handle.read().strip()
@@ -41,6 +45,10 @@ def compare_version(version1, version2, operator):
 
     Returns:
         bool: Result of performing the comparison.
+
+    Examples:
+        >>> compare_version('11701', '8118', '<')  # '11701' < '8118' would return True.
+        False
     """
     allowed_ops = ['<', '>', '<=', '>=', '==', '!=']
     if not operator in allowed_ops:
@@ -145,7 +153,7 @@ def convert_mixing_type(mix_type, version, unknown_mixing=100):
             Defaults to 100, which is the merged code for no_mixing.
 
     Returns:
-        New mixing type codes associated with mix_type.
+        np.array: New mixing type codes associated with mix_type.
     """
     if compare_version(version, '15140', '>='):
         pre_post = 'post'
@@ -167,7 +175,7 @@ def cell2face(val, dm, dm_is_m=False, m_center=0):
         m_center (float, optional: If dm_is_m is True, set this as the interior mass.
 
     Returns:
-
+        np.array: Value at cell face of val.
     """
     if dm_is_m:
         dm = np.diff(dm, append=m_center)
@@ -246,7 +254,7 @@ def get_radius(p, unit='cm'):
         raise ValueError(f'Unknown unit {unit}. Must be one of cm, rsun, rsol, or log.')
 
 
-def get_m_bot_CZ(hist, mask=None):
+def get_m_bot_CZ(hist, mask=None, max_q_bot=0.999):
     """
     Get the mass coordinate of the bottom of the convective envelope.
 
@@ -254,6 +262,7 @@ def get_m_bot_CZ(hist, mask=None):
         hist (History):
         mask (bool, np.array, or function, optional): If True, will exclude pre-main sequence.
                 If an array of bools will use that as mask. If a function, will call function(hist) and use that as the mask.
+        max_q_bot (float, optional): Maximum dimensionless mass coordinate below which to look for the bottom of the convective envelope.
 
     Returns:
         array-like: Bottom of the convective envelope.
@@ -270,7 +279,7 @@ def get_m_bot_CZ(hist, mask=None):
         mix_type = convert_mixing_type(hist.get(f'mix_type_{i}', mask=mask), hist.header['version_number'])
         m_bot_CZ = np.maximum(m_bot_CZ,
                               hist.get('star_mass', mask=mask) * hist.get(f'mix_qtop_{i}', mask=mask) *
-                              (mix_type == mix_dict['merged']['no_mixing']) * (hist.get(f'mix_qtop_{i}', mask=mask) <= 0.999))
+                              (mix_type == mix_dict['merged']['no_mixing']) * (hist.get(f'mix_qtop_{i}', mask=mask) <= max_q_bot))
     return m_bot_CZ
 
 
