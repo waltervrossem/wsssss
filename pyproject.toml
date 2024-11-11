@@ -7,7 +7,7 @@ include-package-data = false
 
 [project]
 name = "wsssss"
-version = "0.4.0"
+version = "0.5.0"
 authors = [
   { name="Walter van Rossem", email="walter_v_rossem@hotmail.com" },
 ]
