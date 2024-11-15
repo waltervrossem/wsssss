@@ -428,7 +428,7 @@ class MesaGrid:
         lines = [_ for _ in lines if not _.startswith('!') and _]
         lines = [_.split('=')[0].strip() for _ in lines]
         lines = [_.lower() for _ in lines]
-        lines = [_.replace('(:)', '') for _ in lines]
+        lines = [_.split('(')[0] for _ in lines]
         return lines
 
     def check_copy(self):
