@@ -203,16 +203,6 @@ def run_cmd(cmd, capture_output=False, split=False, to_file='', file_mode='w', *
     return subprocess.run(cmd, **kwargs)
 
 
-def check_dir(args, dirpath):
-    for fname in ['rn', 're', 'clean', args.cmd_main]:
-        fpath = os.path.join(dirpath, fname)
-        if not os.path.isfile(fpath):
-            raise FileNotFoundError(f'File `{fname}` does not exist at the expected location:\n'
-                                    f'{fpath}')
-    if args.restart:
-        pass
-
-
 def get_subdirs(args):
     if args.sub_dirs != '':
         sub_dirs = args.sub_dirs
@@ -236,7 +226,6 @@ def main(args, logger):
         print('')
 
     check_cores(args)
-    check_dir(args, args.base_work_dir)
 
     if args.cmd_pre != '':
         run_cmd(args.cmd_pre, shell=True)
