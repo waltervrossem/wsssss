@@ -372,11 +372,11 @@ def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
 
 def get_mix_dict(profile):
     mesa_ver = str(profile.header.get('version_number'))
-    if compare_version(mesa_ver, '15140', '>='):
+    if uf.compare_version(mesa_ver, '15140', '>='):
         prefix = 'post'
     else:
         prefix = 'pre'
-    mix_dict = kipp.mix_dict[f'{prefix}15140']
+    mix_dict = uf.mix_dict[f'{prefix}15140']
     return mix_dict
 
 
