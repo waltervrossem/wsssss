@@ -924,6 +924,12 @@ def make_gradients(prof, xname='mass', hist=None, ax=None, add_legend=True, n_co
         skip_grad_mu = False
     else:
         skip_grad_mu = True
+
+    if 'mu' in prof.columns:
+        pass
+    else:
+        skip_grad_mu = False
+
     if not skip_grad_mu:
         grad_mu = uf.dlog10y_dx(prof.get('mu'), logP)
         ax.plot(x, grad_mu, 'k-.', label=r'$\nabla_\mu$')

@@ -249,9 +249,10 @@ def get_radius(p, unit='cm'):
     elif unit.lower().replace('_', '') in ['rsun', 'rsol']:
         radius = radius / c.rsun
     elif unit.lower() == 'cm':
-        return radius
+        radius = radius
     else:
         raise ValueError(f'Unknown unit {unit}. Must be one of cm, rsun, rsol, or log.')
+    return radius
 
 
 def get_m_bot_CZ(hist, mask=None, max_q_bot=0.999):
