@@ -241,9 +241,12 @@ def colored_line(f, ax, xdat, ydat, cdat, norm=None, cmap='viridis', lw=2, add_c
     return lc
 
 
-def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
+def hrd_const_rad(ax, fontsize=8, radii=None, angle=None, linear=False):
     xlim1 = ax.get_xlim()
     ylim1 = ax.get_ylim()
+    if linear:
+        xlim1 = np.log10(xlim1)
+        ylim1 = np.log10(ylim1)
     xw = xlim1[0] - xlim1[1]
     yw = ylim1[1] - ylim1[0]
 
@@ -275,7 +278,10 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
 
         logR = np.log10(rad)
         logLs = 2 * logR + 4 * logTs + log_const
-        ax.plot(logTs, logLs, 'grey', linestyle='--', zorder=-10, lw=1)
+        if linear:
+            ax.plot(10**logTs, 10**logLs, 'grey', linestyle='--', zorder=-10, lw=1)
+        else:
+            ax.plot(logTs, logLs, 'grey', linestyle='--', zorder=-10, lw=1)
 
         xleft = np.interp(ylim1[1], logLs, logTs)
         xright = np.interp(ylim1[0], logLs, logTs)
@@ -298,7 +304,6 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
         else:
             textxs.append(xleft - 0.07 * xw)
             textxs.append(xright + 0.07 * xw)
-
         frac_x_sep = abs(np.diff(textxs)) / xw
         if frac_x_sep < 0.1:
             textxs.pop(0)
@@ -307,20 +312,32 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None):
 
             if angle is None:
                 # Have to reset xylims due to the plotting the lines of constant radius, otherwise get wrong angles.
-                ax.set_ylim(ylim1)
-                ax.set_xlim(xlim1)
-                screen_dx, screen_dy = ax.transData.transform((logTs[0], logLs[0])) - ax.transData.transform(
-                    (logTs[-1], logLs[-1]))
+                if linear:
+                    ax.set_ylim(10**ylim1)
+                    ax.set_xlim(10**xlim1)
+                    screen_dx, screen_dy = ax.transData.transform((10**logTs[0], 10**logLs[0])) - ax.transData.transform(
+                        (10**logTs[-1], 10**logLs[-1]))
+                else:
+                    ax.set_ylim(ylim1)
+                    ax.set_xlim(xlim1)
+                    screen_dx, screen_dy = ax.transData.transform((logTs[0], logLs[0])) - ax.transData.transform(
+                        (logTs[-1], logLs[-1]))
                 angle = (np.degrees(np.arctan2(screen_dy, screen_dx)) + 90) % 180 - 90
             texty = np.interp(textx, logTs, logLs)
+            if linear:
+                textx = 10**textx
+                texty = 10**texty
             text = ax.text(textx, texty, r"${}\;\mathrm{{R}}_{{\odot}}$".format(nr_string), color='k', zorder=-9,
                            rotation=angle, size=fontsize, va='center', ha='center', clip_on=True,
                            bbox=dict(facecolor='white', linewidth=0, pad=0))
             text.set_path_effects(
                 [patheffects.Stroke(linewidth=3, foreground=ax.get_facecolor()), patheffects.Normal()])
-
-    ax.set_ylim(ylim1)
-    ax.set_xlim(xlim1)
+    if linear:
+        ax.set_ylim(10**ylim1)
+        ax.set_xlim(10**xlim1)
+    else:
+        ax.set_ylim(ylim1)
+        ax.set_xlim(xlim1)
 
 
 def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):

@@ -167,7 +167,7 @@ def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=Non
 
     if linear:
         ax.set_xlabel(r'$T_\mathrm{eff} \; (\mathrm{K})$')
-        ax.set_ylabel(r'$L \; (/mathrm{L}_\odot)$')
+        ax.set_ylabel(r'$L \; (\mathrm{L}_\odot)$')
     else:
         ax.set_xlabel(r'$\log_{10} \; (T_\mathrm{eff} / \mathrm{K})$')
         ax.set_ylabel(r'$\log_{10} \; (L / \mathrm{L}_\odot)$')
@@ -176,8 +176,8 @@ def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=Non
         ax.invert_xaxis()
     ax.margins(0.05)
 
-    if add_const_rad and not linear:
-        hrd_const_rad(ax)
+    if add_const_rad:
+        hrd_const_rad(ax, linear=linear)
 
     return f, ax
 

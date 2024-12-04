@@ -185,19 +185,7 @@ def cell2face(val, dm, dm_is_m=False, m_center=0):
     return face
 
 
-def get_logTeffL(hist, mask=None):
-    """
-    Get logTeff and logL from History and apply mask.
-
-    Args:
-        hist (History):
-        mask (bool, np.array, or function, optional): If True, will exclude pre-main sequence.
-            If an array of bools will use that as mask. If a function, will call function(hist) and use that as the mask.
-
-    Returns:
-        Tuple of masked logTeff and logL.
-    """
-    teff_sun = get_constants(hist).teffsun
+def get_logTeffL(hist, mask=None, linear=False):
     if 'log_Teff' in hist.columns:
         logTeff = hist.get('log_Teff')
     elif 'effective_T' in hist.columns:
@@ -215,10 +203,13 @@ def get_logTeffL(hist, mask=None):
         if 'photosphere_r' in hist.columns:
             print('Calculating logL from Teff and R_photosphere.')
             R = hist.get('photosphere_r')
-            logL = 2 * np.log10(R) + 4 * logTeff - 4 * np.log10(teff_sun)
+            logL = 2 * np.log10(R) + 4 * logTeff - 4 * np.log10(5777)
         else:
             raise ValueError('log_L, luminosity, or photosphere_L not in history file.')
     mask = get_mask(hist, mask)
+    if linear:
+        logTeff = 10 ** logTeff
+        logL = 10 ** logL
     return logTeff[mask], logL[mask]
 
 
