@@ -679,7 +679,7 @@ class MesaGrid:
                 shutil.copy2(os.path.abspath(fpath), os.path.join(dirpath, fname))
             for dpath in self.extra_dirs:
                 dname = os.path.basename(dpath)
-                shutil.copytree(os.path.abspath(dpath), os.path.join(dirpath, dname))
+                shutil.copytree(os.path.abspath(dpath), os.path.join(dirpath, dname), dirs_exist_ok=True)
 
             # Also copy files specified in inlist_option_files_to_validate if they are missing in the run directory.
             for namelist, option in self.inlist_option_files_to_validate:
