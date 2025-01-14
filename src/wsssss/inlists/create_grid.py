@@ -5,6 +5,7 @@ import itertools
 import os
 import shutil
 import copy
+import sys
 
 import numpy as np
 
@@ -603,7 +604,7 @@ class MesaGrid:
             for namelist in unpacked.keys():
                 file_path = os.path.join(dirpath, unpacked[namelist][f'{non_mesa_key_start}filename'])
                 if not os.path.exists(file_path):
-                    prepend = 'Created using wssss.create_grid module.\n'
+                    prepend = '!Created using wsssss.inlists.create_grid module.\n'
                 else:
                     prepend = ''
                 with open(file_path, 'a') as handle:
