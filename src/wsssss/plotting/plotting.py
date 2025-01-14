@@ -81,7 +81,7 @@ def make_vhrd(hist, add_cbar=True, vHRD_norm=1.0, use_mask=True, ax=None, bounds
 
 
 def plot_hrd_data(f, ax, hist, zdata, znorm, use_mask, norm, add_cbar, cmap, sdat=None, small_cbar=False,
-                  label_func=None, vmin=None, vmax=None, linecolor='k', linear=False):
+                  label_func=None, vmin=None, vmax=None, linecolor='k', linear=False, linestyle='-'):
     xdat, ydat = uf.get_logTeffL(hist)
     if linear:
         xdat = 10 ** xdat
@@ -114,7 +114,7 @@ def plot_hrd_data(f, ax, hist, zdata, znorm, use_mask, norm, add_cbar, cmap, sda
         cax = ax.scatter(xdat[::-1], ydat[::-1], c=zdat[::-1], s=sdat, lw=0, cmap=cmap, norm=norm, vmin=vmin, vmax=vmax)
     else:
         cax = None
-    ax.plot(xdat, ydat, c=linecolor, lw=1)
+    ax.plot(xdat, ydat, c=linecolor, lw=1, linestyle=linestyle)
     cbar = None
     if add_cbar and zdata is not None:
         if not small_cbar:
@@ -140,7 +140,7 @@ def plot_hrd_data(f, ax, hist, zdata, znorm, use_mask, norm, add_cbar, cmap, sda
 def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=None, ax=None, norm=None, cmap='viridis',
              add_const_rad=True, label_func=None, vmin=None, vmax=None, linecolor='k', linear=False):
     f, ax = get_figure(ax)
-
+    linestyles = ['-', '--', '-.', ':']
     if type(hist) in [list, tuple]:
         pass
     else:
@@ -153,13 +153,16 @@ def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=Non
     for i, h in enumerate(hist):
         if type(zdata) == str or zdata is None:
             f, ax, cbar, cax = plot_hrd_data(f, ax, h, zdata, znorm, use_mask, norm, add_cbar, cmap, vmin=vmin,
-                                             vmax=vmax, label_func=label_func, linecolor=linecolor, linear=linear)
+                                             vmax=vmax, label_func=label_func, linecolor=linecolor, linear=linear,
+                                             linestyle=linestyles[i % len(linestyles)])
         elif callable(zdata):
             f, ax, cbar, cax = plot_hrd_data(f, ax, h, zdata(h), znorm, use_mask, norm, add_cbar, cmap, vmin=vmin,
-                                             vmax=vmax, label_func=label_func, linecolor=linecolor, linear=linear)
+                                             vmax=vmax, label_func=label_func, linecolor=linecolor, linear=linear,
+                                             linestyle=linestyles[i % len(linestyles)])
         else:
             f, ax, cbar, cax = plot_hrd_data(f, ax, h, zdata[i], znorm, use_mask, norm, add_cbar, cmap, vmin=vmin,
-                                             vmax=vmax, label_func=label_func, linecolor=linecolor, linear=linear)
+                                             vmax=vmax, label_func=label_func, linecolor=linecolor, linear=linear,
+                                             linestyle=linestyles[i % len(linestyles)])
         if add_cbar and cbar is not None:
             cbax = f.axes[-1]
             cbax.set_ylabel('{}'.format(zlabel))
