@@ -96,6 +96,18 @@ def evaluate_inlist(path):
     return _evaluate_inlist(inlist, inlist_dir)
 
 
+def get_inlist_type(inlist):
+    key_type = 'old'
+    for kind in defaults.keys():
+        if kind not in inlist.keys():
+            continue
+
+        for key, item in list(inlist[kind].items()):
+            if isinstance(item, list):
+                key_type = 'new'
+                return key_type
+    return key_type
+
 def _evaluate_inlist(inlist, inlist_dir):
     """
     Fully evaluate `inlist` as if it were written in `inlist_dir`, following all ``read_extra_*_inlist`` if
@@ -229,6 +241,39 @@ def print_dict(to_print):
     for k, v in to_print.items():
         print(f'{k}: {v}')
 
+
+def load_MESA_defaults(mesa_dir):
+    mesa_version = get_mesa_version(mesa_dir)
+    if compare_version(mesa_version, 'r23.05.1', '<'):
+        max_extra_inlists = 5  # Hard coded in MESA
+        read_extra = 'read_extra_{}_inlist{}'
+        read_extra_filename = 'extra_{}_inlist{}_name'
+    else:
+        max_extra_inlists = const.max_extra_inlists
+        read_extra = 'read_extra_{}_inlist({})'
+        read_extra_filename = 'extra_{}_inlist_name({})'
+
+    if compare_version(mesa_version, '15140', '>='):
+        astero_index = 1
+    else:
+        astero_index = 0
+
+    inl_str = ''
+    default_keys = get_mesa_defaults(mesa_dir)
+    for namelist in default_keys.keys():
+        if namelist == 'astero':
+            inl_str += (f"&{namelist}\n"
+                        f"   {read_extra.format(namelist, 1)} = .true.\n"
+                        f"   {read_extra_filename.format(namelist, 1)} = '{mesa_dir}/{defaults['astero'][astero_index]}'\n"
+                        f"/\n\n")
+        else:
+            inl_str += (f"&{namelist}\n"
+                        f"   {read_extra.format(namelist, 1)} = .true.\n"
+                        f"   {read_extra_filename.format(namelist, 1)} = '{mesa_dir}/{defaults[namelist]}'\n"
+                        f"/\n\n")
+    print(inl_str)
+    inlist_defaults = evaluate_inlist_str(inl_str, '')
+    return inlist_defaults
 
 def compare_inlist(path1, path2, show_same=False):
     inlist1 = evaluate_inlist(path1)
