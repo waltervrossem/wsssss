@@ -867,7 +867,10 @@ def make_composition(prof, elements='all', xname='mass', ax=None, add_burnmix=Tr
             comp -= min(comp)
             comp /= max(comp)
         if grad:
-            comp = np.abs(np.gradient(np.log10(comp), np.log10(prof.data.pressure)))
+            comp_grad = np.gradient(comp, prof.data.pressure) / (comp / prof.data.pressure)
+            comp_grad[comp < 1e-9] = np.nan
+            comp = np.abs(comp_grad)
+
         ax.plot(xdata, comp, c=_c, ls=ls, label=e.capitalize())
 
     if grad:
@@ -934,7 +937,7 @@ def make_gradients(prof, xname='mass', hist=None, ax=None, add_legend=True, n_co
         skip_grad_mu = False
 
     if not skip_grad_mu:
-        grad_mu = uf.dlog10y_dx(prof.get('mu'), logP)
+        grad_mu = np.gradient(np.log10(prof.get('mu'), logP))
         ax.plot(x, grad_mu, 'k-.', label=r'$\nabla_\mu$')
 
     if add_legend:
