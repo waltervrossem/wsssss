@@ -340,7 +340,8 @@ def get_mesa_defaults(mesa_dir):
         s = [_ for _ in s if _]  # Get rid of ''
         s_no_com = '\n'.join(s)
 
-        keys = [_.split('=')[0].strip() for _ in s]
+        keys = [_.split('=', maxsplit=1)[0].strip() for _ in s]
+        values = [_.split('=', maxsplit=1)[1].split('!')[0].strip() for _ in s]
         keys_defaults[nml_type] = keys
     return keys_defaults
 
