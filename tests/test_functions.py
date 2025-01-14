@@ -67,5 +67,5 @@ class TestFunctions(unittest.TestCase):
         uf.calc_deltaPg(gs, self.hist, 1)
 
     def test_correct_seismo(self):
-        uf.correct_seismo(self.hist, ld.load_gss(self.hist, return_pnums=True), uf.get_ms_mask, 'star_age')
+        uf.correct_seismo(self.hist, ld.load_gss(self.hist, return_pnums=True), uf.get_rgb_mask, 'star_age')
 
