@@ -73,16 +73,16 @@ def get_termination_code(lines):
 
     if term_code == 'Running':  # Didn't find normal termination code
         for line in lines:
+            if 'STOP' in line:
+                term_code = line.split('STOP')[1].strip()
+                break
+            if 'Backtrace' in line:
+                term_code = 'Error'
             if ('adjust_mesh_failed' in line) or ('mesh_plan problem') in line:
                 term_code = 'mesh_failed'
                 break
             if 'stopping because of problems dt < min_timestep_limit' in line:
                 term_code = 'min_timestep_limit'
-                break
-            if 'Backtrace' in line:
-                term_code = 'Error'
-            if 'STOP' in line:
-                term_code = line.split('STOP')[1].strip()
                 break
             if 'stop because hit EOS limits' in line:
                 term_code = 'EOS_limits'
@@ -90,6 +90,8 @@ def get_termination_code(lines):
             if 'stopping because of problems' in line:
                 term_code = line.split('--')[-1].strip()
                 break
+            if 'terminated evolution: nonzero_ierr' in line:
+                term_code = 'nonzero_ierr'
 
     return term_code
 
