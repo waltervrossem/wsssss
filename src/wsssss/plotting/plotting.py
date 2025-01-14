@@ -668,11 +668,11 @@ def make_hrd_profiles(hist, add_cbar=True, vHRD_norm=1.0, use_mask=True, ax=None
 
     xdat, ydat = uf.get_logTeffL(hist)
 
-    ax.plot(xdat[hist_i], hist.data.log_L[hist_i], 'k+')
+    ax.plot(xdat[hist_i], ydat[hist_i], 'k+')
 
     if show_prof_num > 0:
         for i in range(0, len(hist_i), show_prof_num):
-            ax.text(xdat[hist_i[i]], hist.data.log_L[hist_i[i]], str(pnum[i]), verticalalignment='top')
+            ax.text(xdat[hist_i[i]], ydat[hist_i[i]], str(pnum[i]), verticalalignment='top')
 
     return f, ax
 
