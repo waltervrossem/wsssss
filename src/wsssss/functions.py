@@ -352,7 +352,16 @@ def get_pms_mask(hist, invert=False, use_LH=True):
 
     if use_LH:
         _, logL = get_logTeffL(hist)
-        maskL = ((hist.data.log_LH - logL) < 0) & (hist.data.center_h1 > 0.6)
+        if 'log_LH' in hist.columns:
+            maskL = ((hist.data.log_LH - logL) < 0) & (hist.data.center_h1 > 0.6)
+        else:
+            have_pp = 'pp' in hist.columns
+            have_cno = 'cno' in hist.columns
+            if have_pp and have_cno:
+                log_LH = np.log10(10**hist.get('pp') + 10**hist.get('cno'))
+                maskL = ((log_LH - logL) < 0) & (hist.data.center_h1 > 0.6)
+            else:
+                raise KeyError('Must have either log_LH or pp and cno as columns if using hydrogen luminosity as ZAMS start.')
         starts_pms = maskL[0]
 
         mask = np.zeros_like(maskL)
