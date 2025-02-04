@@ -6,14 +6,14 @@
 wsssss documentation
 ====================
 
-``wsssss`` is a package which make creating, running, and studying grids of stars with [MESA](https://docs.mesastar.org)
+``wsssss`` is a package which make creating, running, and studying grids of stars with `MESA <https://docs.mesastar.org>`_
 quick (except for the compute time) and easy.
 
 Install with
 ``pip install git+https://github.com/waltervrossem/wsssss``
 
-``inlists.create_grid`` and ``mesa-go`` require a version of [MESA](https://docs.mesastar.org) to be installed.
-``gyre-driver`` requires a version of [gyre](https://gyre.readthedocs.io/en/stable/) to be installed.
+``inlists.create_grid`` and ``mesa-go`` require a version of `MESA <https://docs.mesastar.org>`_ to be installed.
+``gyre-driver`` requires a version of `gyre <https://gyre.readthedocs.io/en/stable/>`_ to be installed.
 
 
 .. toctree::
