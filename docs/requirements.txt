@@ -1,1 +1,1 @@
-sphinxarg
+sphinxarg 0.5.2
