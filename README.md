@@ -8,3 +8,5 @@ Install with
 
 `inlists.create_grid` and `mesa-go` require a version of [MESA](https://docs.mesastar.org) to be installed.
 `gyre-driver` requires a version of [gyre](https://gyre.readthedocs.io/en/stable/) to be installed.
+
+Documentation is available at [https://wsssss.readthedocs.io](https://wsssss.readthedocs.io).

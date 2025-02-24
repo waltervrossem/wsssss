@@ -7,7 +7,7 @@ include-package-data = false
 
 [project]
 name = "wsssss"
-version = "0.5.6"
+version = "0.6.0"
 authors = [
   { name="Walter van Rossem", email="walter_v_rossem@hotmail.com" },
 ]
@@ -56,3 +56,4 @@ check-grid = "wsssss._bin:check_grid.run"
 Homepage = "https://github.com/waltervrossem/wsssss"
 Issues = "https://github.com/waltervrossem/wsssss/issues"
 Source = "https://github.com/waltervrossem/wsssss"
+Documentation = "https://wsssss.readthedocs.io"
