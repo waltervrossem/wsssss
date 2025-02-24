@@ -21,6 +21,7 @@ dependencies = [
     "dill",
     "matplotlib",
     "setproctitle",
+    "joblib"
 ]
 
 classifiers = [
