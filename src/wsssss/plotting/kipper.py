@@ -408,7 +408,6 @@ class Kipp_data:
 
         return Path(vertices, codes)
 
-    @line_profiler.profile
     def calc_zones(self, y_data, z_data, bad_value):
         self.bad_value = bad_value
         ny, nx = z_data.shape
