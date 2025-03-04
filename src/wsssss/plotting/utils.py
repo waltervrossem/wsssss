@@ -444,6 +444,7 @@ def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, 
 
     mix_dict = get_mix_dict(profile)
     all_regions = get_mixing(profile, min_width)
+    added_to_legend = []
     for _, name in mix_dict.items():
         regions = all_regions[name]
         if len(regions) == 0:
@@ -457,9 +458,10 @@ def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, 
             xstart = x[start]
             xend = x[end]
 
-            if add_legend:
+            if add_legend and name not in added_to_legend:
                 ax.axvspan(xstart, xend, ymin, ymax, hatch=hatch, edgecolor=color, linewidth=line,
                            facecolor='none', label=name, zorder=-1, alpha=alpha)
+                added_to_legend.append(name)
             else:
                 ax.axvspan(xstart, xend, ymin, ymax, hatch=hatch, edgecolor=color, linewidth=line,
                            facecolor='none', zorder=-1, alpha=alpha)
