@@ -26,8 +26,9 @@ class Kipp_data:
     def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data',
                  prof_resolution=200, logx=False, logy=False, logc=False, xlims=None, ylims=None, clims=None, kwargs_mixing=None,
-                 kwargs_profile_color=None):
+                 kwargs_profile_color=None, parallel=True):
         self.__version__ = '0.0.5'
+        self.parallel = parallel
         self.verbose = verbose
         self.xaxis = xaxis
         self.yaxis = yaxis
@@ -418,12 +419,15 @@ class Kipp_data:
         zone_ids = np.digitize(zone_ids, bins=np.unique(zone_ids)) - 2
 
         num_zones = np.max(zone_ids) + 1
-        # return [self.make_path(i, zone_ids, y_data, z_data) for i in range(num_zones)]
-        # return [self.make_path2(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones)]
-        # zones = Parallel(n_jobs=1)(
-        #     delayed(self.make_path)(i, zone_ids, y_data, z_data) for i in range(num_zones))
-        zones = Parallel(n_jobs=-1)(
-            delayed(self.make_path2)(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones))
+
+        if self.parallel:
+            zones = Parallel(n_jobs=-1)(
+                delayed(self.make_path2)(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones))
+            # zones = Parallel(n_jobs=1)(
+            #     delayed(self.make_path)(i, zone_ids, y_data, z_data) for i in range(num_zones))
+        else:
+            zones = [self.make_path2(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones)]
+            # zones = [self.make_path(i, zone_ids, y_data, z_data) for i in range(num_zones)]
         return zones
 
     def add_mixing(self, ax, set_xylims=True):
@@ -479,6 +483,8 @@ class Kipp_data:
         if set_xylims:
             ax.set_xlim(extent[0], extent[1])
             ax.set_ylim(extent[2], extent[3])
+
+
     def add_color(self, ax, set_xylims=True):
         extent = np.array([1e99,-1e99,1e99,-1e99])
         if isinstance(self.color_zones, list):
