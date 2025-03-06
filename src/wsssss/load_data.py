@@ -138,6 +138,8 @@ class _Data:
         header_columns = lines[1].split()
         header_data = [ast.literal_eval(_) for _ in lines[2].split()]
         header = {k: v for k, v in zip(header_columns, header_data)}
+        if 'version_number' in header.keys():
+            header['version_number'] = str(header['version_number'])
 
         columns = lines[5].split()
         first_row = lines[6].split()
