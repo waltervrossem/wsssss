@@ -275,12 +275,13 @@ class MesaGrid:
         """
         self.name_funcion = function
 
-    def create_grid(self, grid_path):
+    def create_grid(self, grid_path, rm_dir=True):
         """
         Create the MESA grid in `grid_path`. The inlist options are validated and extra files and directories copied to
         each run directory.
         Args:
             grid_path: Path to grid directory.
+            rmdir (bool, optional): Remove grid directory if it exists. Defaults to `True`.
 
         Examples:
 
@@ -298,7 +299,7 @@ class MesaGrid:
 
         self.check_copy()
 
-        self._setup_directories(grid_path)
+        self._setup_directories(grid_path, rm_dir)
 
         self._write_inlists(grid_path)
 
@@ -571,19 +572,20 @@ class MesaGrid:
             new_inlist[f'{non_mesa_key_start}unpackindex'] = i
             yield new_inlist
 
-    def _setup_directories(self, grid_path):
+    def _setup_directories(self, grid_path, rm_dir):
         """
         Create the directory structure for a grid at ``grid_path``.
 
         Args:
             grid_path (str): Path which will contain the grid.
+            rm_dir (bool): If it exists, first remove the grid directory.
 
         """
 
         if os.path.isfile(grid_path):
             raise FileExistsError(f'Expected `grid_path` {grid_path} is a file.')
 
-        if os.path.exists(grid_path) and os.path.isdir(grid_path):  # Remove existing grid.
+        if os.path.exists(grid_path) and os.path.isdir(grid_path) and rm_dir:  # Remove existing grid.
             shutil.rmtree(grid_path)
 
         os.makedirs(grid_path)
