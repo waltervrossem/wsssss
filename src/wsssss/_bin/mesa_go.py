@@ -231,11 +231,6 @@ def main(args, logger):
         run_cmd(args.cmd_pre, shell=True)
 
     sub_dirs = get_subdirs(args)
-    if args.verbose:
-        print('Sub-directories:')
-        for subdir in sub_dirs:
-            print(subdir)
-        print('')
 
     pool = mp.Pool(args.num_mesa)
     arguments = list(zip(itertools.repeat(args), sub_dirs))
@@ -253,6 +248,13 @@ def main(args, logger):
     else:
         n_tasks = 1
         task_id = 0
+
+    if args.verbose:
+        print('Sub-directories:')
+        for subdir in sub_dirs[task_id::n_tasks]:
+            print(subdir)
+        print('')
+
     _start_mesa = functools.partial(start_mesa, logger=logger)
     results = pool.starmap(_start_mesa, arguments[task_id::n_tasks])
     print(results)
