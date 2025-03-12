@@ -110,7 +110,10 @@ class MesaGrid:
             else:
                 read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
                 read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
-            self.inlist[namelist] = {read_extra_inlist_key: False,
+
+            # Only create entry and default to false. Will update self.validate_inlists()
+            # star_job and controls default to true
+            self.inlist[namelist] = {read_extra_inlist_key: namelist in ('star_job', 'controls'),
                                      read_extra_inlist_name_key: namelist_filename}
 
         self.extra_files = []
@@ -339,7 +342,7 @@ class MesaGrid:
                     read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
                     read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
 
-                if not read_extra_inlist_key in self.inlist[namelist].keys():
+                if read_extra_inlist_key not in self.inlist[namelist].keys():
                     continue
 
                 if i == self.inlists_index:  # If any options have been added, set read_extra_inlist_key to True
@@ -623,11 +626,13 @@ class MesaGrid:
             inlist_str (str): A string representation of ``inlist_dict`` readable by MESA.
         """
         inlist_string = ''
+        inlist_type = inlist_dict[f'{non_mesa_key_start}type']
 
-        if len([_ for _ in inlist_dict.keys() if not _.startswith(non_mesa_key_start)]) == 0:
+        is_empty = len([_ for _ in inlist_dict.keys() if not _.startswith(non_mesa_key_start)]) == 0
+        if is_empty and inlist_type not in ('controls', 'star_job'):
             return inlist_string
 
-        inlist_type = inlist_dict[f'{non_mesa_key_start}type']
+
         if inlist_type == 'master':
             for key in inlist_dict.keys():
                 if key.startswith(non_mesa_key_start):
