@@ -337,7 +337,7 @@ def get_mesa_defaults(mesa_dir):
         # Get rid of empty lines and comments
         s = s_raw.lower().splitlines()
         s = [_ for _ in s if not _.strip().startswith('!')]  # Get rid of fortran comments
-        s = [_ for _ in s if _]  # Get rid of ''
+        s = [_ for _ in s if _.strip()]  # Get rid of ''
         s_no_com = '\n'.join(s)
 
         keys = [_.split('=', maxsplit=1)[0].strip() for _ in s]
