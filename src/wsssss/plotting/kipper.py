@@ -3,6 +3,7 @@
 
 import os
 import dill
+import joblib.externals.loky.process_executor
 import numpy as np
 
 from scipy import sparse
@@ -421,10 +422,14 @@ class Kipp_data:
         num_zones = np.max(zone_ids) + 1
 
         if self.parallel:
-            zones = Parallel(n_jobs=-1)(
-                delayed(self.make_path2)(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones))
-            # zones = Parallel(n_jobs=1)(
-            #     delayed(self.make_path)(i, zone_ids, y_data, z_data) for i in range(num_zones))
+            try:
+                zones = Parallel(n_jobs=-1)(
+                    delayed(self.make_path2)(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones))
+                # zones = Parallel(n_jobs=1)(
+                #     delayed(self.make_path)(i, zone_ids, y_data, z_data) for i in range(num_zones))
+            except joblib.externals.loky.process_executor.TerminatedWorkerError as exc:
+                print('Parallel failed, falling back to single threaded.')
+                zones = [self.make_path2(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones)]
         else:
             zones = [self.make_path2(i, adjacency_matrix, zone_ids, y_data, z_data) for i in range(num_zones)]
             # zones = [self.make_path(i, zone_ids, y_data, z_data) for i in range(num_zones)]
