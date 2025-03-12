@@ -719,7 +719,8 @@ class MesaGrid:
                     if read_extra_inlist_key in self.inlist[namelist].keys():
                         if self.inlist[namelist][read_extra_inlist_key]:
                             fname = os.path.basename(self.inlist[namelist][read_extra_inlist_name_key])
-                            shutil.copy2(os.path.abspath(fname), os.path.join(dirpath, fname))
+                            shutil.copy2(os.path.abspath(self.inlist[namelist][read_extra_inlist_name_key]),
+                                         os.path.join(dirpath, fname))
 
 
     def summary(self):
