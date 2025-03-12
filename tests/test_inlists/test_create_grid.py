@@ -28,6 +28,10 @@ class TestCreateGrid(unittest.TestCase):
 
     def setUp(self):
         grid = cg.MesaGrid()
+
+        grid.inlist['controls']['read_extra_controls_inlist(1)'] = True
+        grid.inlist['controls']['extra_controls_inlist_name(1)'] = 'copy_this_namelist'
+
         grid.star_job['show_net_species_info'] = [True]
 
         grid.controls['initial_mass'] = [1, 2]
@@ -62,10 +66,12 @@ class TestCreateGrid(unittest.TestCase):
         self.assertEqual(None, self.grid.validate_inlists())
         self.assertEqual(None, self.grid.validate_inlists(self.grid.mesa_dir))
 
+        # Raise KeyError for option which does not exist in MESA
         self.grid.star_job['this_option_does_not_exits'] = True
         self.assertRaises(KeyError, self.grid.validate_inlists)
         self.grid.star_job.pop('this_option_does_not_exits')
 
+        # Raise ValueError if extra_controls_inlist_name is the same as master inlist name.
         self.grid.inlist['controls']['read_extra_controls_inlist(1)'] = True
         self.grid.inlist['controls']['extra_controls_inlist_name(1)'] = 'inlist_project'
         self.grid.add_file('/home/walter/Github/MESA_templates/24.03.1/template_24031/inlist_project')
@@ -82,7 +88,9 @@ class TestCreateGrid(unittest.TestCase):
             prev_time = -1
 
         def finalize_function(gridobj, i):
-            print(os.listdir('.'))
+            paths = os.listdir('.')
+            paths.sort()
+            print(paths)
 
         self.grid.set_griddir_finalize_function(finalize_function)
 
@@ -91,10 +99,10 @@ class TestCreateGrid(unittest.TestCase):
 
         self.grid.create_grid(grid_dir)
         sys.stdout = sys.__stdout__
-        expected = ("['inlist', 'inlist_project']\n"
-                    "['inlist', 'inlist_project']\n"
-                    "['inlist', 'inlist_project']\n"
-                    "['inlist', 'inlist_project']\n")
+        expected = ("['copy_this_namelist', 'inlist', 'inlist_project']\n"
+                    "['copy_this_namelist', 'inlist', 'inlist_project']\n"
+                    "['copy_this_namelist', 'inlist', 'inlist_project']\n"
+                    "['copy_this_namelist', 'inlist', 'inlist_project']\n")
         self.assertEqual(expected, capturedOutput.getvalue())
 
         self.assertFalse(os.path.exists(os.path.join(grid_dir, 'test_time')),
@@ -109,4 +117,7 @@ class TestCreateGrid(unittest.TestCase):
         for namelist in self.grid.namelists:
             mesa_only = {k: v for k, v in inlist_from_grid[namelist].items() if not k.startswith(cg.non_mesa_key_start)}
             diff = inl.inlist_diff(mesa_only, inlist_from_file[namelist])
-            self.assertDictEqual({}, diff['changed'], msg=str(diff['changed']))
+            if namelist == 'controls':  # in copy_this_namelist
+                self.assertDictEqual({'max_age': (None, 1000000000000.0)}, diff['changed'], msg=str(diff['changed']))
+            else:
+                self.assertDictEqual({}, diff['changed'], msg=str(diff['changed']))
