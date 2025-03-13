@@ -205,7 +205,7 @@ class _Data:
         try:
             data = np.rec.array(np.loadtxt(self.path, skiprows=6, dtype=list(zip(columns, formats))))
         except ValueError as exc:
-            print(f"File {path} gave ValueError when reading:\n{exc.args[0]}\nTrying to fix.")
+            print(f"File {self.path} gave ValueError when reading:\n{exc.args[0]}\nTrying to fix.")
 
             shutil.copy2(self.path, f'{self.path}_original')
 
