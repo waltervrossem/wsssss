@@ -211,7 +211,7 @@ class _Data:
 
             lines = self._fix_datafile()
 
-            with open(f'{path}', 'wb') as handle:  #
+            with open(f'{self.path}', 'wb') as handle:  #
                 handle.writelines(lines)
 
             data = np.rec.array(np.loadtxt(f'{self.path}', skiprows=6, dtype=list(zip(columns, formats))))
