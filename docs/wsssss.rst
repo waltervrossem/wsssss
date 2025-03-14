@@ -7,9 +7,9 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   wsssss.constants
    wsssss.inlists
    wsssss.plotting
+   wsssss.constants
 
 Submodules
 ----------

@@ -52,7 +52,9 @@ def get_parser():
                         help='Number of instances of MESA to run at once.')
     parser.add_argument('--OMP_NUM_THREADS', '-j', type=int, default=env_OMP_NUM_THREADS,
                         help='Value of the OMP_NUM_THREADS environment variable to set before running ``star``. '
-                             '``num-mesa`` times ``OMP_NUM_THREADS`` cannot be larger than ``nproc``.')
+                             '``num-mesa`` times ``OMP_NUM_THREADS`` cannot be larger than ``nproc``. '
+                             'Defaults to `multiprocessing.cpu_count()` if `OMP_NUM_THREADS` environment variable '
+                             'is not set.')
     parser.add_argument('--debug', action='store_const', const=True, default=False,
                         help='Print info about what the script is doing.')
     parser.add_argument('--skip-if-file-exists', type=str, default='',

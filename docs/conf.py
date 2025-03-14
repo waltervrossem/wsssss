@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath('../src/wsssss'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'wsssss'
-copyright = '2024, Walter van Rossem'
+copyright = '2025, Walter van Rossem'
 author = 'Walter van Rossem'
 
 # -- General configuration ---------------------------------------------------
