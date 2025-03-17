@@ -1154,7 +1154,7 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
         ylims (length 2 array, optional): Lower and upper limits of the y-axis.
         clims (length 2 array, optional): Lower and upper limits of the colour-axis.
         kwargs_mixing (dict, optional): Not used.
-        kwargs_profile_color (dict, optional): Not used.
+        kwargs_profile_color (dict, optional): Passed to pcolormesh in ``add_color``.
         return_Kipp_data (bool, optional): If ``True``, also returns Kipp_data.
         parallel (bool, optional): If ``True``, calculate Kippenhahn regions in parallel.
 
