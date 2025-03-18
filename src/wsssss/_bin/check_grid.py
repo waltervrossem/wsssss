@@ -29,7 +29,7 @@ def get_parser():
                               'directory name.')
     _parser.add_argument('--exclude', nargs='*', type=str, default=['figs', 'template_11701', 'slurm*'],
                          help='Directory names to exclude from sub-dirs (i.e. do not contain MESA runs).')
-    _parser.add_argument('--out-file', '-o', type=str, default='out_{}',
+    _parser.add_argument('--out-file', '-o', type=str, default='../out_{}',
                          help='File format for MESA out files (from eg ./rn | tee out_file). Curly braces will be '
                               'expanded with with the directory name.')
     _parser.add_argument('--slurm-stats-dir', '-s', type=str, default='slurm_out',
