@@ -622,10 +622,6 @@ class MesaGrid:
         inlist_string = ''
         inlist_type = inlist_dict[f'{non_mesa_key_start}type']
 
-        is_empty = len([_ for _ in inlist_dict.keys() if not _.startswith(non_mesa_key_start)]) == 0
-        if is_empty and inlist_type not in ('controls', 'star_job'):
-            return inlist_string
-
 
         if inlist_type == 'master':
             for key in inlist_dict.keys():
