@@ -1127,8 +1127,8 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
     return f, axes
 
 def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
-                 verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data',
-                 prof_resolution=200, logx=False, logy=False, logc=False, xlims=None, ylims=None, clims=None, kwargs_mixing=None,
+                 verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data', mixing_min_height=0,
+                 prof_resolution=200, xlims=None, ylims=None, clims=None, kwargs_mixing=None, norm=None, cmap=None,
                  kwargs_profile_color=None, return_Kipp_data=False, parallel=True):
     """
     Create a Kippenhahn diagram.
@@ -1141,31 +1141,37 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
         yaxis (str, optional): y-axis column name. Must be one of `mass` or `radius`. Defaults to `mass`.
         caxis (str, optional): colour-axis column name. Must be 'eps_net' or a column in `Profile`.
         zone_filename (str, optional): Filename of zonefile.
-        verbose (bool, optional):
+        verbose (bool, optional): If ``True``, prints extra information.
         save_zones (bool, optional): If ``True``, will cache Kippenhahn regions in ``zone_filename``.
         clobber_zones (bool, optional): If ``True``, will generate Kippenhahn regions from scratch.
         prof_prefix (str, optional): Profile file name prefix.
         prof_suffix (str, optional): Profile file name suffix.
         prof_resolution (int, optional): y-axis resolution for Profiles.
-        logx (bool, optional): If ``True``, take the base-10 logaritch along the x-axis.
-        logy (bool, optional): If ``True``, take the base-10 logaritch along the y-axis.
-        logc (bool, optional): If ``True``, take the base-10 logaritch along the colour-axis.
+        mixing_min_height (float, optional): Minimum fractional vertical extent of mixing region. If smaller, the region is not plotted.
         xlims (length 2 array, optional): Lower and upper limits of the x-axis.
         ylims (length 2 array, optional): Lower and upper limits of the y-axis.
         clims (length 2 array, optional): Lower and upper limits of the colour-axis.
         kwargs_mixing (dict, optional): Not used.
+        norm (optional): Matplotlib normalize class.
+        cmap (optional): Matplotlib colormap.
         kwargs_profile_color (dict, optional): Passed to pcolormesh in ``add_color``.
         return_Kipp_data (bool, optional): If ``True``, also returns Kipp_data.
         parallel (bool, optional): If ``True``, calculate Kippenhahn regions in parallel.
 
     Returns:
-        tuple of matplotlib.figure.Figure, matplotlib.axes._axes.Axes or matplotlib.figure.Figure, matplotlib.axes._axes.Axes, Kipp_data: Figure, axis, and optionally `Kipp_data` of the Kippenhahn diagram.
+        tuple of matplotlib.figure.Figure, matplotlib.axes._axes.Axes, and optionally Kipp_data: Figure, axis, and optionally `Kipp_data` of the Kippenhahn diagram.
 
     """
-
+    if clims is None and caxis == 'eps_net':
+        clims = [-3, 8]
     kd = Kipp_data(hist, profs, xaxis, yaxis, caxis, zone_filename, verbose, save_zones, clobber_zones, prof_prefix,
-                   prof_suffix, prof_resolution, logx, logy, logc, xlims, ylims, clims, kwargs_mixing, kwargs_profile_color, parallel)
-    f, ax = kd.make_kipp(ax)
+                   prof_suffix, prof_resolution, parallel)
+    f, ax = kd.make_kipp(ax, xlims, ylims, clims, norm, cmap, mixing_min_height, kwargs_mixing=kwargs_mixing, kwargs_profile_color=kwargs_profile_color)
+    ax.set_xlim(xlims)
+    # ax.set_ylim(0, None)
+    ax.set_xlabel(xaxis.replace('_', ' '))
+    ax.set_ylabel(yaxis)
+
     if return_Kipp_data:
         return f, ax, kd
     return f, ax

@@ -26,9 +26,8 @@ from . import utils as pu
 class Kipp_data:
     def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data',
-                 prof_resolution=200, logx=False, logy=False, logc=False, xlims=None, ylims=None, clims=None, kwargs_mixing=None,
-                 kwargs_profile_color=None, parallel=True):
-        self.__version__ = '0.0.5'
+                 prof_resolution=200, parallel=True):
+        self.__version__ = '0.0.6'
         self.parallel = parallel
         self.verbose = verbose
         self.xaxis = xaxis
@@ -51,20 +50,6 @@ class Kipp_data:
         self.prof_prefix = prof_prefix
         self.prof_suffix = prof_suffix
         self.prof_resolution = prof_resolution
-
-        self.logx = logx
-        self.logy = logy
-        self.logc = logc
-
-        if kwargs_profile_color is None:
-            self.kwargs_profile_color = {'shading':'gouraud'}
-        else:
-            shading = {'shading': 'gouraud'}
-            shading.update(self.kwargs_profile_color)
-            self.kwargs_profile_color = shading
-
-        if kwargs_mixing is None:
-            self.kwargs_mixing = {}
 
         if yaxis == 'mass':
             self.mix_template_type = 'mix_type_{}'
@@ -96,17 +81,25 @@ class Kipp_data:
             self.load_zones = False
 
         if self.load_zones:
+            if self.verbose:
+                print(f'Loading zonefile {self.zone_file}')
             try:
-                loaded_version, loaded_yaxis, mixing_zones, loaded_caxis, color_zones = self.read_zones()
+                loaded_version, loaded_yaxis, mixing_zones, loaded_caxis, color_zones, yminmax = self.read_zones()
+                self.ymin = yminmax[0]
+                self.ymax = yminmax[1]
                 if loaded_version != self.__version__:
                     if self.verbose:
                         print(f'Kipp_data version mismatch: {loaded_version} {self.__version__}')
                     load_success = False
                 else:
                     load_success = True
-            except:
+                    if self.verbose:
+                        print(f'Loading successfull. {len(mixing_zones)} mixing zones.')
+            except Exception as exc:
                 if self.verbose:
                     print(f'Loading zonefile failed. Recreating zones.')
+                    print(exc)
+
                 load_success = False
 
         if (not self.load_zones) or (not load_success):
@@ -128,16 +121,23 @@ class Kipp_data:
             else:  # Loaded correctly
                 self.save_zones = False
 
+        if self.parallel:
+            joblib.externals.loky.get_reusable_executor().shutdown(wait=True)  # Kill workers
+
         self.mixing_zones = mixing_zones
         self.color_zones = color_zones
         if self.save_zones or clobber_zones:
             self.write_zones()
 
     def write_zones(self):
+        if self.verbose:
+            print(f'Writing zonefile {self.zone_file}')
         with open(self.zone_file, 'wb') as handle:
-            dill.dump((self.__version__, self.yaxis, self.mixing_zones, self.caxis, self.color_zones), handle)
+            dill.dump((self.__version__, self.yaxis, self.mixing_zones, self.caxis, self.color_zones, (self.ymin, self.ymax)), handle)
 
     def read_zones(self):
+        if self.verbose:
+            print(f'Reading zonefile {self.zone_file}')
         with open(self.zone_file, 'rb') as handle:
             return dill.load(handle)
 
@@ -233,9 +233,9 @@ class Kipp_data:
         if kind == 'mix':
             z_data = uf.convert_mixing_type(z_data, hist.header['version_number'])
 
-        if self.logy:
-            y_data[1:] = np.log10(y_data[:, 1:])
-            y_data[0] = -np.inf
+        self.ymax = y_scale.max()
+        self.ymin = y_data[0].min()
+
         return y_data, z_data, bad_value
 
     def create_adjacency_matrix(self, y_data, z_data, bad_value):
@@ -389,11 +389,7 @@ class Kipp_data:
     def path_from_adjacency_matrix(self, indices, nodes, no_holes):
         adjacency_matrix = sparse.coo_array((np.ones(len(nodes), dtype=np.int32), indices),
                                    shape=(len(nodes), len(nodes))).tocsr()
-        n_comp, labels = sparse.csgraph.connected_components(
-            # sparse.coo_array((np.ones(len(nodes), dtype=int), indices),
-            #                        shape=(len(nodes), len(nodes))),
-            adjacency_matrix,
-            return_labels=True)
+        n_comp, labels = sparse.csgraph.connected_components(adjacency_matrix, return_labels=True)
         path_indices = [np.where(labels==i_path)[0] for i_path in range(n_comp)]
         starts = [pathi[0] for pathi in path_indices]
         dist_mat = sparse.csgraph.shortest_path(adjacency_matrix, unweighted=True, indices=starts)
@@ -435,9 +431,42 @@ class Kipp_data:
             # zones = [self.make_path(i, zone_ids, y_data, z_data) for i in range(num_zones)]
         return zones
 
-    def add_mixing(self, ax, set_xylims=True):
-        extent = [1e99, -1e99, 1e99, -1e99]
+
+    def add_mixing(self, ax, xlims, ylims, mixing_min_height, kwargs_mixing=None):
+        if self.verbose:
+            print('Adding mixing to axis.')
+        if kwargs_mixing is None:
+            kwargs_mixing = {}
+
+        min_ix = 1e99
+        max_ix = -1e99
+        get_xlim = True
+        if xlims is not None:
+            min_ix = np.argwhere(xlims[0] < self.xaxis_data)[0][0]
+            min_ix = max(0, min_ix - 1)
+            max_ix = np.argwhere(xlims[1] > self.xaxis_data)[0][-1]
+            max_ix = min(len(self.xaxis_data) - 1, max_ix + 1)
+            get_xlim = False
+
+        if get_xlim:
+            for _, path in self.color_zones:
+                min_ix = min(min_ix, min(path.vertices[:, 0]))
+                max_ix = max(max_ix, max(path.vertices[:, 0]))
+
         for mix_type, path in self.mixing_zones:
+            min_ix = int(min_ix)
+            max_ix = int(max_ix)
+            x_extent = self.xaxis_data[[min_ix, max_ix]]
+
+            # Skip zones outside xlims
+            if path.vertices[:,0].min() > max_ix:
+                continue
+            if path.vertices[:,0].max() < min_ix:
+                continue
+            if mixing_min_height > 0:
+                if path.vertices[:,1].max() - path.vertices[:,1].min() < mixing_min_height:
+                    continue
+
             # Convective mixing
             if mix_type == uf.mix_dict['merged']['convective_mixing']:
                 color = "Chartreuse"
@@ -480,57 +509,99 @@ class Kipp_data:
             path = Path(new_vert, path.codes)
 
             ax.add_patch(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+        return x_extent
 
-            extent[0] = min(extent[0], new_vert[:, 0].min())
-            extent[1] = max(extent[1], new_vert[:, 0].max())
-            extent[2] = min(extent[2], new_vert[:, 1].min())
-            extent[3] = max(extent[3], new_vert[:, 1].max())
-        if set_xylims:
-            ax.set_xlim(extent[0], extent[1])
-            ax.set_ylim(extent[2], extent[3])
+    def add_color(self, ax, xlims, ylims, clims, norm=None, cmap=None, kwargs_profile_color=None):
+        if self.verbose:
+            print('Adding color to axis.')
+        min_ix = 1e99
+        max_ix = -1e99
+        get_xlim = True
+        if xlims is not None:
+            min_ix = np.argwhere(xlims[0] < self.xaxis_data)[0][0]
+            min_ix = max(0, min_ix - 1)
+            max_ix = np.argwhere(xlims[1] > self.xaxis_data)[0][-1]
+            max_ix = min(len(self.xaxis_data)-1, max_ix+1)
+            get_xlim = False
 
-
-    def add_color(self, ax, set_xylims=True):
-        extent = np.array([1e99,-1e99,1e99,-1e99])
         if isinstance(self.color_zones, list):
-            vmin = min([_[0] for _ in self.color_zones])
-            vmax = max([_[0] for _ in self.color_zones])
-            norm = pu.MidpointBoundaryNorm(np.linspace(vmin, vmax, vmax - vmin + 1), 256, 0)
-            cmap = pu.cm.RdBu
+            if clims is None:
+                vmin = min([_[0] for _ in self.color_zones])
+                vmax = max([_[0] for _ in self.color_zones])
+            else:
+                vmin, vmax = clims
+
+            if norm is None:
+                norm = pu.MidpointBoundaryNorm(np.linspace(vmin, vmax, int(vmax - vmin + 1)), 256, 0)
+            if cmap is None:
+                cmap = pu.cm.RdBu
+            ax.set_facecolor(cmap(0.5))
+            if get_xlim:
+                for burn_type, path in self.color_zones:
+                    min_ix = min(min_ix, min(path.vertices[:, 0]))
+                    max_ix = max(max_ix, max(path.vertices[:, 0]))
+            min_ix = int(min_ix)
+            max_ix = int(max_ix)
+            x_extent = self.xaxis_data[[min_ix, max_ix]]
+
             for burn_type, path in self.color_zones:
+                # Keep no/very low burning as middle color and skip drawing as it is already the background color
+                if burn_type == 0 and cmap is pu.cm.RdBu:
+                    continue
+                # Skip zones outside xlims
+                if path.vertices[:,0].min() > max_ix:
+                    continue
+                if path.vertices[:,0].max() < min_ix:
+                    continue
+
                 # Convert hist index coords to x-data coords
-                new_vert = path.vertices.copy()
+                new_vert = path.vertices.copy().astype(float)
                 new_vert[:, 0] = self.xaxis_data[path.vertices[:, 0].astype(int)]
+
                 path = Path(new_vert, path.codes)
                 ax.add_patch(
                     PathPatch(path, fill=True, edgecolor=None, color=cmap(norm(burn_type)),
                               zorder=burn_type - len(self.color_zones)))
 
-                extent[0] = min(extent[0], new_vert[:, 0].min())
-                extent[1] = max(extent[1], new_vert[:, 0].max())
-                extent[2] = min(extent[2], new_vert[:, 1].min())
-                extent[3] = max(extent[3], new_vert[:, 1].max())
         elif isinstance(self.color_zones, np.ndarray):
+            if kwargs_profile_color is None:
+                kwargs_profile_color = {'shading': 'gouraud'}
+            else:
+                shading = {'shading': 'gouraud'}
+                shading.update(self.kwargs_profile_color)
+                kwargs_profile_color = shading
+
             # Convert hist index coords to x-data coords
             x, y, c = self.color_zones
             x = self.xaxis_data[x.astype(int)]
-            ax.pcolormesh(x, y, c, **self.kwargs_profile_color)
+            ax.pcolormesh(x, y, c, **kwargs_profile_color)
+            x_extent = np.array([0, len(self.xaxis_data)-1])
 
-            extent[0] = min(extent[0], x.min())
-            extent[1] = max(extent[1], x.max())
-            extent[2] = min(extent[2], y.min())
-            extent[3] = max(extent[3], y.max())
+        return x_extent
 
-        if set_xylims:
-            ax.set_xlim(extent[0], extent[1])
-            ax.set_ylim(extent[2], extent[3])
 
-    def make_kipp(self, ax=None):
+    def make_kipp(self, ax=None, xlims=None, ylims=None, clims=None, norm=None, cmap=None, mixing_min_height=0, kwargs_mixing=None,
+                  kwargs_profile_color=None):
+        if self.verbose:
+            print(f'Making figure.')
+
         f, ax = pu.get_figure(ax)
 
-        self.add_color(ax)
-        self.add_mixing(ax)
+        mixing_min_height *= (self.ymax - self.ymin)
 
+        c_extent = self.add_color(ax, xlims, ylims, clims, norm, cmap, kwargs_profile_color)
+        m_extent = self.add_mixing(ax, xlims, ylims, mixing_min_height, kwargs_mixing)
+
+        xextent = np.zeros(2)
+        xextent[0] = min(c_extent[0], m_extent[0])
+        xextent[1] = max(c_extent[1], m_extent[1])
+        ax.set_xlim(xextent)
+
+        if ylims is None:
+            ax.set_ylim(self.ymin, self.ymax)
+
+        if self.verbose:
+            print('Done.')
         return f, ax
 
     # def plot_graph(self, adjacency_matrix, z_data, bad_value):
