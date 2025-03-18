@@ -111,9 +111,8 @@ class MesaGrid:
                 read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
                 read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
 
-            # Only create entry and default to false. Will update self.validate_inlists()
-            # star_job and controls default to true
-            self.inlist[namelist] = {read_extra_inlist_key: namelist in ('star_job', 'controls'),
+            # Create entry and default to True.
+            self.inlist[namelist] = {read_extra_inlist_key: True,
                                      read_extra_inlist_name_key: namelist_filename}
 
         self.extra_files = []
@@ -344,11 +343,6 @@ class MesaGrid:
 
                 if read_extra_inlist_key not in self.inlist[namelist].keys():
                     continue
-
-                if i == self.inlists_index:  # If any options have been added, set read_extra_inlist_key to True
-                    nml_keys = [key for key in self.__dict__[namelist].keys() if not key.startswith(non_mesa_key_start)]
-                    if (len(nml_keys) > 0) and (self.inlist[namelist][read_extra_inlist_key] == False):
-                        self.inlist[namelist][read_extra_inlist_key] = True
 
                 if self.inlist[namelist][read_extra_inlist_key]:
                     read_extra_names.append(self.inlist[namelist][read_extra_inlist_name_key])
