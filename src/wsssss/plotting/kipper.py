@@ -211,9 +211,28 @@ class Kipp_data:
         else:
             raise ValueError("kind must be either 'mix' or 'burn'.")
 
+        constants = uf.get_constants(hist)
+        center_column = ''
         if self.yaxis == 'mass':
             y_scale = hist.get('star_mass')
+
+            if 'm_center' in hist.columns:
+                center_column = 'm_center'
+            elif 'm_center_gm' in hist.columns:
+                center_column = 'm_center_gm'
+                unit_scale = 1/constants.msun
+
         elif self.yaxis == 'radius':
+            if 'r_center' in hist.columns:
+                center_column = 'r_center'
+                unit_scale = 1
+            elif 'r_center_cm' in hist.columns:
+                center_column = 'r_center_cm'
+                unit_scale = 1/constants.rsun
+            elif 'r_center_km' in hist.columns:
+                center_column = 'r_center_km'
+                unit_scale = 1e-3/constants.rsun
+
             if 'radius' in hist.columns:
                 y_scale = hist.get('radius')
             elif 'log_R' in hist.columns:
@@ -223,12 +242,15 @@ class Kipp_data:
                 y_scale = hist.get('photosphere_R')
 
         num_cols = len([c for c in hist.columns if c.startswith(template_top.format(''))])
-        # for y_data, there is an implied column "0" where y=0, so inlcude it explicitly
+        # for y_data, there is an implied column "0" where y=y_center (typically Y_center=0), so inlcude it explicitly
         y_data = np.zeros((num_cols+1, len(hist)))
+
         z_data = np.zeros((num_cols, len(hist)), dtype=int)
         for i in range(num_cols):
             y_data[i+1] = hist.get(template_top.format(i + 1)) * y_scale
             z_data[i] = hist.get(template_type.format(i + 1))
+        if center_column != '':
+            y_data[0] = unit_scale * hist.get(center_column)
 
         if kind == 'mix':
             z_data = uf.convert_mixing_type(z_data, hist.header['version_number'])
@@ -404,6 +426,10 @@ class Kipp_data:
         vertices = nodes[order]
         codes[offsets[:-1] + np.arange(n_comp, dtype=int)] = Path.MOVETO
 
+        # Remove double points
+        mask = np.sum(np.abs(np.diff(vertices, axis=0, prepend=[[1e99, 1e99],])), axis=1) != 0
+        vertices = vertices[mask]
+        codes = codes[mask]
         return Path(vertices, codes)
 
     def calc_zones(self, y_data, z_data, bad_value):
