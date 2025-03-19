@@ -117,8 +117,8 @@ class MesaGrid:
 
         self.extra_files = []
         self.extra_dirs = []
-        self.inlist_finalize_function = lambda unpacked_inlist: unpacked_inlist
-        self.griddir_finalize_function = lambda gridobj, i: None
+        self.inlist_finalize_function = None
+        self.griddir_finalize_function = None
         self.name_funcion = None
         self.unpacked = False
 
@@ -256,7 +256,7 @@ class MesaGrid:
     def set_name_function(self, function):
         """
         Set the function which is used to generate the name of each run directory.
-        It recieves a fully unpacked inlist (dict of dicts) and returns a string.
+        It recieves a fully unpacked inlist (dict of dicts) or grid index and unpacked inlist and returns a string.
         It should generate a unique name for each inlist.
 
         Args:
@@ -311,7 +311,8 @@ class MesaGrid:
         abs_grid_path = os.path.abspath(grid_path)
         for i, dirname in enumerate(self.dirnames):
             os.chdir(os.path.join(abs_grid_path, dirname))
-            self.griddir_finalize_function(self, i)
+            if self.griddir_finalize_function is not None:
+                self.griddir_finalize_function(self, i)
         os.chdir(curdir)
 
         self._validate_files(grid_path)
@@ -471,7 +472,10 @@ class MesaGrid:
         all_unpacked = []
         for i, unpacked in enumerate(itertools.product(*generators)):
             unpacked = dict(zip(['inlist', *self.namelists], list(unpacked)))
-            finalized_unpacked = self.inlist_finalize_function(copy.deepcopy(unpacked))
+            if self.inlist_finalize_function is not None:
+                finalized_unpacked = self.inlist_finalize_function(copy.deepcopy(unpacked))
+            else:
+                finalized_unpacked = unpacked
             all_unpacked.append(finalized_unpacked)
         self.unpacked = tuple(all_unpacked)
 
@@ -484,7 +488,10 @@ class MesaGrid:
                 self.dirnames.append(dirname)
         else:
             for i in range(num_unpacked):
-                dirname = self.name_funcion(self.unpacked[i])
+                if self.name_funcion.__code__.co_argcount == 1:
+                    dirname = self.name_funcion(self.unpacked[i])
+                else:
+                    dirname = self.name_funcion(i, self.unpacked[i])
                 if dirname in self.dirnames:
                     i_already_exists = self.dirnames.index(dirname)
                     raise ValueError(f'`dirname` {dirname} for inlist {i} has already been generated for inlist {i_already_exists}.')
@@ -538,7 +545,6 @@ class MesaGrid:
                     items.append(inlist_dict[key])
                 elif len(item) == 1:  # Remove item from list
                     inlist_dict[key] = item[0]
-
 
         if len(lengths) == 0:
             out_inlist = inlist_dict.copy()
