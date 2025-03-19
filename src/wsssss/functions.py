@@ -4,6 +4,7 @@
 import functools
 import multiprocessing as mp
 import os
+import re
 
 import dill
 import numpy as np
@@ -1106,3 +1107,38 @@ def calc_ModDens(numax, deltanu, deltap):
         Mode density
     """
     return deltanu / (numax ** 2 * 1e-6 * deltap)
+
+def calc_abundance(hist, use_mask=None):
+    """
+    Calculate surface abundances. Returns abundances (by element, not isotope) and element names.
+    Args:
+        hist:
+        use_mask (bool, np.array, or function, optional): If True, will exclude pre-main sequence.
+            If an array of bools will use that as mask. If a function, will call function(hist) and use that as the mask.
+
+    Returns:
+
+    """
+    mask = get_mask(hist, use_mask)
+    cols = [col for col in hist.columns if col.startswith('surface')]
+    elems = [re.sub('[0-9]', '', iso.split('_')[1].capitalize()) for iso in cols]
+    A = np.zeros((sum(mask), len(np.unique(elems))))
+    j = 0
+    e0 = elems[0]
+    for i, col in enumerate(cols):
+        if col == 'surface_neut':
+            m = 1
+        else:
+            e = re.sub('[0-9]', '', col.split('_')[1].capitalize())
+            if e != e0:
+                j += 1
+                e0 = e
+            m = float(re.sub('[A-z]', '', col.split('_')[1]))
+        A[:, j] += hist.get(col)[mask] / m
+
+    _, idx = np.unique(elems, return_index=True)
+    elems = np.array(elems)[np.sort(idx)]
+
+    A = np.log10(A)
+    A = A - A[:, np.where(elems == 'H')[0][0]][:, np.newaxis] + 12
+    return A, elems
