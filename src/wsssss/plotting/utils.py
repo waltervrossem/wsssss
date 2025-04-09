@@ -577,7 +577,7 @@ def calc_inertia_marker_size(gs, l, freq_units='uHz'):
     return ms
 
 
-def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=None, background_width=3):
+def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=None, background_width=3, ignore_nolabel=False):
     xmin, xmax = ax.get_xlim()
     x_range = xmax - xmin
     line_label_x = np.linspace(xmin + edge_space * x_range, xmax - edge_space * x_range, num=num_line_label)
@@ -588,6 +588,10 @@ def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=No
         label = line.get_label()
         xdata = line.get_xdata()
         ydata = line.get_ydata()
+
+        if ignore_nolabel:
+            if label.startswith('_child'):
+                continue
 
         for x in line_label_x:
             idxs = np.where(np.diff(np.sign(xdata - x)) != 0)[0] + 1

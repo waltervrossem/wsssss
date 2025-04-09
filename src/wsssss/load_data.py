@@ -168,7 +168,7 @@ class _Data:
                 bad_lines.append(i)
                 bad_lines.append(i + 1)  # Line after line with \x00\x00... is garbled
             else:
-                if len(line) != expected_len:
+                if len(line) != expected_len and i > 6:
                     bad_lines.append(i)
                 else:
                     good_lines.append(line)
