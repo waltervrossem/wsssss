@@ -653,26 +653,3 @@ class Kipp_data:
                                  f'{missing_cols_str}')
 
         return self.get_profile_xyz_data(hist, profs)
-
-# nx = 10
-# ny = 4
-# x_data = np.arange(nx)
-# y_data = np.arange(ny+1)
-# z_data = np.zeros((ny, nx))
-# _, y_data = np.meshgrid(x_data, y_data)
-#
-# z_data[1] = 1
-# z_data[2] = 2
-#
-# y_data[1, 4] = 1.5
-# z_data[0, 4] = 1
-# z_data[1, 4] = 3
-# z_data[2, 4] = 1
-# z_data[0, 5] = 1
-# z_data[1, 5] = 3
-# z_data[2, 5] = 1
-#
-# adjacency_matrix = kd.create_adjacency_matrix(x_data, y_data, z_data, bad_value)
-# f, ax = plt.subplots()
-# ax.imshow(adjacency_matrix.todense())
-# kd.plot_graph(adjacency_matrix, z_data, bad_value)

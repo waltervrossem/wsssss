@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This package contains various functions to load MESA and/or GYRE data.
+This module contains various functions to load MESA and/or GYRE data.
 
 Examples:
     Load a history file and the first profile:

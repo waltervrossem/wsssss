@@ -1,5 +1,5 @@
 """
-This package contains various functions to create plots using MESA and/or GYRE data.
+This module contains various functions to create plots using MESA and/or GYRE data.
 
 Examples:
     Create an HRD from a history file from the MS onwards using a simple mask to skip the PMS.
