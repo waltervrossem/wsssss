@@ -142,7 +142,7 @@ mix_dict = {'pre15140': {-1:'no_region',
                        'minimum_mixing': 107,
                        'anonymous_mixing': 109},
             }
-
+mix_dict['merged_r'] = {v:k for k,v in mix_dict['merged'].items()}  # Reversed merged.
 def convert_mixing_type(mix_type, version, unknown_mixing=100):
     """
     Convert the mixing type codes to a merged version compatible with pre- and post-15140 MESA.

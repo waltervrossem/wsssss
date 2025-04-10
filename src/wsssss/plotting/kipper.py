@@ -462,7 +462,7 @@ class Kipp_data:
         if self.verbose:
             print('Adding mixing to axis.')
         if kwargs_mixing is None:
-            kwargs_mixing = {}
+            kwargs_mixing = pu.get_default_mixing_kwargs()
 
         min_ix = 1e99
         max_ix = -1e99
@@ -480,6 +480,17 @@ class Kipp_data:
                 max_ix = max(max_ix, max(path.vertices[:, 0]))
 
         for mix_type, path in self.mixing_zones:
+            if mix_type in kwargs_mixing.keys():
+                mix_info = kwargs_mixing[mix_type]
+                color = mix_info['color']
+                hatch = mix_info['hatch']
+                line = mix_info['line']
+                show = mix_info['show']
+                if not show:
+                    continue
+            else:
+                continue
+
             min_ix = int(min_ix)
             max_ix = int(max_ix)
             x_extent = self.xaxis_data[[min_ix, max_ix]]
@@ -493,42 +504,6 @@ class Kipp_data:
                 if path.vertices[:,1].max() - path.vertices[:,1].min() < mixing_min_height:
                     continue
 
-            # Convective mixing
-            if mix_type == uf.mix_dict['merged']['convective_mixing']:
-                color = "Chartreuse"
-                hatch = "//"
-                line = 1
-            # Overshooting
-            elif mix_type == uf.mix_dict['merged']['overshoot_mixing']:
-                color = "purple"
-                hatch = "x"
-                line = 1
-            # Semiconvective mixing
-            elif mix_type == uf.mix_dict['merged']['semiconvective_mixing']:
-                color = "red"
-                hatch = "\\\\"
-                line = 1
-            # Thermohaline mixing
-            elif mix_type == uf.mix_dict['merged']['thermohaline_mixing']:
-                color = "Gold"
-                hatch = "||"
-                line = 1
-            # Rotational mixing
-            elif mix_type == uf.mix_dict['merged']['rotation_mixing']:
-                color = "brown"
-                hatch = "*"
-                line = 1
-            # Anonymous mixing
-            elif mix_type == uf.mix_dict['merged']['anonymous_mixing']:
-                color = "white"
-                hatch = None
-                line = 0
-            elif mix_type == uf.mix_dict['merged']['minimum_mixing']:
-                color = 'cyan'
-                hatch = '-'
-                line = 1
-            else:
-                continue
             # Convert hist index coords to x-data coords
             new_vert = path.vertices.copy()
             new_vert[:,0] = self.xaxis_data[path.vertices[:,0].astype(int)]

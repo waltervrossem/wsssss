@@ -1164,7 +1164,7 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
         xlims (length 2 array, optional): Lower and upper limits of the x-axis.
         ylims (length 2 array, optional): Lower and upper limits of the y-axis.
         clims (length 2 array, optional): Lower and upper limits of the colour-axis.
-        kwargs_mixing (dict, optional): Not used.
+        kwargs_mixing (dict, optional): kwargs used to draw mixing regions, if `None`, defaults to `plotting.utils.get_default_mixing_kwargs()`.
         norm (optional): Matplotlib normalize class.
         cmap (optional): Matplotlib colormap.
         kwargs_profile_color (dict, optional): Passed to pcolormesh in ``add_color``.

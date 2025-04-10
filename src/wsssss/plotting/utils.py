@@ -426,19 +426,60 @@ def get_mixing(profile, min_width):
         regions[name] = [pair for pair in pairs if pair[1] - pair[0] >= min_width]
     return regions
 
+def get_default_mixing_kwargs():
+    """
+    Get the default coloring scheme for mixing.
+    Returns:
+        dict of dict: Each dict contains kwargs for PathPatch and `show`, which if `False` mean that it will not be
+            drawn.
+    """
+    default_kwargs_mixing = {
+        uf.mix_dict['merged']['convective_mixing']: {'color': "Chartreuse",
+                                                     'hatch': "//",
+                                                     'line': 1,
+                                                     'show': True
+                                                     },
+        uf.mix_dict['merged']['overshoot_mixing']: {'color': "purple",
+                                                    'hatch': "x",
+                                                    'line': 1,
+                                                    'show': True
+                                                    },
+        uf.mix_dict['merged']['semiconvective_mixing']: {'color': "red",
+                                                         'hatch': "\\\\",
+                                                         'line': 1,
+                                                         'show': True
+                                                         },
+        uf.mix_dict['merged']['thermohaline_mixing']: {'color': "Gold",
+                                                       'hatch': "||",
+                                                       'line': 1,
+                                                       'show': False
+                                                       },
+        uf.mix_dict['merged']['rotation_mixing']: {'color': "brown",
+                                                   'hatch': "*",
+                                                   'line': 1,
+                                                   'show': True
+                                                   },
+        uf.mix_dict['merged']['anonymous_mixing']: {'color': "white",
+                                                    'hatch': None,
+                                                    'line': 0,
+                                                    'show': True
+                                                    },
+        uf.mix_dict['merged']['minimum_mixing']: {'color': "cyan",
+                                                  'hatch': "-",
+                                                  'line': 1,
+                                                  'show': True
+                                                  },
 
-def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, add_legend=True, func_on_xaxis=None):
+    }
+    return default_kwargs_mixing
+
+def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, add_legend=True, func_on_xaxis=None,
+               kwargs_mixing=None):
     """
+    kwargs_mixing (dict, optional): kwargs used to draw mixing regions, if `None`, defaults to `plotting.utils.get_default_mixing_kwargs()`.
     """
-    # mixing_type:[color, hatching, hatch width]
-    fills = {'convective_mixing': ["Chartreuse", "//", 1],
-             'overshoot_mixing': ["purple", 'x', 1],
-             'semiconvective_mixing': ["red", "\\\\", 1],
-             'thermohaline_mixing': ["Gold", "||", 1],
-             'rotation_mixing': ["brown", "*", 1],
-             'minimum_mixing': ['cyan', '-', 1],
-             'anonymous_mixing': ["white", None, 0]
-             }
+    if kwargs_mixing is None:
+        kwargs_mixing = get_default_mixing_kwargs()
 
     x = get_x_and_set_xlabel(profile, xname, func_on_xaxis=func_on_xaxis)
 
@@ -449,10 +490,16 @@ def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, 
         regions = all_regions[name]
         if len(regions) == 0:
             continue
-        if name not in fills.keys():
+        mix_type = uf.mix_dict['merged'][name]
+        mix_info = kwargs_mixing[mix_type]
+        color = mix_info['color']
+        hatch = mix_info['hatch']
+        line = mix_info['line']
+        show = mix_info['show']
+
+        if not show:
             continue
 
-        color, hatch, line = fills[name]
         for region in regions:
             start, end = region
             xstart = x[start]
