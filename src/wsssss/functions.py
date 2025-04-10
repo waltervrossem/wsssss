@@ -1117,6 +1117,7 @@ def calc_abundance(hist, use_mask=None):
             If an array of bools will use that as mask. If a function, will call function(hist) and use that as the mask.
 
     Returns:
+        array: Array containing surface abundances.
 
     """
     mask = get_mask(hist, use_mask)

@@ -1,6 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+This package contains various functions to load MESA and/or GYRE data.
+
+Examples:
+    Load a history file and the first profile:
+
+    >>> import wsssss.load_data as ld
+    >>> hist = ld.History('path/to/LOGS/history.data')
+    >>> prof = ld.Profile('path/to/LOGS/profile1.data')
+    >>> # or load all associated profiles:
+    >>> profs = ld.load_profs(hist)
+
+"""
+
 import ast
 import copy
 import os
@@ -989,7 +1003,7 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
 
 def naive_merge_hists(base_hist, hists):
     """
-    Merge two `History` object. This function simply stacks the history data onto a new copy of base_hist.
+    Merge two `History` objects. This function simply stacks the history data onto a new copy of base_hist.
 
     Args:
         base_hist (History):
@@ -1007,7 +1021,7 @@ def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profil
                      gyre_summary_suffix='.data.GYRE.sgyre_l', only_RC=False, use_mask=None, keep_columns='all',
                      gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
     """
-    Load `GyreSummary` and profile numbers associated with `History` hist and place in the attribute History.gsspnum.
+    Load ``GyreSummary`` and profile numbers associated with ``History`` hist and place in the attribute ``History.gsspnum``.
     This is equivalent to doing ``hist.gsspnum = load_gss(..., return_pnums=True, ...)``.
 
     Args:
