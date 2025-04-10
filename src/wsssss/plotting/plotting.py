@@ -1,3 +1,16 @@
+"""
+This package contains various functions to create plots using MESA and/or GYRE data.
+
+Examples:
+    Create an HRD from a history file from the MS onwards using a simple mask to skip the PMS.
+
+    >>> import wsssss.load_data as ld
+    >>> import wsssss.plotting.plotting as pl
+    >>> hist = ld.History('path/to/LOGS/history.data')
+    >>> pl.make_hrd(hist, use_mask=hist.data.center_h1<hist.data.center_h1[0] * 0.99)
+
+"""
+
 import copy
 import os
 
@@ -186,7 +199,7 @@ def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=Non
     return f, ax
 
 
-def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduced=True, only_reduced=False,
+def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduced=False, only_reduced=False,
                      add_legend=True, n_col_legend=3, fill_cavity=False, show_burn_level=0, do_numax=True):
     c = uf.get_constants(p)
 

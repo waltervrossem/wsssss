@@ -44,7 +44,7 @@ class MesaGrid:
             Creating a grid of MESA runs with initial masses of 1 and 2 Msol.
 
             >>> import os
-            >>> from wssss.inlists import create_grid as cg
+            >>> from wsssss.inlists import create_grid as cg
             >>> grid = cg.MesaGrid()
             >>> grid.controls['initial_mass'] = [1, 2]
             >>> grid.create_grid('path/to/grid')
