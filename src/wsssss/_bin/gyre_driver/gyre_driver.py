@@ -339,6 +339,8 @@ def get_gyre(args, check, print_warning=False):
 
         if check:  # Check in $GYRE_DIR/src/common/gyre_version.fpp what version of gyre is found.
             version_file = path / 'src' / 'common' / 'gyre_version.fpp'
+            if not version_file.exists():  # Different file name for 7.2 and after
+                version_file = path / 'src' / 'common' / 'version_m.fypp'
 
             with open(version_file, 'r') as handle:
                 lines = handle.readlines()
