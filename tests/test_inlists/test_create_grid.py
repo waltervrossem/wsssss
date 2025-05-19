@@ -30,7 +30,7 @@ class TestCreateGrid(unittest.TestCase):
         grid = cg.MesaGrid()
 
         grid.inlist['controls']['read_extra_controls_inlist(1)'] = True
-        grid.inlist['controls']['extra_controls_inlist_name(1)'] = 'copy_this_namelist'
+        grid.inlist['controls']['extra_controls_inlist_name(1)'] = os.path.abspath(f'{__file__}/../copy_this_namelist')
 
         grid.star_job['show_net_species_info'] = [True]
 

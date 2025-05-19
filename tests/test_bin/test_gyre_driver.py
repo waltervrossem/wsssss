@@ -19,7 +19,7 @@ class TestGyreDriver(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         gs = ld.GyreSummary(os.path.join(test_data, 'profile10.data.GYRE.sgyre_l'))
-        cls.gs = gs
+        cls.ref_gs = gs
 
     def test_gyre_driver(self):
         os.chdir(test_data)
@@ -28,7 +28,7 @@ class TestGyreDriver(unittest.TestCase):
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
         gs = ld.GyreSummary(gs_path)
-        np.testing.assert_array_equal(self.gs.data[self.gs.data.l == 0], gs.data)
+        np.testing.assert_array_equal(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
         os.remove(gs_path)
 
     def test_lenient(self):
@@ -37,5 +37,5 @@ class TestGyreDriver(unittest.TestCase):
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
         gs = ld.GyreSummary(gs_path)
-        np.testing.assert_array_equal(self.gs.data[self.gs.data.l == 0], gs.data)
+        np.testing.assert_array_equal(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
         os.remove(gs_path)

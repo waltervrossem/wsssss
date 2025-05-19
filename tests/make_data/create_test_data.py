@@ -38,4 +38,5 @@ for fname in ['clean', 'rn', 'mk', 're']:
 for dirname in ['make', 'src']:
     grid.add_dir(os.path.join(mesa_dir, 'star/work', dirname))
 
-grid.create_grid(os.path.join(this_dir, '../data/mesa'))
+if __name__ == '__main__':
+    grid.create_grid(os.path.join(this_dir, '../data/mesa'))
