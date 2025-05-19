@@ -30,7 +30,7 @@ class TestCreateGrid(unittest.TestCase):
         grid = cg.MesaGrid()
 
         grid.inlist['controls']['read_extra_controls_inlist(1)'] = True
-        grid.inlist['controls']['extra_controls_inlist_name(1)'] = os.path.abspath(f'{__file__}/../copy_this_namelist')
+        grid.inlist['controls']['extra_controls_inlist_name(1)'] = os.path.join(os.path.dirname(__file__), '../data/inlists/copy_this_namelist')
 
         grid.star_job['show_net_species_info'] = [True]
 
@@ -74,7 +74,7 @@ class TestCreateGrid(unittest.TestCase):
         # Raise ValueError if extra_controls_inlist_name is the same as master inlist name.
         self.grid.inlist['controls']['read_extra_controls_inlist(1)'] = True
         self.grid.inlist['controls']['extra_controls_inlist_name(1)'] = 'inlist_project'
-        self.grid.add_file('/home/walter/Github/MESA_templates/24.03.1/template_24031/inlist_project')
+        self.grid.add_file(os.path.join(os.path.dirname(__file__), '../data/inlists/inlist_project'))
         self.assertRaises(ValueError, self.grid.validate_inlists)
 
     def test_MesaGrid(self):

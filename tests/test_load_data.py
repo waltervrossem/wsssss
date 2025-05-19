@@ -6,18 +6,12 @@ import unittest
 import numpy as np
 
 from wsssss import load_data as ld
+from .common import have_mesa_data
 
-
+have_mesa_data()
 test_data = os.path.join(os.path.dirname(__file__), 'data', 'mesa')
-
+curdir = os.path.dirname(__file__)
 class TestLoadData(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        available_data = os.listdir(test_data)
-        for req_data in ['0000', '0001', 'out_0000', 'out_0001']:
-            if not req_data in available_data:
-                raise FileNotFoundError('Run make_data/sh in tests/make_data before running this test.')
 
     def test_History(self):
         hist = ld.History(os.path.join(test_data, '0000', 'LOGS', 'history.data'))
