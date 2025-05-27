@@ -150,7 +150,13 @@ class _Data:
             lines[3] = '\n'
 
         header_columns = lines[1].split()
-        header_data = [ast.literal_eval(_) for _ in lines[2].split()]
+        header_data = []
+        for item in lines[2].split():
+            try:
+                val = ast.literal_eval(item)
+            except ValueError:
+                val = item
+            header_data.append(val)
         header = {k: v for k, v in zip(header_columns, header_data)}
         if 'version_number' in header.keys():
             header['version_number'] = str(header['version_number'])
@@ -627,6 +633,13 @@ class GyreSummary(_Gyre):
             np.rec.array: Frequencies in unit specified by Re_freq_unit.
         """
         unit_dict = {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}
+        if 'freq_units' in self.header.keys():
+            header_freq_units = self.header['freq_units'].lower().replace('hz', 'Hz')
+            if header_freq_units != Re_freq_unit:
+                print(f'Warning! Frequency units in header ({header_freq_units}) and Re_freq_unit ({Re_freq_unit}) are '
+                      f'not the same, using header frequency units.')
+                Re_freq_unit = header_freq_units
+
         if 'Re(omega)' in self.columns:
             dimless_to_Hz = self._calc_dimless_to_Hz() * unit_dict[freq_units]
             freq_name = 'Re(omega)'
