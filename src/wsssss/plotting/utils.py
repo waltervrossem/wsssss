@@ -469,6 +469,11 @@ def get_default_mixing_kwargs():
                                                   'line': 1,
                                                   'show': True
                                                   },
+        uf.mix_dict['merged']['no_mixing']: {'color': "",
+                                             'hatch': "",
+                                             'line': 0,
+                                             'show': False
+                                             },
 
     }
     return default_kwargs_mixing
