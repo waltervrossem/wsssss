@@ -121,3 +121,13 @@ class TestCreateGrid(unittest.TestCase):
                 self.assertDictEqual({'max_age': (None, 1000000000000.0)}, diff['changed'], msg=str(diff['changed']))
             else:
                 self.assertDictEqual({}, diff['changed'], msg=str(diff['changed']))
+
+    def test_non_mesa_key(self):
+        key = f'{cg.non_mesa_key_start}aaaa'
+        self.grid.add_non_mesa_key('controls', key)
+        self.grid.controls[key] = [1, 2]
+        self.grid.unpack_inlists()
+        for unpacked in self.grid.unpacked:
+            self.assertIn(key, unpacked['controls'])
+        self.assertEqual(8, len(self.grid.unpacked))
+

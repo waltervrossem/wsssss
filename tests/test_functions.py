@@ -8,6 +8,10 @@ import numpy as np
 from wsssss import load_data as ld
 from wsssss import functions as uf
 
+from .common import have_mesa_data
+
+have_mesa_data()
+
 must_have_environ = ['MESA_DIR']
 for env in must_have_environ:
     if env not in os.environ:

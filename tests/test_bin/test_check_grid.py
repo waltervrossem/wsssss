@@ -6,6 +6,9 @@ import io
 import subprocess
 import unittest
 
+from ..common import have_mesa_data
+
+have_mesa_data()
 test_data = os.path.join(os.path.dirname(__file__), '..', 'data', 'mesa')
 
 class TestCheckGrid(unittest.TestCase):
