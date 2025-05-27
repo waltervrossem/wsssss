@@ -348,7 +348,7 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
 
     f, ax = get_figure(ax)
 
-    hist_i = hist.get_model_num(p.profile_num)[0][2]
+    hist_i = hist.get_profile_index(p.profile_num)[0]
 
     radius = uf.get_radius(p)
 
@@ -465,7 +465,7 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
     f, ax = get_figure(ax)
 
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_model_num(pnum)[0][2]
+    hist_i = hist.get_profile_index(pnum)[0]
     nu_all = gs.get_frequencies(freq_units)
 
     if type(delta_nu) == str:
@@ -559,7 +559,7 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
 #     f, ax = get_figure(ax)
 #
 #     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-#     hist_i = hist.get_model_num(pnum)[0][2]
+#     hist_i = hist.get_profile_index(pnum)[0]
 #     nu_all = gs.get_frequencies(freq_units)
 #     dPi1 = hist.get('delta_Pg')[hist_i]
 #
@@ -732,7 +732,7 @@ def make_age_nu(hist, gss, l=1, ax=None, gyre_summary_prefix='profile',
 
     age_factor = {'yr': 1e0, 'kyr': 1e3, 'Myr': 1e6, 'Gyr': 1e9}[age_unit]
 
-    hist_i = hist.get_model_num(pnums)[:, 2]
+    hist_i = hist.get_profile_index(pnums)
     ages = hist.get('star_age')[hist_i] / age_factor
 
     for i, gs in enumerate(gss):
@@ -796,7 +796,7 @@ def make_mesa_gyre_delta_nu(hist, gss, l_list=(0, 1, 2), xaxis='model_number', g
 
         gyre_delta_nus.append([pnum, median_delta_nu, mean_delta_nu])
     gyre_delta_nus = np.array(gyre_delta_nus)
-    hist_i = hist.get_model_num(gyre_delta_nus[:, 0])[:, 2]
+    hist_i = hist.get_profile_index(gyre_delta_nus[:, 0])
 
     xdat = hist.get(xaxis)
     mesa_delta_nu = hist.get('delta_nu')
@@ -964,7 +964,7 @@ def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', s
                         l_list=(0, 1, 2), legend_loc='upper right'):
     f, ax = get_figure(ax)
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_model_num(pnum)[0][2]
+    hist_i = hist.get_profile_index(pnum)[0]
     ax.axvline(hist.get('nu_max')[hist_i], color='k', zorder=-3)
     for i, l in enumerate(l_list):
         if l == 0:  # No radial g-modes
