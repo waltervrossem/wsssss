@@ -387,7 +387,7 @@ def get_pms_mask(hist, invert=False, use_LH=True):
     return mask
 
 
-def get_ms_mask(hist, min_Xc=1e-3, use_LH=True):
+def get_ms_mask(hist, min_Xc=1e-3, use_LH=False):
     """
     Get the main sequence mask for hist.
 
@@ -461,34 +461,30 @@ def get_bump_mask(hist, max_logT_lim=3.8, min_logT_lim=3.6, min_logL=0.5):
     logTeff, logL = get_logTeffL(hist)
 
     mask = hist.data.center_h1 < 1e-9
-    mask = np.logical_and(mask, hist.data.center_he4 > 0.95)
-    mask = np.logical_and(mask, logTeff < max_logT_lim)
-    mask = np.logical_and(mask, logTeff > min_logT_lim)
-    mask = np.logical_and(mask, logL > min_logL)
+    mask = mask & (hist.data.center_he4 > 0.95)
+    mask = mask & get_rgb_mask(hist)
+    mask = mask & (hist.data.model_number < hist.data.model_number[get_tip_mask(hist)][0])
 
-    if sum(mask) == 0:
-        return np.zeros_like(mask, dtype=bool)
+    dlogT = np.diff(logTeff, prepend=99)
+    dlogL = np.diff(logL, prepend=99)
 
-    mod_min = min(hist.get('model_number')[mask])
-    try:
-        mod_max = min(hist.get('model_number')[get_tip_mask(hist, max_logT_lim)])  # before RGB tip
-    except (IndexError, ValueError):  # no flashes, use cheb instead
-        mod_max = hist.data.model_number[get_cheb_mask(hist)][0]
+    angle = np.arctan2(dlogL, dlogT)
+    mask = mask & (angle < -0.2 * np.pi) & (angle > -0.6 * np.pi)
 
-    # Bump is somewhere in the following mask:
-    mask = np.logical_and(mask, hist.get('model_number') >= mod_min)
-    mask = np.logical_and(mask, hist.get('model_number') <= mod_max)
+    # Cooler than (3.5, 1) -> (3.6, 3)
+    y = 20 * (logTeff - 3.5) + 1
+    mask = mask & (y > logL)
 
     # Bump is defined as when L decreases and Teff increases on RGB
     # submask_bump = np.logical_and(np.diff(logL[mask], prepend=-99) < 0, np.diff(logTeff[mask], prepend=99) > 0)
     # Bump is defined as when Teff increases on RGB
-    submask_bump = np.diff(logTeff[mask], prepend=99) > 0
-    mask[mask] = submask_bump
+    # submask_bump = np.diff(logTeff[mask], prepend=99) > 0
+    # mask[mask] = submask_bump
 
     return mask
 
 
-def get_tip_mask(hist, logT_lim=3.8):
+def get_tip_mask(hist, logT_lim=3.8, min_logL=2.0):
     """
     Get the RGB tip mask for hist.
 
@@ -505,6 +501,7 @@ def get_tip_mask(hist, logT_lim=3.8):
     mask = hist.data.center_h1 < 1e-9
     mask = np.logical_and(mask, hist.data.center_he4 > 0.95)
     mask = np.logical_and(mask, logTeff < logT_lim)
+    mask = np.logical_and(mask, logL > min_logL)
 
     if sum(mask) == 0:
         return np.zeros_like(mask, dtype=bool)
@@ -541,15 +538,18 @@ def get_rgb_mask(hist, min_Xc=1e-3, logT_lim=3.8):
     except IndexError:
         first_mod = hist.data.model_number[0]
 
-    tip_mask = get_tip_mask(hist, logT_lim)
-    if np.any(tip_mask):
+    has_CHeB = np.any(get_cheb_mask(hist))
+
+    if has_CHeB:
+        tip_mask = get_tip_mask(hist, logT_lim)
         logTeff, logL = get_logTeffL(hist)
         masked_i_min_T = np.argmin(logTeff[tip_mask])
         last_mod = hist.data.model_number[tip_mask][masked_i_min_T]
-        mask = np.logical_and(hist.data.model_number > first_mod, hist.data.model_number <= last_mod)
     else:
-        mask = np.zeros_like(tip_mask, dtype=bool)
+        if hist.data.center_he4[-1] > 0.9:  # stopped on RGB
+            last_mod = hist.data.model_number[-1]
 
+    mask = np.logical_and(hist.data.model_number > first_mod, hist.data.model_number <= last_mod)
     return mask
 
 
@@ -574,10 +574,13 @@ def get_flashes_mask(hist, logT_lim=3.8):
 
     tip_mask = get_tip_mask(hist, logT_lim)
     logTeff, logL = get_logTeffL(hist)
-    masked_i_min_T = np.argmin(logTeff[tip_mask])
-    first_mod = hist.data.model_number[tip_mask][masked_i_min_T]
+    if np.any(tip_mask):
+        masked_i_min_T = np.argmin(logTeff[tip_mask])
+        first_mod = hist.data.model_number[tip_mask][masked_i_min_T]
+        mask = np.logical_and(hist.data.model_number > first_mod, hist.data.model_number < last_mod)
+    else:
+        mask = np.zeros_like(rc_mask)
 
-    mask = np.logical_and(hist.data.model_number > first_mod, hist.data.model_number < last_mod)
     return mask
 
 
@@ -650,14 +653,15 @@ def get_mask(hist, use_mask):
     return mask
 
 
-def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=False):
+def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=False, verbose=True):
     """
     Calculate the average of a quantity defined by `name` over `domain`.
 
     Args:
         hist (History):
         name (str, array, function): Quantity in hist to average. Can be a column name in hist, an array with the same
-                length as hist, or a function with signature function(hist, mask).
+                length as hist, an array with the mask specified by use_mask already applied, or a function with
+                signature function(hist, mask).
         use_mask (bool, np.array, or function, optional): If True, will exclude pre-main sequence.
                 If an array of bools will use that as mask. If a function, will call function(hist) and use that as the mask.
         domain (str, array, optional): Domain over which to average. Must be monotonically increasing or
@@ -712,7 +716,8 @@ def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=
         ydat = ydat[mask]
 
     if len(xdat) == 0:
-        print(f"Warning: 0-length data when calculating mean of {domain}")
+        if verbose:
+            print(f"Warning: 0-length data when calculating mean of {domain}")
         mean = np.nan
         std = np.nan
     else:
