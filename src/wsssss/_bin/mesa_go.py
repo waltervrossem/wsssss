@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 from argparse import ArgumentParser
-
+import numpy as np
 
 def get_parser():
     """"""
@@ -104,12 +104,12 @@ def process_args(args):
 
 
 def start_mesa(args, run_name, logger):
-    logger.info(f'Starting {run_name}')
+    pid = os.getpid()
+    logger.info(f'{pid}: Starting {run_name}')
 
     os.chdir(os.path.join(args.grid_dir, run_name))
     if args.verbose:
-        logger.info('Current directory:')
-        logger.info(os.getcwd())
+        logger.info(f'{pid}: Current directory: {os.getcwd()}')
 
     if args.log_path == '':
         log_file = os.path.join(args.grid_dir, 'out_' + run_name)
@@ -126,7 +126,7 @@ def start_mesa(args, run_name, logger):
                 replace('RUN_NAME', run_name)
 
         if os.path.exists(skip_check_fpath):
-            logger.info(f'Skipping {run_name}, skip file found {skip_check_fpath}.')
+            logger.info(f'{pid}: Skipping {run_name}, skip file found {skip_check_fpath}.')
             return run_name, 'Skip file found.'
 
     with open(log_file,
@@ -155,36 +155,44 @@ def start_mesa(args, run_name, logger):
         photos = os.listdir('photos')
     else:
         photos = []
-    photos.sort()
+    photos_order = np.argsort(np.array([int(photo.replace('x', '0')) for photo in photos]))
+    photos = np.array(photos)[photos_order].tolist()
     if args.restart and len(photos) > 0:
         photo = photos[-1]
 
         cmd = pre_cmd_str + f'./re {photo} >> {log_file} 2>&1'
         if args.verbose:
-            logger.info(run_name)
-            logger.info(cmd)
+            logger.info(f'{pid}: {run_name} {cmd}')
         out = run_cmd(cmd, split=False, shell=True)
     else:
         cmd = pre_cmd_str + args.cmd_main + '  2>&1'
         if args.verbose:
-            logger.info(run_name)
-            logger.info(cmd)
+            logger.info(f'{pid}: {run_name} {cmd}')
         out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
 
     if args.cmd_post_each != '':
         run_cmd(args.cmd_post_each, shell=True)
 
-    logger.info(f'Finished {run_name}')
+    logger.info(f'{pid}: Finished {run_name}')
 
     return run_name, out
 
+def queue_start_mesa(queue, logger):
+    while True:
+        item = queue.get(block=True)
+        if item is None:
+            break
+
+        start_mesa(*item, logger=logger)
+
 
 def run_cmd(cmd, capture_output=False, split=False, to_file='', file_mode='w', **kwargs):
+    pid = os.getpid()
     if file_mode not in ['a', '-a', 'w']:
         raise ValueError('`file_mode` must be one of `a`, `-a`, or `w`.')
 
     if capture_output and to_file != '':
-        logger.warning('Cannot simultaneously capture output and write to file if `split=True`, setting to False.')
+        logger.warning(f'{pid}: Cannot simultaneously capture output and write to file if `split=True`, setting to False.')
         split = False
 
     if split:
@@ -234,7 +242,6 @@ def main(args, logger):
 
     sub_dirs = get_subdirs(args)
 
-    pool = mp.Pool(args.num_mesa)
     arguments = list(zip(itertools.repeat(args), sub_dirs))
     if args.task_share:
         try:
@@ -257,9 +264,18 @@ def main(args, logger):
             print(subdir)
         print('')
 
-    _start_mesa = functools.partial(start_mesa, logger=logger)
-    results = pool.starmap(_start_mesa, arguments[task_id::n_tasks])
-    print(results)
+    _queue_start_mesa = functools.partial(queue_start_mesa, logger=logger)
+
+    queue = mp.Queue()
+    pool = mp.Pool(args.num_mesa, _queue_start_mesa, (queue,))
+    for item in arguments[task_id::n_tasks]:
+        queue.put(item)
+    for i in range(args.num_mesa):
+        queue.put(None)
+    queue.close()
+    queue.join_thread()
+    pool.close()
+    pool.join()
 
     if args.cmd_post != '':
         run_cmd(args.cmd_post, shell=True)
