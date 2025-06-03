@@ -209,12 +209,36 @@ def top_legend(ax, ncol=2, **kwargs):
 
 def top_figure_legend(f, ncol, top=0.9, **kwargs):
     fig_size = f.bbox.corners()[3]
-    plt.subplots_adjust(top=top)
-    corners = np.array([ax.bbox.corners() for ax in f.axes])
-    top_left = corners[0, 1] / fig_size
-    top_right = corners[1, 3] / fig_size
+    f.subplots_adjust(top=top)
+    corners = np.array([ax.bbox.corners() for ax in f.axes]) / fig_size
+
+    left = np.min(corners[:, :, 0])
+    right = np.max(corners[:, :, 0])
+    bot = np.max(corners[:, :, 1])
+
+    width = right - left
+    height = 1 - bot - 0.02
+
     legend = f.legend(loc='upper center', ncol=ncol, mode='expand', borderaxespad=0.,
-                      bbox_to_anchor=(top_left[0], top_right[1], top_right[0] - top_left[0], 1 - top_left[1] - 0.02),
+                      bbox_to_anchor=(left, bot, width, height),
+                      **kwargs)
+    return legend
+
+
+def side_figure_legend(f, ncol, right=0.75, **kwargs):
+    fig_size = f.bbox.corners()[3]
+    f.subplots_adjust(right=right)
+    corners = np.array([ax.bbox.corners() for ax in f.axes]) / fig_size
+
+    left = np.max(corners[:, :, 0]) + 0.01
+    top = bot = np.max(corners[:, :, 1])
+    bot = np.min(corners[:, :, 1])
+
+    width = 1 - left - 0.01
+    height = top - bot
+
+    legend = f.legend(loc='upper center', ncol=ncol, mode='expand', borderaxespad=0.,
+                      bbox_to_anchor=(left, bot, width, height),
                       **kwargs)
     return legend
 
