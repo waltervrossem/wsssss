@@ -25,8 +25,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 from scipy.interpolate import interp1d
 
-from .utils import HandlerDashedLines, get_figure, top_legend, hrd_const_rad, get_x_and_set_xlabel, \
-    add_mixing, add_burning, calc_inertia_marker_size, line_legend
+from . import utils as pu
 from .. import functions as uf
 from .kipper import Kipp_data
 
@@ -70,7 +69,7 @@ def make_vhrd(hist, add_cbar=True, vHRD_norm=1.0, use_mask=True, ax=None, bounds
         bounds = np.arange(-9, 0, 1)
     norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
 
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
     if type(hist) in [list, tuple, dict]:
         for h in hist:
@@ -90,7 +89,7 @@ def make_vhrd(hist, add_cbar=True, vHRD_norm=1.0, use_mask=True, ax=None, bounds
 
     ax.invert_xaxis()
 
-    hrd_const_rad(ax, fontsize=10)
+    pu.hrd_const_rad(ax, fontsize=10)
 
     return f, ax
 
@@ -154,14 +153,17 @@ def plot_hrd_data(f, ax, hist, zdata, znorm, use_mask, norm, add_cbar, cmap, sda
 
 def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=None, ax=None, norm=None, cmap='viridis',
              add_const_rad=True, label_func=None, vmin=None, vmax=None, linecolor='k', linear=False):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
     linestyles = ['-', '--', '-.', ':']
     if type(hist) in [list, tuple]:
         pass
     else:
         hist = [hist]
     if (zdata is not None) and not callable(zdata):
-        if len(zdata) != len(hist) and type(zdata) != str:
+        if len(hist) == 1:
+            if len(zdata) == len(hist[0]):
+                zdata = [zdata]
+        if (len(zdata) != len(hist)) and (type(zdata) != str):
             raise ValueError("When passing multiple histories and zdata is not a string"
                              "the length of zdata must the the length of hist.")
 
@@ -195,7 +197,7 @@ def make_hrd(hist, zdata=None, zlabel='', add_cbar=True, znorm=1.0, use_mask=Non
     ax.margins(0.05)
 
     if add_const_rad:
-        hrd_const_rad(ax, linear=linear)
+        pu.hrd_const_rad(ax, linear=linear)
 
     return f, ax
 
@@ -204,7 +206,7 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
                      add_legend=True, n_col_legend=3, fill_cavity=False, show_burn_level=0, do_numax=True):
     c = uf.get_constants(p)
 
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
     radius = uf.get_radius(p)
 
     csound = p.data.csound
@@ -229,7 +231,7 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
         nu_c2 = cs2H2[1:] * (1 - 2 * np.diff(H) / np.diff(radius)[1:])
         x_skip = 2
 
-    x = get_x_and_set_xlabel(p, xname, ax, hist=hist)
+    x = pu.get_x_and_set_xlabel(p, xname, ax, hist=hist)
 
     if not only_reduced:  # Also plot normal N and S
         S = 1E6 / (2 * np.pi) * lamb2 ** 0.5
@@ -322,7 +324,7 @@ def make_propagation(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_reduc
     if do_numax and (hist is not None):
         labels.append(nu_lines_lc.get_label())
         handles.append(nu_lines_lc)
-        handler_map = {LineCollection: HandlerDashedLines()}
+        handler_map = {LineCollection: pu.HandlerDashedLines()}
 
     if add_legend:
         n_item = len(labels)
@@ -347,7 +349,7 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
                       add_legend=True, fill_cavity=False, show_burn_level=0):
     c = uf.get_constants(p)
 
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
     hist_i = hist.get_profile_index(p.profile_num)[0]
 
@@ -387,7 +389,7 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
         smin, smax = ax.get_xlim()
         x[(x < smin) | (x > smax)] = np.nan
     else:
-        x = get_x_and_set_xlabel(p, xname, ax, hist=hist)
+        x = pu.get_x_and_set_xlabel(p, xname, ax, hist=hist)
 
     if not only_reduced:  # Also plot normal N and S
         S2 = (1E6 / (2 * np.pi)) ** 2 * lamb2
@@ -463,7 +465,7 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
 
 def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='median',
                  prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz', legend_loc='upper right'):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
     hist_i = hist.get_profile_index(pnum)[0]
@@ -528,7 +530,7 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
         mask = gs.data.l == l
 
         nu = nu_all[mask]
-        ms = calc_inertia_marker_size(gs, l=l, freq_units=freq_units)
+        ms = pu.calc_inertia_marker_size(gs, l=l, freq_units=freq_units)
         ax.scatter((nu + offset) % delta_nu, nu, ms, c=f'C{i}', label=r'$\ell={}$'.format(l),
                    marker=['o', 's', '^', 'v'][i % 4])
 
@@ -557,14 +559,14 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
 #
 # def make_period_echelle(gs, hist, ax=None,
 #                  prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz', legend_loc='upper right'):
-#     f, ax = get_figure(ax)
+#     f, ax = pu.get_figure(ax)
 #
 #     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
 #     hist_i = hist.get_profile_index(pnum)[0]
 #     nu_all = gs.get_frequencies(freq_units)
 #     dPi1 = hist.get('delta_Pg')[hist_i]
 #
-#     ms = calc_inertia_marker_size(gs, l=1, freq_units=freq_units)
+#     ms = pu.calc_inertia_marker_size(gs, l=1, freq_units=freq_units)
 #
 #     nu = uf.get_freq(gs, 'Hz')
 #
@@ -584,7 +586,7 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
 
 def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, legend_loc='upper right',
                  scale_marker=False):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
     freqs = gs.get_frequencies(freq_units)
 
     mask = gs.data.l == 0
@@ -599,7 +601,7 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
         mask = gs.get('l') == l
         E = gs.get('E_norm')[mask]
         if scale_marker:
-            ms = calc_inertia_marker_size(gs, l, freq_units)
+            ms = pu.calc_inertia_marker_size(gs, l, freq_units)
         if div:
             E_div_El0 = E / 10 ** log_f_El0(freqs[mask])
             if scale_marker:
@@ -643,7 +645,7 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
 
 
 def make_resolutions(profs, ax=None, yres=100, xname='model_number', yname='mass', zorder=0):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
     n_zones = 0
     for p in profs:
@@ -714,7 +716,7 @@ def make_hrd_models(hist, add_cbar=True, vHRD_norm=1.0, use_mask=True, ax=None, 
 
 def make_age_nu(hist, gss, l=1, ax=None, gyre_summary_prefix='profile',
                 gyre_summary_suffix='.data.GYRE.sgyre_l', age_unit='Myr', marker='k.'):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
     pnums = []
     for gs in gss:
@@ -756,7 +758,7 @@ def make_mesa_gyre_delta_nu(hist, gss, l_list=(0, 1, 2), xaxis='model_number', g
         f, (ax0, ax1) = plt.subplots(nrows=2, ncols=1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
 
     elif not hasattr(ax, '__len__'):
-        f = get_figure()
+        f = pu.get_figure()
         bbox = ax.get_position()
         width, height = bbox.p1 - bbox.p0
 
@@ -777,7 +779,7 @@ def make_mesa_gyre_delta_nu(hist, gss, l_list=(0, 1, 2), xaxis='model_number', g
 
     else:
         ax0, ax1 = ax
-        f = get_figure()
+        f = pu.get_figure()
 
     ax0.tick_params(labelbottom=False)
 
@@ -827,7 +829,7 @@ def make_mesa_gyre_delta_nu(hist, gss, l_list=(0, 1, 2), xaxis='model_number', g
 def make_composition(prof, elements='all', xname='mass', ax=None, add_burnmix=True, legend_loc='best', add_cbar=True,
                      add_legend=False, add_label_lines=True, num_line_label=4, normalize_comp=False, grad=False,
                      fontsize=7, hist=None):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
     e_pp = ['h1', 'he4']
     e_cno = ['h1', 'he4', 'c12', 'n14', 'o16']
@@ -862,7 +864,7 @@ def make_composition(prof, elements='all', xname='mass', ax=None, add_burnmix=Tr
     else:
         elems = elements
 
-    xdata = get_x_and_set_xlabel(prof, xname, ax=ax, hist=hist)
+    xdata = pu.get_x_and_set_xlabel(prof, xname, ax=ax, hist=hist)
 
     _colors = ['C0', 'C1', 'C2', 'C3', 'C5', 'C7', 'C8', 'C9']
     linestyles = ['-', '--', '-.', ':']
@@ -907,16 +909,16 @@ def make_composition(prof, elements='all', xname='mass', ax=None, add_burnmix=Tr
             ax.set_yticks([1e0, 1e-3, 1e-6])
 
     if add_burnmix == 'mix':
-        add_mixing(ax, prof, xname, add_legend=False)
+        pu.add_mixing(ax, prof, xname, add_legend=False)
     elif add_burnmix == 'burn':
-        add_burning(ax, prof, xname, add_cbar=add_cbar)
+        pu.add_burning(ax, prof, xname, add_cbar=add_cbar)
     else:
         if add_burnmix:
-            add_burning(ax, prof, xname, add_cbar=add_cbar)
-            add_mixing(ax, prof, xname, add_legend=False)
+            pu.add_burning(ax, prof, xname, add_cbar=add_cbar)
+            pu.add_mixing(ax, prof, xname, add_legend=False)
 
     if add_label_lines:
-        line_legend(ax, num_line_label=num_line_label, fontsize=fontsize)
+        pu.line_legend(ax, num_line_label=num_line_label, fontsize=fontsize)
 
     if add_legend:
         ax.legend(loc=legend_loc)
@@ -924,9 +926,9 @@ def make_composition(prof, elements='all', xname='mass', ax=None, add_burnmix=Tr
 
 
 def make_gradients(prof, xname='mass', hist=None, ax=None, add_legend=True, n_cols_legend=2):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
-    x = get_x_and_set_xlabel(prof, xname, ax=ax, hist=hist)
+    x = pu.get_x_and_set_xlabel(prof, xname, ax=ax, hist=hist)
     labels = {'gradr': r'$\nabla_\mathrm{rad}$', 'grada': r'$\nabla_\mathrm{ad}$',
               'actual_gradT': r'actual $\nabla$', 'gradT': r'$\nabla$'}
 
@@ -956,14 +958,14 @@ def make_gradients(prof, xname='mass', hist=None, ax=None, add_legend=True, n_co
         ax.plot(x, grad_mu, 'k-.', label=r'$\nabla_\mu$')
 
     if add_legend:
-        top_legend(ax, n_cols_legend)
+        pu.top_legend(ax, n_cols_legend)
 
     return f, ax
 
 
 def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', suffix='.data.GYRE.sgyre_l',
                         l_list=(0, 1, 2), legend_loc='upper right'):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
     pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
     hist_i = hist.get_profile_index(pnum)[0]
     ax.axvline(hist.get('nu_max')[hist_i], color='k', zorder=-3)
@@ -976,7 +978,7 @@ def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', s
 
         # ax.plot(dPi, nu[:-1] % hist.get('delta_Pg')[hist_i], f'C{l}.', label=fr'$\ell={l}$')
 
-        ms = calc_inertia_marker_size(gs, l=l, freq_units=freq_units)
+        ms = pu.calc_inertia_marker_size(gs, l=l, freq_units=freq_units)
 
         # ax.plot(nu[:-1], dPi, f'C{l}.', label=fr'$\ell={l}$')
         ax.scatter(nu[:-1], dPi, s=ms[:-1], color=f'C{l}', marker=['o', 's', '^', 'v'][i % 4])
@@ -997,9 +999,9 @@ def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', s
 
 
 def make_structural(prof, ax=None, xname='mass', hist=None, normalize=False):
-    f, ax = get_figure(ax)
+    f, ax = pu.get_figure(ax)
 
-    x = get_x_and_set_xlabel(prof, xname, ax, hist=hist)
+    x = pu.get_x_and_set_xlabel(prof, xname, ax, hist=hist)
 
     for yname in ('logP', 'logRho', 'logT', 'logR'):
         if yname in prof.columns:
@@ -1015,70 +1017,71 @@ def make_structural(prof, ax=None, xname='mass', hist=None, normalize=False):
     if xname == 'mass':
         ax.set_xlim(0, None)
 
-    line_legend(ax, edge_space=0.075)
+    pu.line_legend(ax, edge_space=0.075)
     ax.set_xlabel(xname)
 
     return f, ax
 
 
-def make_eos(prof, ax=None, mesa_version='15140', cbar_min=0, cbar_max=None):
-    f, ax = get_figure(ax)
-
-    eos_path = os.path.join(os.path.dirname(__file__), f'../misc/eos_plotter_{mesa_version}.dat')
-
-    # Based on plotter.py from $MESA_DIR/eos
-
-    def parse(fname):
-        nY, nX = np.loadtxt(fname, max_rows=1, skiprows=3, unpack=True, dtype=int)
-        data = np.loadtxt(fname, skiprows=4)
-        data = np.reshape(data, (nX, nY, -1))
-        Yran = data[0, :, 0]
-        Xran = data[:, 0, 1]
-        data = np.swapaxes(data, 0, 1)
-        return data, Yran, Xran
-
-    with open(eos_path, 'r') as handle:
-        title = handle.readline().strip()
-        xlabel = handle.readline().strip()
-        ylabel = handle.readline().strip()
-
-    eosDT, Yran, Xran = parse(eos_path)
-
-    # set up plot and labels
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_xlim(Xran.min(), Xran.max())
-    ax.set_ylim(Yran.min(), Yran.max())
-
-    # set up color map
-    cmap = copy.copy(mpl.cm.get_cmap("viridis"))
-    cmap.set_over('white')
-    cmap.set_under('black')
-
-    pcol = ax.pcolormesh(Xran, Yran, eosDT[..., 2], shading='nearest', cmap=cmap, vmin=cbar_min, vmax=cbar_max)
-    pcol.set_edgecolor('face')
-    cax = f.colorbar(pcol, extend='both')
-    cax.set_label('')
-
-    try:
-        xprof = prof.get('logRho')
-    except ValueError:
-        xprof = np.log10(prof.get('density'))
-
-    try:
-        yprof = prof.get('logT')
-    except ValueError:
-        yprof = np.log10(prof.get('temperature'))
-    ax.plot(xprof, yprof, 'k')
-
-    return f, ax
+# def make_eos(prof, ax=None, mesa_version='15140', cbar_min=0, cbar_max=None):
+#     f, ax = pu.get_figure(ax)
+#
+#     eos_path = os.path.join(os.path.dirname(__file__), f'../misc/eos_plotter_{mesa_version}.dat')
+#
+#     # Based on plotter.py from $MESA_DIR/eos
+#
+#     def parse(fname):
+#         nY, nX = np.loadtxt(fname, max_rows=1, skiprows=3, unpack=True, dtype=int)
+#         data = np.loadtxt(fname, skiprows=4)
+#         data = np.reshape(data, (nX, nY, -1))
+#         Yran = data[0, :, 0]
+#         Xran = data[:, 0, 1]
+#         data = np.swapaxes(data, 0, 1)
+#         return data, Yran, Xran
+#
+#     with open(eos_path, 'r') as handle:
+#         title = handle.readline().strip()
+#         xlabel = handle.readline().strip()
+#         ylabel = handle.readline().strip()
+#
+#     eosDT, Yran, Xran = parse(eos_path)
+#
+#     # set up plot and labels
+#     ax.set_title(title)
+#     ax.set_xlabel(xlabel)
+#     ax.set_ylabel(ylabel)
+#     ax.set_xlim(Xran.min(), Xran.max())
+#     ax.set_ylim(Yran.min(), Yran.max())
+#
+#     # set up color map
+#     cmap = copy.copy(mpl.cm.get_cmap("viridis"))
+#     cmap.set_over('white')
+#     cmap.set_under('black')
+#
+#     pcol = ax.pcolormesh(Xran, Yran, eosDT[..., 2], shading='nearest', cmap=cmap, vmin=cbar_min, vmax=cbar_max)
+#     pcol.set_edgecolor('face')
+#     cax = f.colorbar(pcol, extend='both')
+#     cax.set_label('')
+#
+#     try:
+#         xprof = prof.get('logRho')
+#     except ValueError:
+#         xprof = np.log10(prof.get('density'))
+#
+#     try:
+#         yprof = prof.get('logT')
+#     except ValueError:
+#         yprof = np.log10(prof.get('temperature'))
+#     ax.plot(xprof, yprof, 'k')
+#
+#     return f, ax
 
 
 def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 5e4), eig_y_lims=None,
                            x_lims=(1e-3, 0.5), prop_kwargs={}, inertia_kwargs={}):
     f, axes = plt.subplot_mosaic([list('AAADD'), list('BBBDD'), list('CCC..')])
-    axes['A'].get_shared_x_axes().join(axes['A'], axes['B'], axes['C'])
+    axes['A'].sharex(axes['B'])
+    axes['B'].sharex(axes['C'])
     i_hist = prof.get_hist_index(hist)
     if eig_y_lims is None:
         eig_y_lims = ((None, None), (None, None))
