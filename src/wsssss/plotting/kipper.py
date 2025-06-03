@@ -15,6 +15,8 @@ from matplotlib import cm
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
+# For debugging creation of connected zones
+# Uncomment these imports, the make_path and plot_graph methods, and the associated lines in calc_zones
 # import shapely as sh
 # import networkx as nwx
 
@@ -27,7 +29,7 @@ class Kipp_data:
     def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data',
                  prof_resolution=200, parallel=True):
-        self.__version__ = '0.0.6'
+        self.__version__ = '0.0.7'
         self.parallel = parallel
         self.verbose = verbose
         self.xaxis = xaxis
@@ -36,6 +38,8 @@ class Kipp_data:
         self.xaxis_data = np.empty(len(hist)+1)
         self.xaxis_data[:-1] = hist.get(self.xaxis)
         self.xaxis_data[-1] = self.xaxis_data[-2] + (self.xaxis_data[-2] - self.xaxis_data[-3])
+        self.has_mixtype = {}
+        self.color_info = None
 
         # Check if monotonic
         if not np.all(np.diff(np.sign(np.diff(self.xaxis_data))) == 0):
@@ -443,6 +447,8 @@ class Kipp_data:
 
         num_zones = np.max(zone_ids) + 1
 
+        path_function = self.make_path2
+
         if self.parallel:
             try:
                 zones = Parallel(n_jobs=-1)(
@@ -463,6 +469,8 @@ class Kipp_data:
             print('Adding mixing to axis.')
         if kwargs_mixing is None:
             kwargs_mixing = pu.get_default_mixing_kwargs()
+
+        self.has_mixtype = {mix_type:False for mix_type in kwargs_mixing.keys()}
 
         min_ix = 1e99
         max_ix = -1e99
@@ -510,6 +518,7 @@ class Kipp_data:
             path = Path(new_vert, path.codes)
 
             ax.add_patch(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+            self.has_mixtype[mix_type] = True
         return x_extent
 
     def add_color(self, ax, xlims, ylims, clims, norm=None, cmap=None, kwargs_profile_color=None):
@@ -536,6 +545,9 @@ class Kipp_data:
                 norm = pu.MidpointBoundaryNorm(np.linspace(vmin, vmax, int(vmax - vmin + 1)), 256, 0)
             if cmap is None:
                 cmap = pu.cm.RdBu
+
+            self.color_info = (vmin, vmax, norm, cmap)
+
             ax.set_facecolor(cmap(0.5))
             if get_xlim:
                 for burn_type, path in self.color_zones:
@@ -577,6 +589,10 @@ class Kipp_data:
             x = self.xaxis_data[x.astype(int)]
             ax.pcolormesh(x, y, c, **kwargs_profile_color)
             x_extent = np.array([0, len(self.xaxis_data)-1])
+
+            vmin = np.nanmin(c)
+            vmax = np.nanmax(c)
+            self.color_info = (vmin, vmax, norm, cmap)
 
         return x_extent
 

@@ -20,6 +20,7 @@ from matplotlib import animation
 from matplotlib import colors
 from matplotlib import pyplot as plt
 from matplotlib import transforms
+from matplotlib import cm
 from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 from scipy.interpolate import interp1d
@@ -1142,7 +1143,7 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
 def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data', mixing_min_height=0,
                  prof_resolution=200, xlims=None, ylims=None, clims=None, kwargs_mixing=None, norm=None, cmap=None,
-                 kwargs_profile_color=None, return_Kipp_data=False, parallel=True):
+                 kwargs_profile_color=None, return_Kipp_data=False, parallel=True, legend_loc=None, add_cbar=False):
     """
     Create a Kippenhahn diagram.
 
@@ -1164,12 +1165,14 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
         xlims (length 2 array, optional): Lower and upper limits of the x-axis.
         ylims (length 2 array, optional): Lower and upper limits of the y-axis.
         clims (length 2 array, optional): Lower and upper limits of the colour-axis.
-        kwargs_mixing (dict, optional): kwargs used to draw mixing regions, if `None`, defaults to `plotting.utils.get_default_mixing_kwargs()`.
+        kwargs_mixing (dict, optional): kwargs used to draw mixing regions, if `None`, defaults to `plotting.utils.pu.get_default_mixing_kwargs()`.
         norm (optional): Matplotlib normalize class.
         cmap (optional): Matplotlib colormap.
         kwargs_profile_color (dict, optional): Passed to pcolormesh in ``add_color``.
         return_Kipp_data (bool, optional): If ``True``, also returns Kipp_data.
         parallel (bool, optional): If ``True``, calculate Kippenhahn regions in parallel.
+        legend_loc(str, optional): If set, create a legend along that side. Can be 'top' or 'right'.
+        add_cbar(bool, optional): If ``True``, will create a colorbar for the color axis.
 
     Returns:
         tuple of matplotlib.figure.Figure, matplotlib.axes._axes.Axes, and optionally Kipp_data: Figure, axis, and optionally `Kipp_data` of the Kippenhahn diagram.
@@ -1184,6 +1187,37 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
     # ax.set_ylim(0, None)
     ax.set_xlabel(xaxis.replace('_', ' '))
     ax.set_ylabel(yaxis)
+
+    if legend_loc is not None:
+        if kwargs_mixing is None:
+            kwargs_mixing = pu.get_default_mixing_kwargs()
+        labels = []
+        handles = []
+        for mixtype, val in kd.has_mixtype.items():
+            if val:
+                hatch = kwargs_mixing[mixtype]['hatch']
+                color = kwargs_mixing[mixtype]['color']
+                line = kwargs_mixing[mixtype]['line']
+                show = kwargs_mixing[mixtype]['show']
+                if show:
+                    labels.append(uf.mix_dict['names'][uf.mix_dict['merged_r'][mixtype]])
+                    handles.append(plt.Rectangle((0,0), 0, 0,
+                                                 fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+        if len(labels) > 0:
+            if legend_loc == 'top':
+                legend = pu.top_figure_legend(f, 4, handles=handles, labels=labels)
+            elif legend_loc == 'right':
+                legend = pu.side_figure_legend(f, 1, handles=handles, labels=labels)
+            else:
+                pass
+
+    if add_cbar:
+        vmin, vmax, norm, cmap = kd.color_info
+
+        f = ax.get_figure()
+        f.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax)
+        cbax = f.axes[-1]
+        cbax.set_ylabel(caxis)
 
     if return_Kipp_data:
         return f, ax, kd
