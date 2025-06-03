@@ -141,6 +141,15 @@ mix_dict = {'pre15140': {-1:'no_region',
                        'rotation_mixing': 106,
                        'minimum_mixing': 107,
                        'anonymous_mixing': 109},
+            'names':  {'no_region': '',
+                       'no_mixing': 'No mixing',
+                       'convective_mixing': 'Convection',
+                       'overshoot_mixing': 'Overshooting',
+                       'semiconvective_mixing': 'Semiconvection',
+                       'thermohaline_mixing': 'Thermohaline',
+                       'rotation_mixing': 'Rotational',
+                       'minimum_mixing': 'Minimum',
+                       'anonymous_mixing': 'Anonymous'},
             }
 mix_dict['merged_r'] = {v:k for k,v in mix_dict['merged'].items()}  # Reversed merged.
 def convert_mixing_type(mix_type, version, unknown_mixing=100):
