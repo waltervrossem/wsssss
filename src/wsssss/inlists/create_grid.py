@@ -13,8 +13,12 @@ from .inlists import defaults, evaluate_inlist, variable_to_string
 from ..functions import get_mesa_version, compare_version
 
 non_mesa_key_start = '!PY_KEY_'
-
-
+kap_user_params = ['user_num_kap_Xs', 'user_kap_Xs', 'user_num_kap_Zs', 'user_kap_Zs',
+                   'user_num_kap_Xs_for_this_Z',
+                   'user_num_kap_CO_Xs', 'user_kap_CO_Xs', 'user_num_kap_CO_Zs', 'user_kap_CO_Zs',
+                   'user_num_kap_CO_Xs_for_this_Z',
+                   'user_num_kap_lowT_Xs', 'user_kap_lowT_Xs', 'user_num_kap_lowT_Zs', 'user_kap_lowT_Zs',
+                   'user_num_kap_lowT_Xs_for_this_Z']
 class MesaGrid:
     def __init__(self, mesa_dir='', inlist_filename='inlist', inlists_index=5, starjob_filename='inlist_project',
                  controls_filename='inlist_project', eos_filename='inlist_project', kap_filename='inlist_project',
@@ -131,6 +135,13 @@ class MesaGrid:
             for dname in ['make', 'src']:
                 self.extra_dirs.append(os.path.join(f'{self.mesa_dir}/star/work', dname))
 
+        no_expand = {namelist: [] for namelist in self.namelists}
+        no_expand['kap'] = ['user_kap_Xs', 'user_kap_Zs', 'user_num_kap_Xs_for_this_Z', 'user_kap_CO_Xs',
+                             'user_kap_CO_Zs', 'user_num_kap_CO_Xs_for_this_Z', 'user_kap_lowT_Xs', 'user_kap_lowT_Zs',
+                             'user_num_kap_lowT_Xs_for_this_Z']
+        self.no_expand = no_expand
+        self.expand_non_mesa_keys = {namelist:[] for namelist in self.namelists}
+
     def __repr__(self):
         s = f'MESA Grid for version {self.version}.'
         if self.unpacked:
@@ -195,6 +206,38 @@ class MesaGrid:
         if namelist not in self.namelists:
             raise ValueError(f'`namelist` {namelist} must be one of {", ".join(self.namelists)}.')
         self.inlist_option_files_to_validate.append((namelist, option))
+
+
+    def add_no_expand_key(self, namelist, key):
+        """
+        Add a key which will not be expanded. For example &kap's ``user_kap_Xs``
+        Args:
+            namelist (str): Which namelist the key is part of. E.g. 'kap'.
+            key (str): Name of parameter. E.g. 'user_kap_Xs'.
+
+        Examples:
+
+            >>> from wsssss.inlists import create_grid as cg
+            >>> grid = cg.MesaGrid()
+            >>> grid.add_no_expand_key('kap', f'user_kap_Xs')
+
+        """
+
+        self.no_expand[namelist].append(key)
+
+    def add_non_mesa_key(self, namelist, key):
+        """
+        Add a key which is not in MESA's keys and expand it. For example including a parameter which is used in
+        ``inlist_finalize_function``.
+        Args:
+            namelist (str): Which namelist the key is part of. E.g. controls.
+            key (str): Name of parameter. Must start with ``'!PY_KEY_'``.
+        """
+
+        if not key.startswith(non_mesa_key_start):
+            raise ValueError(f'Key {key} must start with "{non_mesa_key_start}"')
+
+        self.expand_non_mesa_keys[namelist].append(key)
 
     def set_inlist_finalize_function(self, function):
         """
@@ -374,6 +417,9 @@ class MesaGrid:
                     else:
                         compare_key = key
                     if compare_key.lower() not in available_options[namelist]:
+                        if namelist == 'kap':  # These options are commented out in kap.defaults
+                            if compare_key.lower() in self.kap_user_params:
+                                continue
                         failed_options[namelist].append(key)
                         failed = True
 
@@ -510,7 +556,7 @@ class MesaGrid:
             dict: Unpacked inlist.
 
         """
-
+        inlist_dict = copy.deepcopy(inlist_dict)
         if inlist_dict[f'{non_mesa_key_start}type'] == 'master':
             yield inlist_dict
             return
@@ -518,26 +564,26 @@ class MesaGrid:
             yield inlist_dict
             return
 
-        inlist_dict[f'{non_mesa_key_start}unpackindex'] = 0
-        inlist_dict[f'{non_mesa_key_start}unpacknumber_total'] = 1
-
-        contains_list = []  # Keys which need to be unpacked
-        lengths = []  # Length of lists which need to be unpacked
-        items = []  # Lists which need to be unpacked
+        contains_list = list()  # Keys which need to be unpacked
+        lengths = list()  # Length of lists which need to be unpacked
+        items = list()  # Lists which need to be unpacked
         for key, item in inlist_dict.items():
+            if key.lower() in self.no_expand[inlist_dict[f'{non_mesa_key_start}type']]:
+                continue
+
             if key.startswith(non_mesa_key_start):
                 if key == f'{non_mesa_key_start}group_unpack':
                     groups = inlist_dict[f'{non_mesa_key_start}group_unpack']
                     for i, group in enumerate(groups):
-                        contains_list.append('__group__{}'.format(i))
+                        contains_list.append(f'{non_mesa_key_start}__group__{i}')
                         lengths.append(len(group))
                         items.append(group)
-                elif f'{non_mesa_key_start}_to_unpack' in inlist_dict.keys():
-                    if key in inlist_dict[f'{non_mesa_key_start}_to_unpack']:
-                        contains_list.append(key)
-                        lengths.append(len(item))
-                        items.append(inlist_dict[key])
-                continue
+                        continue
+                elif key in self.expand_non_mesa_keys[inlist_dict[f'{non_mesa_key_start}type']]:  # Continue as if it is a normal key and expand it
+                    pass
+                else:
+                    continue
+
             if type(item) in [list, tuple, np.ndarray]:
                 if len(item) > 1:
                     contains_list.append(key)
@@ -558,21 +604,18 @@ class MesaGrid:
         for n in lengths:
             tot_permutations *= n
 
-        inlist_dict[f'{non_mesa_key_start}unpacknumber_total'] = tot_permutations
-        base_inlist = inlist_dict.copy()
-        for namelist in self.namelists:
-            if f'{non_mesa_key_start}group_unpack' in base_inlist.keys():
-                base_inlist.pop(f'{non_mesa_key_start}group_unpack')
+        base_inlist = copy.deepcopy(inlist_dict)
+        if f'{non_mesa_key_start}group_unpack' in base_inlist.keys():
+            base_inlist.pop(f'{non_mesa_key_start}group_unpack')
 
         permutations = itertools.product(*items)
         for i, permutation in enumerate(permutations):
             new_inlist = base_inlist.copy()
             for j, value in enumerate(permutation):
-                if contains_list[j].startswith('__group__'):
+                if contains_list[j].startswith(f'{non_mesa_key_start}__group__'):
                     new_inlist.update(value)
                 else:
                     new_inlist[contains_list[j]] = value
-            new_inlist[f'{non_mesa_key_start}unpackindex'] = i
             yield new_inlist
 
     def _setup_directories(self, grid_path, rm_dir):
@@ -659,7 +702,10 @@ class MesaGrid:
                         continue
                 elif key.startswith('#'):
                     continue
-                parsed_value = variable_to_string(value)
+                if key.lower() in self.no_expand[inlist_type]:
+                    parsed_value = ', '.join([variable_to_string(val) for val in value])
+                else:
+                    parsed_value = variable_to_string(value)
                 sub_str += f'    {key} = {parsed_value}\n'
 
             sub_str += f'/ ! end of {inlist_type} namelist\n'
