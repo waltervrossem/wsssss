@@ -139,6 +139,7 @@ class MesaGrid:
         no_expand['kap'] = ['user_kap_Xs', 'user_kap_Zs', 'user_num_kap_Xs_for_this_Z', 'user_kap_CO_Xs',
                              'user_kap_CO_Zs', 'user_num_kap_CO_Xs_for_this_Z', 'user_kap_lowT_Xs', 'user_kap_lowT_Zs',
                              'user_num_kap_lowT_Xs_for_this_Z']
+        no_expand['kap'] = [_.lower() for _ in no_expand['kap']]
         self.no_expand = no_expand
         self.expand_non_mesa_keys = {namelist:[] for namelist in self.namelists}
 
@@ -418,7 +419,7 @@ class MesaGrid:
                         compare_key = key
                     if compare_key.lower() not in available_options[namelist]:
                         if namelist == 'kap':  # These options are commented out in kap.defaults
-                            if compare_key.lower() in self.kap_user_params:
+                            if compare_key.lower() in [_.lower() for _ in kap_user_params]:
                                 continue
                         failed_options[namelist].append(key)
                         failed = True

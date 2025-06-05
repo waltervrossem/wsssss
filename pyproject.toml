@@ -12,7 +12,7 @@ wsssss = ["_bin/gyre_driver/*.in"]
 
 [project]
 name = "wsssss"
-version = "0.7.0"
+version = "0.7.1"
 authors = [
   { name="Walter van Rossem", email="walter_v_rossem@hotmail.com" },
 ]
