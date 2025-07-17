@@ -884,7 +884,14 @@ def make_composition(prof, elements='all', xname='mass', ax=None, add_burnmix=Tr
             comp -= min(comp)
             comp /= max(comp)
         if grad:
-            comp_grad = np.gradient(comp, prof.data.pressure) / (comp / prof.data.pressure)
+            if 'pressure' in prof.columns:
+                pressure = prof.get('pressure')
+            elif 'logP' in prof.columns:
+                pressure = 10**prof.get('logP')
+            else:
+                raise KeyError('No column name with name pressure or logP.')
+            comp = uf.cell2face(comp, prof.data.mass, True)
+            comp_grad = np.gradient(comp, pressure) / (comp / pressure)
             comp_grad[comp < 1e-9] = np.nan
             comp = np.abs(comp_grad)
 
