@@ -342,25 +342,26 @@ def get_rc_mask(hist, min_Yc=0.1, max_fYc=0.95, first_chunk=False):
     return mask
 
 
-def get_pms_mask(hist, invert=False, use_LH=True):
+def get_pms_mask(hist, invert=False, ZAMS_method='Xc', fXc=0.99):
     """
     Get the pre-main sequence mask for hist.
-
-    Defined as X_c >= X_c_init*0.99
-    if use_LH is True, then pms stops when LH == L
 
     Args:
         hist (History):
         invert (bool, optional): If True, invert the PMS mask. Defaults to False.
-        use_LH (bool, optional): If True, use the hydrogen burning luminosity to determine the end of the PMS, otherwise
-            end the PMS when X_c reaches 99% of the initial central hydrogen massfraction. Defaults to True.
+        ZAMS_method (str or callable, optional): Can be 'Xc', or 'LH'. If 'Xc', will use when X_c reaches ``fXc`` of
+            the initial central hydrogen mass fraction. If 'LH', will end when the hydrogen burning luminosity is equal
+            to total luminosity. If ZAMS_method is callable will call ``ZAMS_method(hist)``, which should return a
+            mask with the same length as hist. Defaults to 'Xc'.
+        fXc (float, optional): Define the end of PMS as when central hydrogen mass fraction reaches ``fXc`` of the
+            initial value. Defaults to 0.99
 
     Returns:
         array of bool:
 
     """
 
-    if use_LH:
+    if ZAMS_method == 'LH':
         _, logL = get_logTeffL(hist)
         if 'log_LH' in hist.columns:
             maskL = ((hist.data.log_LH - logL) < 0) & (hist.data.center_h1 > 0.6)
@@ -378,8 +379,11 @@ def get_pms_mask(hist, invert=False, use_LH=True):
         if starts_pms:
             end = np.where(np.diff(maskL))[0][0]
             mask[:end + 1] = True
-    else:
+    elif ZAMS_method == 'Xc':
         mask = hist.data.center_h1 >= hist.data.center_h1[0] * 0.99
+    else:
+        raise ValueError(f'Unknown ZAMS_method: {ZAMS_method}.')
+
 
     if invert:
         mask = ~mask
@@ -387,15 +391,14 @@ def get_pms_mask(hist, invert=False, use_LH=True):
     return mask
 
 
-def get_ms_mask(hist, min_Xc=1e-3, use_LH=False):
+def get_ms_mask(hist, min_Xc=1e-3, ZAMS_method='Xc'):
     """
     Get the main sequence mask for hist.
 
     Args:
         hist (History):
         min_Xc (float): Minimum central hydrogen mass fraction for the end of the MS.
-        use_LH (bool, optional): If True, use the hydrogen burning luminosity to determine the end of the PMS, otherwise
-            end the PMS when X_c reaches 99% of the initial central hydrogen massfraction. Defaults to True.
+        ZAMS_method (str, optional): See get_pms_mask for details. Defaults to 'Xc'.
 
     Returns:
         array of bool:
@@ -403,7 +406,7 @@ def get_ms_mask(hist, min_Xc=1e-3, use_LH=False):
     """
 
     mask = hist.data.center_h1 > min_Xc
-    mask = np.logical_and(mask, get_pms_mask(hist, invert=True, use_LH=use_LH))
+    mask = np.logical_and(mask, get_pms_mask(hist, invert=True, ZAMS_method=ZAMS_method))
 
     return mask
 
