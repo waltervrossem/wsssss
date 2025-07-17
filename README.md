@@ -4,7 +4,7 @@ This repository contains a package which make creating, running, and studying gr
 (except for the compute time) and easy. 
 
 Install with
-`pip install git+https://github.com/waltervrossem/wsssss`
+`pip install wsssss`
 
 `inlists.create_grid` and `mesa-go` require a version of [MESA](https://docs.mesastar.org) to be installed.
 `gyre-driver` requires a version of [gyre](https://gyre.readthedocs.io/en/stable/) to be installed.
