@@ -17,7 +17,6 @@ np.seterr(all='ignore')
 if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
-print(__file__)
 
 _version = '0.2.0'
 _this_dir = pathlib.Path(__file__).parent
@@ -721,6 +720,7 @@ def get_parser():
                         help='Skip running gyre for existing runs. Only works if summary files are merged.')
     parser.add_argument('--min-numax', type=float, default=0,
                         help='Models with numax in uHz lower than this will only calculate l=0 modes.')
+    parser.add_argument('--version', action='version', version=f'gyre_driver {_version}')
     return parser
 
 
