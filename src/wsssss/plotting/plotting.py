@@ -681,7 +681,7 @@ def make_hrd_profiles(hist, add_cbar=True, vHRD_norm=1.0, use_mask=True, ax=None
 
     model_num, _, pnum = hist.index.T
     model_num = np.intersect1d(model_num, masked_modnum)
-    hist_i = np.where(np.in1d(hist.data.model_number, model_num))[0]
+    hist_i = np.where(np.isin(hist.data.model_number, model_num))[0]
 
     xdat, ydat = uf.get_logTeffL(hist)
 
@@ -701,7 +701,7 @@ def make_hrd_models(hist, add_cbar=True, vHRD_norm=1.0, use_mask=True, ax=None, 
     masked_modnum = hist.get('model_number')[mask]
 
     hist_i = np.where(np.logical_and(hist.data.model_number % show_mod_num == 0,
-                                     np.in1d(hist.data.model_number, masked_modnum)))[0]
+                                     np.isin(hist.data.model_number, masked_modnum)))[0]
 
     xdat, ydat = uf.get_logTeffL(hist)
     ax.plot(xdat[hist_i], hist.data.log_L[hist_i], 'k+')

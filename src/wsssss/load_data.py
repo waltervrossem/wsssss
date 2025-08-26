@@ -250,7 +250,7 @@ class _Data:
             np.rec.array: New ``np.rec.array`` without discarded columns.
         """
         columns, formats = np.array(rec_array.dtype.descr).T
-        mask = (columns != '') & np.in1d(columns, to_keep)
+        mask = (columns != '') & np.isin(columns, to_keep)
         columns = columns[mask]
         formats = formats[mask]
         return np.rec.array(rec_array[columns].tolist(), dtype=list(zip(columns, formats)))
@@ -494,9 +494,9 @@ class History(_Mesa):
             profile_nums = [profile_nums]
         if isinstance(profile_nums[0], Profile):
             profile_nums = [p.profile_num for p in profile_nums]
-        idxs = np.where(np.in1d(self.index[:, 2], profile_nums))
+        idxs = np.where(np.isin(self.index[:, 2], profile_nums))
         model_nums = self.index[:, 0][idxs]
-        data_idx = np.where(np.in1d(self.data['model_number'], model_nums))[0]
+        data_idx = np.where(np.isin(self.data['model_number'], model_nums))[0]
         return data_idx
 
     def _scrub_hist(self):
@@ -788,7 +788,7 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
                 mask_kwargs = {}
             mask = mask(hist, **mask_kwargs)
         valid_mod = hist.get('model_number')[mask]
-        pnums = hist.index[:, 2][np.in1d(hist.index[:, 0], valid_mod)]
+        pnums = hist.index[:, 2][np.isin(hist.index[:, 0], valid_mod)]
 
     profs = []
     for i in pnums:
@@ -968,7 +968,7 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
 #             nu = uf.get_freq(md, kind='mode')
 #             l = md.header['l']
 #             order_names = ['n_p', 'n_g', 'n_pg']
-#             if sum(np.in1d(order_names, list(md.header.keys()))) > 1:
+#             if sum(np.isin(order_names, list(md.header.keys()))) > 1:
 #
 #                 try:
 #                     n_p = md.header['n_p']
