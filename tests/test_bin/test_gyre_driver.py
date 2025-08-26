@@ -15,6 +15,7 @@ for env in must_have_environ:
     if env not in os.environ:
         raise EnvironmentError(f'{env} not set.')
 
+@unittest.skipIf(os.name == 'nt', 'Skipping on Windows')
 class TestGyreDriver(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

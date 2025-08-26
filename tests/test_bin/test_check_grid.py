@@ -30,4 +30,4 @@ class TestCheckGrid(unittest.TestCase):
                     "--------------------------------------------\n"
                     "\n")
 
-        self.assertEqual(expected, output.stdout.decode())
+        self.assertEqual(expected, output.stdout.decode().replace('\r\n', '\n'))
