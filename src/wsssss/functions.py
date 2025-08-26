@@ -466,7 +466,6 @@ def get_bump_mask(hist, max_logT_lim=3.8, min_logT_lim=3.6, min_logL=0.5):
     mask = hist.data.center_h1 < 1e-9
     mask = mask & (hist.data.center_he4 > 0.95)
     mask = mask & get_rgb_mask(hist)
-    mask = mask & (hist.data.model_number < hist.data.model_number[get_tip_mask(hist)][0])
 
     dlogT = np.diff(logTeff, prepend=99)
     dlogL = np.diff(logL, prepend=99)
