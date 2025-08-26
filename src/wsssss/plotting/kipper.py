@@ -28,7 +28,7 @@ from . import utils as pu
 class Kipp_data:
     def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data',
-                 prof_resolution=200, parallel=True):
+                 prof_resolution=200, parallel=True, ignore_monotonic=False):
         self.__version__ = '0.0.7'
         self.parallel = parallel
         self.verbose = verbose
@@ -42,7 +42,7 @@ class Kipp_data:
         self.color_info = None
 
         # Check if monotonic
-        if not np.all(np.diff(np.sign(np.diff(self.xaxis_data))) == 0):
+        if not ignore_monotonic and not np.all(np.diff(np.sign(np.diff(self.xaxis_data))) == 0):
             raise ValueError(f'xaxis {xaxis} is not monotinically increasing or decreasing.')
 
         if zone_filename:
