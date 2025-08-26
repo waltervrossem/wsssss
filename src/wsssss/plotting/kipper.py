@@ -41,6 +41,11 @@ class Kipp_data:
         self.has_mixtype = {}
         self.color_info = None
 
+        if os.name == 'nt':
+            if parallel:
+                print('Cannot use parallel on windows, settings to False.')
+                self.parallel = False
+
         # Check if monotonic
         if not ignore_monotonic and not np.all(np.diff(np.sign(np.diff(self.xaxis_data))) == 0):
             raise ValueError(f'xaxis {xaxis} is not monotinically increasing or decreasing.')
