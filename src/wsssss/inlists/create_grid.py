@@ -6,6 +6,7 @@ import os
 import shutil
 import copy
 import sys
+import inspect
 
 import numpy as np
 
@@ -24,7 +25,8 @@ class MesaGrid:
                  controls_filename='inlist_project', eos_filename='inlist_project', kap_filename='inlist_project',
                  pgstar_filename='inlist_project', add_base_workdir=False):
         """
-        `MesaGrid` class which contains all inlist settings for a grid.
+        `MesaGrid` class which contains all inlist settings for a grid. When the `create_grid` method is called,
+        a copy of the script which called it is copied into the grid directory.
 
         Args:
             mesa_dir (str): ``$MESA_DIR`` root directory to be used with this grid.
@@ -360,6 +362,17 @@ class MesaGrid:
         os.chdir(curdir)
 
         self._validate_files(grid_path)
+
+        # Copy file which called create_grid into grid_path
+        if len(inspect.stack()) > 1:
+            calling_file = inspect.stack()[1].filename
+            if os.path.isfile(calling_file) and not calling_file.endswith('IPython/core/interactiveshell.py'):
+                shutil.copy2(calling_file, grid_path)
+            else:
+                print(f"Cannot copy calling file {calling_file} to grid directory.")
+        else:
+            pass
+
 
     def validate_inlists(self, mesa_dir=None):
         """
