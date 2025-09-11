@@ -278,7 +278,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
          f"&{ad_}output\n"
          f"   summary_file = '{summary_file}'\n"
          f"   summary_file_format = 'TXT'\n"
-         f"   summary_item_list = 'M_star,R_star,L_star,l,n_pg,n_p,n_g,freq,E,E_norm'\n"
+         f"   summary_item_list = '{args.summary_item_list}'\n"
          f"   freq_units = 'UHZ'\n"
          f"{mode_output}\n"
          f"{nad_output}\n"
@@ -724,6 +724,8 @@ def get_parser():
     parser.add_argument('--min-numax', type=float, default=0,
                         help='Models with numax in uHz lower than this will only calculate l=0 modes.')
     parser.add_argument('--version', action='version', version=f'gyre_driver {_version}')
+    parser.add_argument('--summary-item-list', type=str, default='M_star,R_star,L_star,l,n_pg,n_p,n_g,freq,E,E_norm',
+                        help='Summary item list for gyre.')
     return parser
 
 
