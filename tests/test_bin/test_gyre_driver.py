@@ -15,6 +15,7 @@ for env in must_have_environ:
     if env not in os.environ:
         raise EnvironmentError(f'{env} not set.')
 
+@unittest.skipIf(os.name == 'nt', 'Skipping on Windows')
 class TestGyreDriver(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -28,6 +29,17 @@ class TestGyreDriver(unittest.TestCase):
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
         gs = ld.GyreSummary(gs_path)
+        np.testing.assert_array_equal(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
+        os.remove(gs_path)
+
+    def test_gyre_min_numax(self):
+        os.chdir(test_data)
+        sys.argv = ['gyre-driver', '01', 'MESA', 'LOGS/profile10.data.GYRE', '--gyre', 'G7', '--min-numax', '45']
+        ierr = gyre_driver.run()
+        self.assertEqual(0, ierr)
+        gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
+        gs = ld.GyreSummary(gs_path)
+        # Should only have l=0 modes as the Model's numax is 44.6
         np.testing.assert_array_equal(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
         os.remove(gs_path)
 

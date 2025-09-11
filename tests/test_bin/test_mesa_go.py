@@ -9,17 +9,24 @@ from wsssss._bin import mesa_go
 from wsssss.inlists import create_grid as cg
 
 must_have_environ = ['MESA_DIR', 'MESASDK_ROOT']
+missing_environ = []
 for env in must_have_environ:
     if env not in os.environ:
-        raise EnvironmentError(f'{env} not set.')
-if (os.environ['MESASDK_ROOT'] not in os.environ['PATH']) or 'MESASDK_VERSION' not in os.environ:
-    raise EnvironmentError('The MESASDK has not been initialized.')
-
+        missing_environ.append(env)
+MESASDK_initialized = False
+if 'MESASDK_VERSION' in os.environ:
+    MESASDK_initialized = True
 mesa_dir = os.environ['MESA_DIR']
 
+@unittest.skipIf(os.name == 'nt', 'Skipping on Windows')
 class TestMesaGO(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if len(missing_environ) > 0:
+            raise EnvironmentError(f'{",".join(missing_environ)} not set.')
+        if not MESASDK_initialized:
+            raise EnvironmentError('The MESASDK has not been initialized.')
+
         cls.init_dir = os.path.abspath('.')
         cls.base_grid_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../data/mesago'))
         grid = cg.MesaGrid()

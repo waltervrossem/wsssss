@@ -17,9 +17,8 @@ np.seterr(all='ignore')
 if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
-print(__file__)
 
-_version = '0.1.1'
+_version = '0.2.0'
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
@@ -199,6 +198,9 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
             base_in = _this_dir / 'INPUT_GYRE_6.0.1_ad.in'
             base_in_exists = base_in.exists()
         elif args.gyre == 'G7':
+            base_in = _this_dir / 'INPUT_GYRE_7.1_ad.in'
+            base_in_exists = base_in.exists()
+        elif args.gyre == 'G8':  # Can use the same base inlist
             base_in = _this_dir / 'INPUT_GYRE_7.1_ad.in'
             base_in_exists = base_in.exists()
         else:
@@ -508,7 +510,7 @@ def calc_scan(model_name, l, args):
 
             num_scan = len(fmin)
 
-    return fmin, fmax, n_freq, num_scan
+    return fmin, fmax, n_freq, num_scan, nu_max
 
 
 def split_scan(fmin, fmax, n_freq, grid_type, args):
@@ -549,7 +551,10 @@ def do_gyre_sim(fpath, args):
     num_scan = 0
     try:
         for l in args.ll:
-            fmin, fmax, n_freq, num_scan = calc_scan(fpath, l, args)
+            fmin, fmax, n_freq, num_scan, nu_max = calc_scan(fpath, l, args)
+            if (l > 0) and (nu_max < args.min_numax):
+                print(f'Skipping {fpath} l={l} as numax {nu_max} below min-numax {args.min_numax}.')
+                continue
 
             # Split each frequency scan into a different gyre run. Usually is a bit faster.
             if num_scan > 1 and args.parts:
@@ -577,6 +582,7 @@ def do_gyre_sim(fpath, args):
         if not args.no_merge:
             merge_summary_l(fpath, args)
     except KeyboardInterrupt:
+        print('Stopping GYRE')
         if num_scan > 1 and args.parts:
             merge_summary_parts(fpath, l, num_scan, keep_files=True)  # Merge the summaries for the interrupted l.
         merge_summary_l(fpath, args, keep_files=True)
@@ -715,6 +721,9 @@ def get_parser():
                         help='Do everything except run gyre for l >= 1. Useful to only generate inlists.')
     parser.add_argument('--skip-existing', action='store_const', const=True, default=False,
                         help='Skip running gyre for existing runs. Only works if summary files are merged.')
+    parser.add_argument('--min-numax', type=float, default=0,
+                        help='Models with numax in uHz lower than this will only calculate l=0 modes.')
+    parser.add_argument('--version', action='version', version=f'gyre_driver {_version}')
     return parser
 
 
