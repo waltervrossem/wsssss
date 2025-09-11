@@ -200,6 +200,9 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         elif args.gyre == 'G7':
             base_in = _this_dir / 'INPUT_GYRE_7.1_ad.in'
             base_in_exists = base_in.exists()
+        elif args.gyre == 'G8':  # Can use the same base inlist
+            base_in = _this_dir / 'INPUT_GYRE_7.1_ad.in'
+            base_in_exists = base_in.exists()
         else:
             raise FileNotFoundError(f'No default base inlist associated with gyre {args.gyre}.')
     else:

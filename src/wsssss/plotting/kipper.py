@@ -55,7 +55,7 @@ class Kipp_data:
         else:
             self.zone_file = ''
         self.load_zones = bool(self.zone_file)
-        self.save_zones = save_zones
+        self.save_zones = save_zones and self.load_zones  # Also check if zone filename not empty
         self.prof_prefix = prof_prefix
         self.prof_suffix = prof_suffix
         self.prof_resolution = prof_resolution
