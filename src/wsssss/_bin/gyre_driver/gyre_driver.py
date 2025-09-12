@@ -12,13 +12,15 @@ from argparse import ArgumentParser
 import numpy as np
 from scipy.integrate import trapezoid as trapz
 
+from wsssss import load_data as ld
+
 np.seterr(all='ignore')
 
 if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
 
-_version = '0.2.0'
+_version = '0.2.1'
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
@@ -36,36 +38,15 @@ numax_sun = 3100.
 nmode = 20
 
 
-def _load_gyre_profile(path):
-    # From walter's load_data
-    num_zones, mass, radius, luminosity, version = np.loadtxt(f'{path}', max_rows=1)
-    num_zones = int(num_zones)
-    version = int(version)
-
-    header = {'num_zones': num_zones, 'star_mass': mass, 'star_radius': radius, 'star_luminosity': luminosity,
-              'version': version}
-
-    if version != 101:
-        raise NotImplementedError('Only fileversion 101 implemented.')
-
-    columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T', 'brunt_N2',
-               'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T', 'opacity_partial_rho',
-               'total_energy_generation',
-               'nuclear_energy_generation_partial_T', 'nuclear_energy_generation_partial_rho', 'rotation']
-
-    formats = formats = [int] + 18 * [float]
-
-    data = np.rec.array(np.loadtxt(f'{path}', skiprows=1, dtype={'names': columns, 'formats': formats}))
-
-    return header, columns, data
-
-
 # noinspection PyPep8Naming
 def get_nu_max_dnu_dp(args, fpath, l):
     """Calculate nu_max, Delta_nu, and Delta_P for a model."""
 
     if args.filetype == 'MESA':
-        header, columns, data = _load_gyre_profile(fpath)
+        gp = ld.GyreProfile(fpath)
+        header = gp.header
+        columns = gp.columns
+        data = gp.data
 
         M_star = header['star_mass'] / Msun
         R_star = header['star_radius']
@@ -195,13 +176,13 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
             base_in = _this_dir / 'INPUT_GYRE_4.4_ad.in'
             base_in_exists = base_in.exists()
         elif args.gyre == 'G6':
-            base_in = _this_dir / 'INPUT_GYRE_6.0.1_ad.in'
+            base_in = _this_dir / 'INPUT_GYRE_6_ad.in'
             base_in_exists = base_in.exists()
         elif args.gyre == 'G7':
-            base_in = _this_dir / 'INPUT_GYRE_7.1_ad.in'
+            base_in = _this_dir / 'INPUT_GYRE_7_ad.in'
             base_in_exists = base_in.exists()
         elif args.gyre == 'G8':  # Can use the same base inlist
-            base_in = _this_dir / 'INPUT_GYRE_7.1_ad.in'
+            base_in = _this_dir / 'INPUT_GYRE_8_ad.in'
             base_in_exists = base_in.exists()
         else:
             raise FileNotFoundError(f'No default base inlist associated with gyre {args.gyre}.')
@@ -238,7 +219,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
     freq_units = "freq_units = 'UHZ'"
     ad_ = ''
     nad_output = ''
-    if args.gyre in ['G5', 'G6', 'G7']:
+    if args.gyre != 'G4':
         freq_units = ("freq_min_units = 'UHZ'\n"
                       "   freq_max_units = 'UHZ'")
         ad_ = 'ad_'
@@ -691,8 +672,8 @@ def get_parser():
                         help='Filetype of profiles that gyre will read.')
     parser.add_argument('files', type=str, nargs='*',
                         help='Paths to profile files for gyre to use.')
-    parser.add_argument('--gyre', type=str, choices=['G4', 'G5', 'G6', 'G7'], default='G6',
-                        help='Use gyre 6.0.1 (G6), 5.2 (G5) or gyre 4.4 (G4).')
+    parser.add_argument('--gyre', type=str, choices=['G4', 'G5', 'G6', 'G7', 'G8'], default='G8',
+                        help='Which version of gyre to use.')
     parser.add_argument('--pmode', action='store_const', const=True, default=False,
                         help='If set, scan for modes around the expected frequencies.')
     parser.add_argument('--save-modes', action='store_const', const=True, default=False,
