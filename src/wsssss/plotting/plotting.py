@@ -966,7 +966,7 @@ def make_gradients(prof, xname='mass', hist=None, ax=None, add_legend=True, n_co
 
     if add_legend:
         pu.top_legend(ax, n_cols_legend)
-
+    ax.set_ylim(0, 1)
     return f, ax
 
 
@@ -1153,7 +1153,7 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
 def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data', mixing_min_height=0,
                  prof_resolution=200, xlims=None, ylims=None, clims=None, kwargs_mixing=None, norm=None, cmap=None,
-                 kwargs_profile_color=None, return_Kipp_data=False, parallel=True, legend_loc=None, add_cbar=False):
+                 kwargs_profile_color=None, return_Kipp_data=False, parallel=True, ignore_monotonic=False, legend_loc=None, add_cbar=False):
     """
     Create a Kippenhahn diagram.
 
@@ -1191,7 +1191,7 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
     if clims is None and caxis == 'eps_net':
         clims = [-3, 8]
     kd = Kipp_data(hist, profs, xaxis, yaxis, caxis, zone_filename, verbose, save_zones, clobber_zones, prof_prefix,
-                   prof_suffix, prof_resolution, parallel)
+                   prof_suffix, prof_resolution, parallel, ignore_monotonic)
     f, ax = kd.make_kipp(ax, xlims, ylims, clims, norm, cmap, mixing_min_height, kwargs_mixing=kwargs_mixing, kwargs_profile_color=kwargs_profile_color)
     ax.set_xlim(xlims)
     # ax.set_ylim(0, None)
