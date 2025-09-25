@@ -390,6 +390,8 @@ def get_pms_mask(hist, invert=False, ZAMS_method='Xc', fXc=0.99):
             mask[:end + 1] = True
     elif ZAMS_method == 'Xc':
         mask = hist.data.center_h1 >= hist.data.center_h1[0] * 0.99
+    elif callable(ZAMS_method):
+        mask = ZAMS_method(hist)
     else:
         raise ValueError(f'Unknown ZAMS_method: {ZAMS_method}.')
 
