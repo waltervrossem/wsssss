@@ -203,7 +203,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
             mode_item_list = 'M_r,l,n_pg,n_p,freq,E_norm,x,m,p,rho,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K'
         else:
             raise ValueError('Invalid filetype.')
-        if args.gyre in ['G5', 'G6', 'G7']:
+        if args.gyre >= 'G5':
             # Gyre 5 uses capital P for pressure and the normalized rotation kernel changed to unnormalized.
             mode_item_list = mode_item_list.replace(',p,', ',P,').replace(',K', ',dbeta_dx')
 
@@ -216,15 +216,15 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
     else:
         mode_output = '/'
 
-    freq_units = "freq_units = 'UHZ'"
-    ad_ = ''
-    nad_output = ''
-    if args.gyre != 'G4':
-        freq_units = ("freq_min_units = 'UHZ'\n"
-                      "   freq_max_units = 'UHZ'")
-        ad_ = 'ad_'
-        nad_output = ('&nad_output\n'
-                      '/')
+    freq_units = ("freq_min_units = 'UHZ'\n"
+                  "   freq_max_units = 'UHZ'")
+    ad_ = 'ad_'
+    nad_output = ('&nad_output\n'
+                  '/')
+    if args.gyre == 'G4':
+        freq_units = "freq_units = 'UHZ'"
+        ad_ = ''
+        nad_output = ''
 
     if single_scan:
         scan_str = (f"&scan\n"
@@ -352,7 +352,7 @@ def get_gyre(args, check, print_warning=False):
                     raise ValueError(f'Could not find the required gyre version `{version}` in $GYRE_DIR.\n'
                                      f'Found gyre version {version_str} in `{path}`.')
 
-    if version in ['G4']:
+    if version <= 'G4':
         path = path / 'bin' / 'gyre_ad'
     else:
         path = path / 'bin' / 'gyre'
@@ -587,7 +587,7 @@ def sort_files(files):
 
 
 def check_args(args):
-    if args.gyre in ['G6', 'G7']:
+    if args.gyre >= 'G6':
         parts_set = False
         if args.parts:
             parts_set = True
