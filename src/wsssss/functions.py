@@ -152,7 +152,7 @@ mix_dict = {'pre15140': {-1:'no_region',
                        'anonymous_mixing': 'Anonymous'},
             }
 mix_dict['merged_r'] = {v:k for k,v in mix_dict['merged'].items()}  # Reversed merged.
-def convert_mixing_type(mix_type, version, unknown_mixing=100):
+def convert_mixing_type(mix_type, version, unknown_mixing=100, other_mixing=[(None, None)]):
     """
     Convert the mixing type codes to a merged version compatible with pre- and post-15140 MESA.
 
@@ -161,6 +161,7 @@ def convert_mixing_type(mix_type, version, unknown_mixing=100):
         version (str): MESA version
         unknown_mixing (int, optional): Mixing type code to use for unreckognized mixing type code.
             Defaults to 100, which is the merged code for no_mixing.
+        other_mixing (list of tuple(str, int), optional):  Information on custom mixing types. (name, mix_type_code)
 
     Returns:
         np.array: New mixing type codes associated with mix_type.
@@ -170,7 +171,15 @@ def convert_mixing_type(mix_type, version, unknown_mixing=100):
     else:
         pre_post = 'pre'
     key = f'{pre_post}15140'
-    mix_names = np.vectorize(mix_dict[key].__getitem__)(mix_type)
+
+    merged = mix_dict['merged']
+    for custom_name, custom_mix_type in other_mixing:
+        if custom_name is not None and custom_mix_type is not None:
+            mix_dict[key][custom_mix_type] = custom_name
+            merged[custom_name] = custom_mix_type
+            mix_dict['merged_r'] = {v: k for k, v in mix_dict['merged'].items()}
+
+    mix_names = np.vectorize(mix_dict[key].get)(mix_type, unknown_mixing)
     return np.vectorize(mix_dict['merged'].get)(mix_names, unknown_mixing)
 
 
