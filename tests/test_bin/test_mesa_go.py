@@ -58,7 +58,7 @@ class TestMesaGO(unittest.TestCase):
         cls.grid = grid
 
     def setUp(self):
-        testname = self.id().split('.')[-1]
+        testname = self.id().split('.')[-1].replace('test', '')
         self.grid_dir = os.path.join(self.base_grid_dir, testname)
         self.grid.create_grid(self.grid_dir)
         print(self.grid_dir, os.path.isdir(self.grid_dir))
@@ -120,9 +120,9 @@ class TestMesaGO(unittest.TestCase):
         sys.argv = ['mesa-go', '--verbose', '--restart']
         for dirname in self.grid.dirnames:
             os.makedirs(f'{self.grid_dir}/{dirname}/photos/')
-            shutil.copy2(os.path.join(self.base_grid_dir, 'test_mesago', dirname, 'photos/x008'),
+            shutil.copy2(os.path.join(self.base_grid_dir, '_mesago', dirname, 'photos/x008'),
                           f'{self.grid_dir}/{dirname}/photos/')
-            shutil.copy2(os.path.join(self.base_grid_dir, 'test_mesago', dirname, 'star'),
+            shutil.copy2(os.path.join(self.base_grid_dir, '_mesago', dirname, 'star'),
                                       f'{self.grid_dir}/{dirname}/')
         ierr = mesa_go.run()
         if ierr != 0:
