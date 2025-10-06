@@ -1031,7 +1031,7 @@ def naive_merge_hists(base_hist, hists):
 
 
 def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile',
-                     gyre_summary_suffix='.data.GYRE.sgyre_l', only_RC=False, use_mask=None, keep_columns='all',
+                     gyre_summary_suffix='.data.GYRE.sgyre_l', use_mask=None, keep_columns='all',
                      gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
     """
     Load ``GyreSummary`` and profile numbers associated with ``History`` hist and place in the attribute ``History.gsspnum``.
@@ -1057,7 +1057,7 @@ def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profil
             If return_pnums is True also return profile numbers.
     """
     hist.gsspnum = load_gss(hist, gyre_data_dir=gyre_data_dir, gyre_summary_prefix=gyre_summary_prefix,
-                            gyre_summary_suffix=gyre_summary_suffix, return_pnums=True, only_RC=only_RC, use_mask=use_mask,
+                            gyre_summary_suffix=gyre_summary_suffix, return_pnums=True, use_mask=use_mask,
                             keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
                             verbose=verbose, nanval=nanval, nanclip=nanclip)
     return hist
