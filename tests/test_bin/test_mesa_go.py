@@ -132,3 +132,24 @@ class TestMesaGO(unittest.TestCase):
             with open(f'{self.grid_dir}/out_{dirname}', 'r') as handle:
                 lines = handle.readlines()
             self.assertEqual(60, len(lines))
+
+    def test_mesago_restartfile(self):
+        sys.argv = ['mesa-go', '--verbose', '--restart', 'grid_restart']
+        with open(f'{self.grid_dir}/grid_restart', 'w') as handle:
+            handle.write('0000 x008\n0001 x008\n')
+
+        for dirname in self.grid.dirnames:
+            os.makedirs(f'{self.grid_dir}/{dirname}/photos/')
+            shutil.copy2(os.path.join(self.base_grid_dir, '_mesago', dirname, 'photos/x008'),
+                          f'{self.grid_dir}/{dirname}/photos/')
+            shutil.copy2(os.path.join(self.base_grid_dir, '_mesago', dirname, 'star'),
+                                      f'{self.grid_dir}/{dirname}/')
+
+        ierr = mesa_go.run()
+        if ierr != 0:
+            raise SystemError(ierr)
+        self.check_output()
+        for dirname in self.grid.dirnames:
+            with open(f'{self.grid_dir}/out_{dirname}', 'r') as handle:
+                lines = handle.readlines()
+            self.assertEqual(60, len(lines))

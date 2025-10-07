@@ -11,8 +11,11 @@ from collections import defaultdict
 from datetime import datetime
 
 import numpy as np
-
 import warnings
+
+from wsssss import load_data as ld
+from wsssss import functions as uf
+
 warnings.filterwarnings("error")
 def get_parser():
     """"""
@@ -36,8 +39,8 @@ def get_parser():
                          help='Directory containing the slurm output (.err, .stats, .out files) for a job.')
     _parser.add_argument('--make-restart-file', '-r', type=str, default='',
                          help='Make a file which contains which subdir needs to restart from what photo.'
-                              'Pass `pre-CHeX` to only restart runs which did not finish CHeX. Othewise pass '
-                              '`all` to do for all.')
+                              'Pass `pre-CHeX` to only restart runs which did not finish CHeX, pass `redoRC` to restart'
+                              'before CHeB or `all` to do for all.')
     # _parser.add_argument('--good-termination-codes', '-t', nargs='*', type=list, default=['xa_central_lower_limit', 'stop_at_TP'], )
     _parser.add_argument('--no-slurm', action='store_const', const=True, default=False,
                          help='Run the check ignoring any slurm output.')
@@ -419,7 +422,10 @@ def run():
         grid_restart_photos = []
         for subdir, (photo, reason) in restart_reason.items():
             photodir = os.path.join(args.grid_dir, subdir, 'photos')
-            photos = sorted(os.listdir(photodir))
+            if os.path.exists(photodir):
+                photos = sorted(os.listdir(photodir))
+            else:
+                photos = []
             photo_modelnum = np.array([int(_.replace('x', '')) for _ in photos])
 
             if args.make_restart_file == 'pre-CHeX':
@@ -433,37 +439,13 @@ def run():
                     restart_photo = photos[np.where((photo_modelnum[-1] - photo_modelnum) > 200)[0][-1]]
                 elif photo == 'preRC':
                     histpath = os.path.join(args.grid_dir, subdir, f'LOGS/{args.history_file.format(subdir, subdir)}')
-                    try:
-                        hist = np.rec.array(np.loadtxt(histpath, skiprows=6, dtype=run_data[subdir].dtype))
-                        cheb_mask = get_cheb_mask(hist)
-                        first_model_rc = hist.model_number[cheb_mask][0]
+                    if os.path.exists(histpath):
+                        hist = ld.History(histpath)
+                        cheb_mask = uf.get_cheb_mask(hist)
+                        first_model_rc = hist.data.model_number[cheb_mask][0]
                         restart_photo = photos[np.where((first_model_rc - photo_modelnum) > 200)[0][-1]]
-                    except UnicodeDecodeError as exc:
-                        with open(f'{histpath}', 'rb') as handle:
-                            lines = handle.readlines()
-
-                        expected_len = len(lines[6])
-
-                        bad_lines = []
-                        for i, line in enumerate(lines):
-                            if line.startswith(b'\x00'):
-                                bad_lines.append(i)
-                                bad_lines.append(i + 1)  # Line after line with \x00\x00... is garbled
-                            else:
-                                if len(line) != expected_len:
-                                    bad_lines.append(i)
-                        bad_lines = [i for i in bad_lines if i >= 6]  # skip header for bad lines
-                        bad_lines = np.unique(bad_lines)
-                        first_model_rc = max(1, min(bad_lines - 6 - 1))
-                        restart_photo = photos[np.where((first_model_rc - photo_modelnum) > 200)[0][-1]]
-                    except ValueError as exc:
-                        if exc.args[0].startswith('Wrong number of columns at line'):
-                            line_number = int(exc.args[0].split()[-1])
-                            model_number = line_number - 6
-                            first_model_rc = model_number
-                            restart_photo = photos[np.where((first_model_rc - photo_modelnum) > 200)[0][-1]]
-                        else:
-                            raise
+                    else:
+                        restart_photo = 'full_restart'
                 elif photo == 'full_restart':
                     restart_photo = 'full_restart'
                 elif photo == '':
