@@ -1056,7 +1056,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
             continue
         i_hist = i_hist[0]
         mnum = hist.data.model_number[i_hist]
-        if (mnum <= mnum_min) or (mnum >= mnum_max):
+        if (mnum < mnum_min) or (mnum > mnum_max):
             continue
         if do_deltanu:
             deltanu = calc_deltanu(gs, hist, prefix=prefix, suffix=suffix)
