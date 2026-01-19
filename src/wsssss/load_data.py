@@ -50,7 +50,7 @@ class _LazyProperty(object):
 class _Data:
 
     def __init__(self, path, keep_columns='all', save_dill=False, reload=False, verbose=False,
-                 nanval=-1e99, nanclip=None):
+                 nanval=-1e99, nanclip=None, empty_on_error=False):
         """
         Common methods and attributes for History, Profile, and GyreSummary.
 
@@ -350,7 +350,7 @@ class _Data:
 class _Mesa(_Data):
 
     def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
-                 verbose=False, nanval=-1e99, nanclip=None):
+                 verbose=False, nanval=-1e99, nanclip=None, empty_on_error=False):
         """
         Methods specific to History and Profile.
 
@@ -364,7 +364,7 @@ class _Mesa(_Data):
             nanval (float, optional): Set all values equal to this to NaN.
             nanclip (2 floats, optional): Set all values outside this range to NaN.
         """
-        super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip)
+        super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip, empty_on_error)
 
         self.LOGS = self.directory
         if os.path.isfile(index_name):
@@ -396,6 +396,8 @@ class _Mesa(_Data):
 class History(_Mesa):
     def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
                  verbose=False, nanval=-1e99, nanclip=None):
+    def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=True, reload=False,
+                 verbose=False, nanval=-1e99, nanclip=None, empty_on_error=False):
         """
         Load a MESA history.
 
@@ -408,8 +410,9 @@ class History(_Mesa):
             verbose (bool, optional): Print extra information.
             nanval (float, optional): Set all values equal to this to NaN.
             nanclip (2 floats, optional): Set all values outside this range to NaN.
+            empty_on_error (bool, optional): If loading fails, return an empty History.
         """
-        super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip)
+        super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip, empty_on_error)
 
     def __getitem__(self, mask):
         new_self = copy.copy(self)
