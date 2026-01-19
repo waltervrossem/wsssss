@@ -27,7 +27,7 @@ from scipy.interpolate import interp1d
 
 from . import utils as pu
 from .. import functions as uf
-from .kipper import Kipp_data
+from . import kipper
 
 np.seterr(invalid='ignore')
 
@@ -1190,10 +1190,10 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
     """
     if clims is None and caxis == 'eps_net':
         clims = [-3, 8]
-    kd = Kipp_data(hist, profs, xaxis, yaxis, caxis, zone_filename, verbose, save_zones, clobber_zones, prof_prefix,
+    kd = kipper.Kipp_data(hist, profs, xaxis, yaxis, caxis, zone_filename, verbose, save_zones, clobber_zones, prof_prefix,
                    prof_suffix, prof_resolution, parallel, ignore_monotonic)
     f, ax = kd.make_kipp(ax, xlims, ylims, clims, norm, cmap, mixing_min_height, kwargs_mixing=kwargs_mixing, kwargs_profile_color=kwargs_profile_color)
-    ax.set_xlim(xlims)
+    # ax.set_xlim(xlims)
     # ax.set_ylim(0, None)
     ax.set_xlabel(xaxis.replace('_', ' '))
     ax.set_ylabel(yaxis)
