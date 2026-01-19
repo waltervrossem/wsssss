@@ -56,8 +56,8 @@ def read_hist_first_last_row(fpath):
         first_row = f.readline()
         f.seek(0, 2)
         size = f.tell()
-        f.seek(size - len(first_row))
-        last_row = f.readline()
+        f.seek(size - len(first_row)*2)
+        last_row = f.readline()#.split('\n')[1]
     first_row = tuple(first_row.strip().split())
     last_row = tuple(last_row.strip().split())
     columns = columns.strip().split()
