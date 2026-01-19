@@ -458,42 +458,50 @@ def get_default_mixing_kwargs():
             drawn.
     """
     default_kwargs_mixing = {
-        uf.mix_dict['merged']['convective_mixing']: {'color': "Chartreuse",
+        uf.mix_dict['merged']['convective_mixing']: {'name': 'convective_mixing',
+                                                     'color': "Chartreuse",
                                                      'hatch': "//",
                                                      'line': 1,
                                                      'show': True
                                                      },
-        uf.mix_dict['merged']['overshoot_mixing']: {'color': "purple",
+        uf.mix_dict['merged']['overshoot_mixing']: {'name': 'overshoot_mixing',
+                                                    'color': "purple",
                                                     'hatch': "x",
                                                     'line': 1,
                                                     'show': True
                                                     },
-        uf.mix_dict['merged']['semiconvective_mixing']: {'color': "red",
+        uf.mix_dict['merged']['semiconvective_mixing']: {'name': 'semiconvective_mixing',
+                                                         'color': "red",
                                                          'hatch': "\\\\",
                                                          'line': 1,
                                                          'show': True
                                                          },
-        uf.mix_dict['merged']['thermohaline_mixing']: {'color': "Gold",
+        uf.mix_dict['merged']['thermohaline_mixing']: {'name': 'thermohaline_mixing',
+                                                       'color': "Gold",
                                                        'hatch': "||",
                                                        'line': 1,
                                                        'show': False
                                                        },
-        uf.mix_dict['merged']['rotation_mixing']: {'color': "brown",
+        uf.mix_dict['merged']['rotation_mixing']: {'name': 'rotation_mixing',
+                                                   'color': "brown",
                                                    'hatch': "*",
                                                    'line': 1,
                                                    'show': True
                                                    },
-        uf.mix_dict['merged']['anonymous_mixing']: {'color': "white",
-                                                    'hatch': None,
-                                                    'line': 0,
+        uf.mix_dict['merged']['anonymous_mixing']: {'name': 'anonymous_mixing',
+                                                    'color': "tab:grey",
+                                                    'hatch': "+",
+                                                    'line': 1,
                                                     'show': True
                                                     },
-        uf.mix_dict['merged']['minimum_mixing']: {'color': "cyan",
+        uf.mix_dict['merged']['minimum_mixing']: {'name': 'minimum_mixing',
+                                                  'color': "cyan",
                                                   'hatch': "-",
                                                   'line': 1,
                                                   'show': True
                                                   },
-        uf.mix_dict['merged']['no_mixing']: {'color': "",
+        uf.mix_dict['merged']['no_mixing']: {'name': 'no_mixing',
+                                             'color': "",
                                              'hatch': "",
                                              'line': 0,
                                              'show': False
