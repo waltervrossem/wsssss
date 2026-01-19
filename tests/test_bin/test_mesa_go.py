@@ -66,10 +66,10 @@ class TestMesaGO(unittest.TestCase):
         sys.argv = ['mesa-go', '']
 
     @classmethod
-    def tearDownClass(cls):
-        if os.path.isdir(cls.base_grid_dir):
-            shutil.rmtree(f'{cls.base_grid_dir}')
-        os.chdir(cls.init_dir)
+    def tearDownClass(self):
+        if os.path.isdir(self.base_grid_dir):
+            shutil.rmtree(f'{self.base_grid_dir}')
+        os.chdir(self.init_dir)
 
     def check_output(self):
         os.chdir(self.grid_dir)
@@ -153,4 +153,4 @@ class TestMesaGO(unittest.TestCase):
             with open(f'{self.grid_dir}/out_{dirname}', 'r') as handle:
                 lines = handle.readlines()
             print(lines)
-            self.assertEqual(60, len(lines))
+            self.assertEqual({'0000':60, '0001':131}[dirname], len(lines))

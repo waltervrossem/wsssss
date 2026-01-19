@@ -168,8 +168,8 @@ def start_mesa(args, run_name, logger):
     if args.restart and len(photos) > 0:
         print(args.restart, args.restart_settings)
         if args.restart_settings is None:
-            photos = [photo.replace('x', '0') for photo in photos]
-            photos_order = np.argsort(np.array([int(photo) for photo in photos if photo.isdigit()]))
+            photos_int = [photo.replace('x', '0') for photo in photos]
+            photos_order = np.argsort(np.array([int(photo) for photo in photos_int if photo.isdigit()]))
             photos = np.array(photos)[photos_order].tolist()
             photo = photos[-1]
         else:
@@ -179,7 +179,8 @@ def start_mesa(args, run_name, logger):
             if args.verbose:
                 logger.info(f'{pid}: {run_name} {cmd}')
             out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
-        cmd = pre_cmd_str + f'./re {photo} >> {log_file} 2>&1'
+        else:
+            cmd = pre_cmd_str + f'./re {photo} >> {log_file} 2>&1'
         if args.verbose:
             logger.info(f'{pid}: {run_name} {cmd}')
         out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
