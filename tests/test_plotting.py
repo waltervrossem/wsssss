@@ -145,3 +145,4 @@ class TestFunctions(unittest.TestCase):
         profs = self.profs
         gss = self.gss
         f, ax = pl.make_kipp(hist)
+        f, ax = pl.make_kipp(hist, profs, yaxis='mass')
