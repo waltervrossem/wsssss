@@ -620,8 +620,10 @@ class Kipp_data:
         f, ax = pu.get_figure(ax)
 
         mixing_min_height *= (self.ymax - self.ymin)
-
-        c_extent = self.add_color(ax, xlims, ylims, clims, norm, cmap, kwargs_profile_color)
+        if self.color_zones is not None:
+            c_extent = self.add_color(ax, xlims, ylims, clims, norm, cmap, kwargs_profile_color)
+        else:
+            c_extent = [1e99, -1e99]
         m_extent = self.add_mixing(ax, xlims, ylims, mixing_min_height, kwargs_mixing)
 
         xextent = np.zeros(2)
