@@ -488,9 +488,19 @@ class Kipp_data:
             get_xlim = False
 
         if get_xlim:
-            for _, path in self.color_zones:
-                min_ix = min(min_ix, min(path.vertices[:, 0]))
-                max_ix = max(max_ix, max(path.vertices[:, 0]))
+            if self.color_zones is not None:
+                if isinstance(self.color_zones, list):
+                    for _, path in self.color_zones:
+                        min_ix = min(min_ix, min(path.vertices[:, 0]))
+                        max_ix = max(max_ix, max(path.vertices[:, 0]))
+                elif isinstance(self.color_zones, np.ndarray):
+                    x = self.color_zones[0][:,0]  # Only need 1 column
+                    min_ix = min(min_ix, min(x))
+                    max_ix = max(max_ix, max(x))
+            else:
+                for _, path in self.mixing_zones:
+                    min_ix = min(min_ix, min(path.vertices[:, 0]))
+                    max_ix = max(max_ix, max(path.vertices[:, 0]))
 
         for mix_type, path in self.mixing_zones:
             if mix_type in kwargs_mixing.keys():
