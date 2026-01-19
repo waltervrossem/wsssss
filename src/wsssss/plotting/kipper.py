@@ -661,7 +661,8 @@ class Kipp_data:
 
         if ((profs is None) or len(profs) == 0):
             profs = ld.load_profs(hist, prefix=self.prof_prefix, suffix=self.prof_suffix)
-
+            if len(profs) == 0:
+                return None
             # Check if profiles have required columns
             required_columns = []
             if self.yaxis == 'mass':
