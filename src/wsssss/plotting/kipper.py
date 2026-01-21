@@ -151,60 +151,32 @@ class Kipp_data:
             return dill.load(handle)
 
     def get_profile_xyz_data(self, hist, profs):
-        xyz_data = np.zeros((3, len(profs)+1, self.prof_resolution))
+        xyz_data = []
         for i, p in enumerate(profs):
             y = p.get(self.yaxis)
             c = p.get(self.caxis)
 
-            if self.logy:
-                y = np.log10(y)
-            if self.logc:
-                c = np.log10(c)
+            #Normalize
+            y_min = np.min(y)
+            y_max = np.max(y)
+            y_norm = (y - y_min)/(y_max - y_min)
+            c_min = np.min(c)
+            c_max = np.max(c)
+            c_norm = (c - c_min) / (c_max - c_min)
 
-            y_min = min(y)
-            y_max = max(y)
-            y_range = y_max - y_min
-            min_dy = y_range / (10 * self.prof_resolution)
+            # Decrease resolution keeping main features
+            out = pu.decimate_RDP(np.asarray([y_norm, c_norm]).T, epsilon=1/self.prof_resolution)
 
-            # TODO: Try following specific values of c? Might only work for always monotonic things.
-            # or equally spaced in int |dc/dy| dy. But likely only works for smooth c.
+            xyz = np.zeros((3, out.shape[0]))
+            xyz[0, :] = p.get_hist_index(hist)
+            xyz[1, :] = out[:,0] * (y_max - y_min) + y_min
+            xyz[2, :] = out[:,1] * (c_max - c_min) + c_min
+            xyz_data.append(xyz)
 
-            # this will have too much wasted resolution, but use as initial guess
-            max_i = len(p) - 1
-            interp_x = np.linspace(max_i, 0, self.prof_resolution, dtype=int)  # Equally spaced in zone number
-            y_ip = y[interp_x]
-            dy = np.abs(np.diff(y_ip, append=y_max))
-            too_small = dy < min_dy
+        xyz_data.append((xyz.copy()))
+        xyz_data[-1][0, :] = len(self.xaxis_data) - 1  # Extend the last profile to last hist index
 
-            # Find contiguous blocks of too small zones
-            i_too_small = np.where(too_small)[0]
-            num_small = len(i_too_small)
-            if num_small > 0:
-                start = 0
-                breaks = np.where(np.diff(i_too_small) != 1)[0]
-                blocks = [i_too_small[0]]
-                if len(breaks) > 0:
-                    for end in np.where(np.diff(i_too_small) != 1)[0]:
-                        blocks.append(i_too_small[end])
-                        blocks.append(i_too_small[end + 1])
-                blocks.append(i_too_small[-1])
-            num_blocks = len(blocks) // 2
-
-            # resample
-            interp_weight = np.ones_like(y)
-            for j in range(num_blocks):
-                start, end = blocks[j * 2:(j + 1) * 2]
-                interp_weight[interp_x[start]:interp_x[end] + 1:-1] = np.abs((y[start] - y[end]) / min_dy)
-            sum_weight = np.cumsum(interp_weight)
-            sum_weight *= max_i / sum_weight[-1]
-            new_interp_x = np.interp(interp_x, sum_weight, np.arange(max_i + 1)).astype(int)
-
-            xyz_data[0][i] = p.get_hist_index(hist)
-            xyz_data[1][i] = y[new_interp_x]
-            xyz_data[2][i] = c[new_interp_x]
-        xyz_data[0, -1] = -1  # Extend the last profile to last hist index
-        xyz_data[1][-1] = xyz_data[1][-2]
-        xyz_data[2][-1] = xyz_data[2][-2]
+        xyz_data = np.concatenate(xyz_data, axis=1)
 
         return xyz_data
 
@@ -494,7 +466,7 @@ class Kipp_data:
                         min_ix = min(min_ix, min(path.vertices[:, 0]))
                         max_ix = max(max_ix, max(path.vertices[:, 0]))
                 elif isinstance(self.color_zones, np.ndarray):
-                    x = self.color_zones[0][:,0]  # Only need 1 column
+                    x = self.color_zones[0]  # Only need 1 column
                     min_ix = min(min_ix, min(x))
                     max_ix = max(max_ix, max(x))
             else:
@@ -534,6 +506,7 @@ class Kipp_data:
 
             ax.add_patch(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
             self.has_mixtype[mix_type] = True
+
         return x_extent
 
     def add_color(self, ax, xlims, ylims, clims, norm=None, cmap=None, kwargs_profile_color=None):
@@ -549,7 +522,7 @@ class Kipp_data:
             max_ix = min(len(self.xaxis_data)-1, max_ix+1)
             get_xlim = False
 
-        if isinstance(self.color_zones, list):
+        if isinstance(self.color_zones, list):  # Colors from burn_type_* from history.
             if clims is None:
                 vmin = min([_[0] for _ in self.color_zones])
                 vmax = max([_[0] for _ in self.color_zones])
@@ -561,7 +534,7 @@ class Kipp_data:
             if cmap is None:
                 cmap = pu.cm.RdBu
 
-            self.color_info = (vmin, vmax, norm, cmap)
+            self.color_info = (norm, cmap)
 
             ax.set_facecolor(cmap(0.5))
             if get_xlim:
@@ -591,23 +564,41 @@ class Kipp_data:
                     PathPatch(path, fill=True, edgecolor=None, color=cmap(norm(burn_type)),
                               zorder=burn_type - len(self.color_zones)))
 
-        elif isinstance(self.color_zones, np.ndarray):
+        elif isinstance(self.color_zones, np.ndarray):  # Colors from profiles
+            # Convert hist index coords to x-data coords
+            x, y, c = self.color_zones
+            x = self.xaxis_data[x.astype(int)]
+
+            if clims is None:
+                vmin = np.nanmin(c)
+                vmax = np.nanmax(c)
+            else:
+                vmin, vmax = clims
+
             if kwargs_profile_color is None:
                 kwargs_profile_color = {'shading': 'gouraud'}
             else:
                 shading = {'shading': 'gouraud'}
-                shading.update(self.kwargs_profile_color)
+                shading.update(kwargs_profile_color)
                 kwargs_profile_color = shading
 
-            # Convert hist index coords to x-data coords
-            x, y, c = self.color_zones
-            x = self.xaxis_data[x.astype(int)]
-            ax.pcolormesh(x, y, c, **kwargs_profile_color)
-            x_extent = np.array([0, len(self.xaxis_data)-1])
+            if norm is not None:
+                if 'norm' in kwargs_profile_color.keys():
+                    print(f'Using norm from add_color argument.')
+                kwargs_profile_color['norm'] = norm
+            else:
+                if 'norm' not in kwargs_profile_color.keys() or kwargs_profile_color['norm'] is None:
+                    kwargs_profile_color['norm'] = mpl.colors.Normalize(vmin, vmax)
+            if cmap is not None:
+                if 'cmap' in kwargs_profile_color.keys():
+                    print(f'Using cmap from add_color argument.')
+            kwargs_profile_color['cmap'] = cmap
 
-            vmin = np.nanmin(c)
-            vmax = np.nanmax(c)
-            self.color_info = (vmin, vmax, norm, cmap)
+            print(kwargs_profile_color)
+            ax.tripcolor(x.flat, y.flat, c.flat, **kwargs_profile_color)
+            x_extent = np.array([x[0], x[-1]])
+
+            self.color_info = (kwargs_profile_color['norm'], kwargs_profile_color['cmap'])
 
         return x_extent
 

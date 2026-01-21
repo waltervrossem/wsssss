@@ -696,3 +696,50 @@ def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=No
                 text.set_path_effects(
                     [patheffects.Stroke(linewidth=background_width, foreground=background),
                      patheffects.Normal()])
+
+
+
+def decimate_RDP(pts, epsilon):
+    """
+    Ramer–Douglas–Peucker decimation algorithm with some adjustments.
+    Args:
+        pts (np.array): 2-d array containing points to decimate.
+        epsilon: Tolerance for keeping line segments
+
+    Returns:
+        np.array: Decimated version of pts.
+    """
+    num_pts = len(pts)
+    i_start = 0
+    i_end = num_pts - 1
+
+    new_pts = np.zeros_like(pts)
+    new_pts[0] = pts[0]
+    i_insert = 1
+
+    # cts = 0
+    while i_start <= num_pts - 1:
+        # cts += 1
+        if i_end - i_start <= 1:  # If next point has difference larger than epsilon keep it and start from next.
+            new_pts[i_insert] = pts[i_end]
+            i_insert += 1
+            i_start += 1
+            i_end = num_pts - 1
+
+        # Perpendicular distance
+        pt0, pt1 = pts[i_start], pts[i_end]
+        delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1:i_end]) / np.linalg.norm(pt1 - pt0))
+        i_dmax = np.argmax(delta)
+        dmax = delta[i_dmax]
+        # print(cts, i_start, i_dmax/epsilon, i_end, num_pts-1)
+        if dmax <= epsilon:  # Keep i_end and remove points in between
+            new_pts[i_insert] = pts[i_end]
+            i_insert += 1
+            i_start = i_end
+            i_end = num_pts - 1
+        else:
+            i_end = i_start + i_dmax
+        if i_start >= num_pts-1:  # Done
+            break
+    new_pts = new_pts[:i_insert]
+    return new_pts
