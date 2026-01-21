@@ -474,7 +474,11 @@ class Kipp_data:
                     min_ix = min(min_ix, min(path.vertices[:, 0]))
                     max_ix = max(max_ix, max(path.vertices[:, 0]))
 
-        for mix_type, path in self.mixing_zones:
+        patches_dict = {key:[] for key in kwargs_mixing.keys()}
+        patches_dict['order'] = np.zeros((len(kwargs_mixing), 2), dtype=int)
+        patches_dict['order'][:,1] = -1  # If still -1 then none were added
+        mix_type_index = dict(zip(kwargs_mixing.keys(), np.arange(len(kwargs_mixing))))
+        for i, (mix_type, path) in enumerate(self.mixing_zones):
             if mix_type in kwargs_mixing.keys():
                 mix_info = kwargs_mixing[mix_type]
                 color = mix_info['color']
@@ -504,9 +508,23 @@ class Kipp_data:
             new_vert[:,0] = self.xaxis_data[path.vertices[:,0].astype(int)]
             path = Path(new_vert, path.codes)
 
-            ax.add_patch(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+            # ax.add_patch(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+            patches_dict[mix_type].append(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+            patches_dict['order'][mix_type_index[mix_type]] = mix_type, i
             self.has_mixtype[mix_type] = True
+        patches_dict['order'] = patches_dict['order'][patches_dict['order'][:,1] != -1]  # Remove unused mix_types
+        ordered_mixtypes = patches_dict['order'][:,0][np.argsort(patches_dict['order'][:,1])]
 
+        for mix_type in ordered_mixtypes:
+            patches = patches_dict[mix_type]
+            mix_info = kwargs_mixing[mix_type]
+            color = mix_info['color']
+            hatch = mix_info['hatch']
+            line = mix_info['line']
+            show = mix_info['show']
+            if not show:
+                continue
+            ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True, hatch=hatch, edgecolor=color, linewidth=line))
         return x_extent
 
     def add_color(self, ax, xlims, ylims, clims, norm=None, cmap=None, kwargs_profile_color=None):
@@ -545,6 +563,7 @@ class Kipp_data:
             max_ix = int(max_ix)
             x_extent = self.xaxis_data[[min_ix, max_ix]]
 
+            patches = []
             for burn_type, path in self.color_zones:
                 # Keep no/very low burning as middle color and skip drawing as it is already the background color
                 if burn_type == 0 and cmap is pu.cm.RdBu:
@@ -560,9 +579,10 @@ class Kipp_data:
                 new_vert[:, 0] = self.xaxis_data[path.vertices[:, 0].astype(int)]
 
                 path = Path(new_vert, path.codes)
-                ax.add_patch(
+                patches.append(
                     PathPatch(path, fill=True, edgecolor=None, color=cmap(norm(burn_type)),
                               zorder=burn_type - len(self.color_zones)))
+            ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 
         elif isinstance(self.color_zones, np.ndarray):  # Colors from profiles
             # Convert hist index coords to x-data coords
