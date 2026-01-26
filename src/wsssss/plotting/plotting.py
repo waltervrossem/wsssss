@@ -1178,7 +1178,7 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
         kwargs_mixing (dict, optional): kwargs used to draw mixing regions, if `None`, defaults to `plotting.utils.pu.get_default_mixing_kwargs()`.
         norm (optional): Matplotlib normalize class.
         cmap (optional): Matplotlib colormap.
-        kwargs_profile_color (dict, optional): Passed to pcolormesh in ``add_color``.
+        kwargs_profile_color (dict, optional): Passed to tripcolor in ``add_color``.
         return_Kipp_data (bool, optional): If ``True``, also returns Kipp_data.
         parallel (bool, optional): If ``True``, calculate Kippenhahn regions in parallel.
         legend_loc(str, optional): If set, create a legend along that side. Can be 'top' or 'right'.
@@ -1190,11 +1190,18 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
     """
     if clims is None and caxis == 'eps_net':
         clims = [-3, 8]
-    kd = kipper.Kipp_data(hist, profs, xaxis, yaxis, caxis, zone_filename, verbose, save_zones, clobber_zones, prof_prefix,
+
+    if norm is not None:
+        if 'norm' in kwargs_profile_color.keys():
+            print(f'Using norm from argument.')
+        kwargs_profile_color['norm'] = norm
+    else:
+        norm = kwargs_profile_color['norm']
+
+    kd = kipper.Kipp_data(hist, profs, xaxis, yaxis, caxis, norm, zone_filename, verbose, save_zones, clobber_zones, prof_prefix,
                    prof_suffix, prof_resolution, parallel, ignore_monotonic)
     f, ax = kd.make_kipp(ax, xlims, ylims, clims, norm, cmap, mixing_min_height, kwargs_mixing=kwargs_mixing, kwargs_profile_color=kwargs_profile_color)
-    # ax.set_xlim(xlims)
-    # ax.set_ylim(0, None)
+
     ax.set_xlabel(xaxis.replace('_', ' '))
     ax.set_ylabel(yaxis)
 
@@ -1221,7 +1228,7 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
             else:
                 pass
 
-    if add_cbar:
+    if add_cbar and caxis:
         norm, cmap = kd.color_info
 
         f = ax.get_figure()
