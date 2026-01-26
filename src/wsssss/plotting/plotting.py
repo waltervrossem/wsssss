@@ -1196,7 +1196,10 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
             print(f'Using norm from argument.')
         kwargs_profile_color['norm'] = norm
     else:
-        norm = kwargs_profile_color['norm']
+        if kwargs_profile_color is None:
+            norm = None
+        else:
+            norm = kwargs_profile_color['norm']
 
     kd = kipper.Kipp_data(hist, profs, xaxis, yaxis, caxis, norm, zone_filename, verbose, save_zones, clobber_zones, prof_prefix,
                    prof_suffix, prof_resolution, parallel, ignore_monotonic)
