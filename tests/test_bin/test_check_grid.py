@@ -21,7 +21,7 @@ class TestCheckGrid(unittest.TestCase):
 
     def test_check_grid(self):
         os.chdir(test_data)
-        output = subprocess.run(['check-grid', '--no-slurm',  '--out-file', '../out_{}'], stdout=subprocess.PIPE)
+        output = subprocess.run(['check-grid', '--no-slurm',  '--out-file', '../out_{}', '--make-restart-file', 'last'], stdout=subprocess.PIPE)
 
         expected = ("--------------------------------------------\n"
                     "  termination_code                   count\n"
@@ -31,3 +31,6 @@ class TestCheckGrid(unittest.TestCase):
                     "\n")
 
         self.assertEqual(expected, output.stdout.decode().replace('\r\n', '\n'))
+        with open('grid_restart', 'r') as handle:
+            s = handle.read()
+        self.assertEqual(s, '0000 x700\n0001 x700\n')

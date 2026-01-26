@@ -31,9 +31,9 @@ def get_parser():
     parser.add_argument('--base-work-dir', '-b', type=str, default='$MESA_DIR/star/work',
                         help='Directory to use as the base work directory. A copy will be made and ``star`` executed '
                              'in this directory.')
-    parser.add_argument('--restart', '-re', action='store_const', const=True, default=False,
+    parser.add_argument('--restart', '-re', default=False, const=True, nargs='?',
                         help='Restart from the last photo in each run\'s photos directory. If no photo is found, '
-                             'start a new run.')
+                             'start a new run. If a check-grid grid_restart file is passed, use that instead.')
     parser.add_argument('--source', type=str, default='',
                         help='Source this file before running ``star``.')
     parser.add_argument('--cmd-pre', type=str, default='',
@@ -100,6 +100,16 @@ def process_args(args):
         if not (('WORK_DIR' in args.log_path) or ('RUN_NAME' in args.log_path)):  #
             raise ValueError('skip-if-file-exists must contain one or both of WORK_DIR or RUN_NAME in its path.')
 
+    args.restart_settings = None
+    if isinstance(args.restart, str):
+        with open(args.restart, 'r') as handle:
+            lines = handle.readlines()
+        restart_settings = {}
+        for line in lines:
+            dirname, photo = line.split()
+            restart_settings[dirname] = photo
+        args.restart_settings = restart_settings
+        args.restart = True
     return args
 
 
@@ -155,15 +165,24 @@ def start_mesa(args, run_name, logger):
         photos = os.listdir('photos')
     else:
         photos = []
-    photos_order = np.argsort(np.array([int(photo.replace('x', '0')) for photo in photos]))
-    photos = np.array(photos)[photos_order].tolist()
     if args.restart and len(photos) > 0:
-        photo = photos[-1]
-
-        cmd = pre_cmd_str + f'./re {photo} >> {log_file} 2>&1'
+        if args.restart_settings is None:
+            photos_int = [photo.replace('x', '0') for photo in photos]
+            photos_order = np.argsort(np.array([int(photo) for photo in photos_int if photo.isdigit()]))
+            photos = np.array(photos)[photos_order].tolist()
+            photo = photos[-1]
+        else:
+            photo = args.restart_settings[run_name]
+        if photo == 'full_restart':
+            cmd = pre_cmd_str + args.cmd_main + '  2>&1'
+            if args.verbose:
+                logger.info(f'{pid}: {run_name} {cmd}')
+            out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
+        else:
+            cmd = pre_cmd_str + f'./re {photo} >> {log_file} 2>&1'
         if args.verbose:
             logger.info(f'{pid}: {run_name} {cmd}')
-        out = run_cmd(cmd, split=False, shell=True)
+        out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
     else:
         cmd = pre_cmd_str + args.cmd_main + '  2>&1'
         if args.verbose:

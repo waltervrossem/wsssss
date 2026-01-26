@@ -50,7 +50,7 @@ class _LazyProperty(object):
 class _Data:
 
     def __init__(self, path, keep_columns='all', save_dill=False, reload=False, verbose=False,
-                 nanval=-1e99, nanclip=None):
+                 nanval=-1e99, nanclip=None, empty_on_error=False):
         """
         Common methods and attributes for History, Profile, and GyreSummary.
 
@@ -64,16 +64,29 @@ class _Data:
             nanclip (2 floats, optional): Set all values outside this range to NaN.
         """
         self.path = os.path.abspath(path)
+        self.directory = os.path.dirname(self.path)
+        self.dill_only = False
         if os.path.isfile(self.path):
             self.fname = os.path.basename(self.path)
+        elif os.path.isfile(self.path + '.dill') and not os.path.isfile(self.path):
+            self.fname = os.path.basename(self.path)
+            self.dill_only = True
         else:
-            raise FileNotFoundError(self.path)
-        self.directory = os.path.dirname(self.path)
+            if empty_on_error:
+                self.header = {}
+                self.columns = []
+                self.data = np.array([])
+                self.loaded = False
+                return
+            else:
+                raise FileNotFoundError(self.path)
 
         self.keep_columns = keep_columns
         self.save_dill = save_dill
         if self.path.endswith('.dill'):
             self.dill_path = path
+        elif self.dill_only:
+            self.dill_path = path + '.dill'
         else:
             self.dill_path = os.path.join(self.directory, self.fname + '.dill')
 
@@ -88,7 +101,7 @@ class _Data:
         if os.path.isfile(self.dill_path) and not reload:
             with open(self.dill_path, 'rb') as handle:
                 try:
-                    if os.path.getmtime(self.dill_path) < os.path.getmtime(self.path):
+                    if not self.dill_only and (os.path.getmtime(self.dill_path) < os.path.getmtime(self.path)):
                         if self.verbose:
                             print('.dill file is older than loaded file! Reloading.')
                         self.save_dill = True
@@ -350,7 +363,7 @@ class _Data:
 class _Mesa(_Data):
 
     def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
-                 verbose=False, nanval=-1e99, nanclip=None):
+                 verbose=False, nanval=-1e99, nanclip=None, empty_on_error=False):
         """
         Methods specific to History and Profile.
 
@@ -364,7 +377,7 @@ class _Mesa(_Data):
             nanval (float, optional): Set all values equal to this to NaN.
             nanclip (2 floats, optional): Set all values outside this range to NaN.
         """
-        super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip)
+        super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip, empty_on_error)
 
         self.LOGS = self.directory
         if os.path.isfile(index_name):
@@ -394,8 +407,8 @@ class _Mesa(_Data):
 
 
 class History(_Mesa):
-    def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=False, reload=False,
-                 verbose=False, nanval=-1e99, nanclip=None):
+    def __init__(self, path, index_name='profiles.index', keep_columns='all', save_dill=True, reload=False,
+                 verbose=False, nanval=-1e99, nanclip=None, empty_on_error=False):
         """
         Load a MESA history.
 
@@ -403,13 +416,15 @@ class History(_Mesa):
             path (str): Path to the MESA history data file. If ending with `.dill`, will strip it and set that as `path`.
             index_name (str, optional): Filename of the profile index.
             keep_columns (list of str, optional): Which columns of the history data file to keep.
-            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
+            save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data. This file will
+             include all columns, even those removed by keep_columns.
             reload (bool, optional): If True, will ignore a pre-existing `.dill` file and reload from the history file.
             verbose (bool, optional): Print extra information.
             nanval (float, optional): Set all values equal to this to NaN.
             nanclip (2 floats, optional): Set all values outside this range to NaN.
+            empty_on_error (bool, optional): If loading fails, return an empty History.
         """
-        super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip)
+        super().__init__(path, index_name, keep_columns, save_dill, reload, verbose, nanval, nanclip, empty_on_error)
 
     def __getitem__(self, mask):
         new_self = copy.copy(self)
@@ -1031,7 +1046,7 @@ def naive_merge_hists(base_hist, hists):
 
 
 def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile',
-                     gyre_summary_suffix='.data.GYRE.sgyre_l', only_RC=False, use_mask=None, keep_columns='all',
+                     gyre_summary_suffix='.data.GYRE.sgyre_l', use_mask=None, keep_columns='all',
                      gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
     """
     Load ``GyreSummary`` and profile numbers associated with ``History`` hist and place in the attribute ``History.gsspnum``.
@@ -1057,7 +1072,7 @@ def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profil
             If return_pnums is True also return profile numbers.
     """
     hist.gsspnum = load_gss(hist, gyre_data_dir=gyre_data_dir, gyre_summary_prefix=gyre_summary_prefix,
-                            gyre_summary_suffix=gyre_summary_suffix, return_pnums=True, only_RC=only_RC, use_mask=use_mask,
+                            gyre_summary_suffix=gyre_summary_suffix, return_pnums=True, use_mask=use_mask,
                             keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
                             verbose=verbose, nanval=nanval, nanclip=nanclip)
     return hist

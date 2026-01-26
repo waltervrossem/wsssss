@@ -7,6 +7,8 @@ import joblib.externals.loky.process_executor
 import numpy as np
 
 from scipy import sparse
+from scipy.spatial import Delaunay
+from scipy import integrate as ig
 from joblib import Parallel, delayed
 
 import matplotlib as mpl
@@ -26,10 +28,10 @@ from . import utils as pu
 
 
 class Kipp_data:
-    def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
-                 verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data',
-                 prof_resolution=200, parallel=True, ignore_monotonic=False):
-        self.__version__ = '0.0.7'
+    def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', norm=None,
+                 zone_filename='zones_wsssss.dat', verbose=False, save_zones=True, clobber_zones=False,
+                 prof_prefix='profile', prof_suffix='.data', prof_resolution=500, parallel=True, ignore_monotonic=False):
+        self.__version__ = '0.1.0'
         self.parallel = parallel
         self.verbose = verbose
         self.xaxis = xaxis
@@ -39,6 +41,7 @@ class Kipp_data:
         self.xaxis_data[:-1] = hist.get(self.xaxis)
         self.xaxis_data[-1] = self.xaxis_data[-2] + (self.xaxis_data[-2] - self.xaxis_data[-3])
         self.has_mixtype = {}
+        self.norm = norm
         self.color_info = None
 
         if os.name == 'nt':
@@ -89,11 +92,13 @@ class Kipp_data:
         else:
             self.load_zones = False
 
+        burn_zones = None
+        color_zones = None
         if self.load_zones:
             if self.verbose:
                 print(f'Loading zonefile {self.zone_file}')
             try:
-                loaded_version, loaded_yaxis, mixing_zones, loaded_caxis, color_zones, yminmax = self.read_zones()
+                loaded_version, loaded_yaxis, mixing_zones, loaded_caxis, burn_zones, yminmax = self.read_zones()
                 self.ymin = yminmax[0]
                 self.ymax = yminmax[1]
                 if loaded_version != self.__version__:
@@ -112,7 +117,8 @@ class Kipp_data:
                 load_success = False
 
         if (not self.load_zones) or (not load_success):
-            color_zones = self.calc_color(hist, profs)
+            if self.caxis == 'eps_net':
+                burn_zones = self.calc_zones(*self.get_hist_data(hist, 'burn'))
             mixing_zones = self.calc_zones(*self.get_hist_data(hist, 'mix'))
             self.load_zones = False
 
@@ -122,11 +128,13 @@ class Kipp_data:
                 if self.verbose:
                     print(f'yaxis from loaded zones and settings mismatch, recalculating yaxis and caxis: {loaded_yaxis} {yaxis}')
                 mixing_zones = self.calc_zones(*self.get_hist_data(hist, 'mix'))
-                color_zones = self.calc_color(hist, profs)
+                if caxis == 'eps_net':
+                    burn_zones = self.calc_color(hist, profs)
             elif loaded_caxis != self.caxis:
                 if self.verbose:
                     print(f'caxis from loaded zones and settings mismatch, recalculating caxis: {loaded_caxis} {caxis}')
-                color_zones = self.calc_color(hist, profs)
+                if caxis == 'eps_net':
+                    burn_zones = self.calc_color(hist, profs)
             else:  # Loaded correctly
                 self.save_zones = False
 
@@ -134,7 +142,12 @@ class Kipp_data:
             joblib.externals.loky.get_reusable_executor().shutdown(wait=True)  # Kill workers
 
         self.mixing_zones = mixing_zones
-        self.color_zones = color_zones
+        self.burn_zones = burn_zones
+
+        if self.caxis not in ('', None, 'eps_net'):
+            self.color_zones = self.calc_color(hist, profs, norm)
+        else:
+            self.color_zones = None
         if self.save_zones or clobber_zones:
             self.write_zones()
 
@@ -142,7 +155,7 @@ class Kipp_data:
         if self.verbose:
             print(f'Writing zonefile {self.zone_file}')
         with open(self.zone_file, 'wb') as handle:
-            dill.dump((self.__version__, self.yaxis, self.mixing_zones, self.caxis, self.color_zones, (self.ymin, self.ymax)), handle)
+            dill.dump((self.__version__, self.yaxis, self.mixing_zones, self.caxis, self.burn_zones, (self.ymin, self.ymax)), handle)
 
     def read_zones(self):
         if self.verbose:
@@ -150,62 +163,36 @@ class Kipp_data:
         with open(self.zone_file, 'rb') as handle:
             return dill.load(handle)
 
-    def get_profile_xyz_data(self, hist, profs):
-        xyz_data = np.zeros((3, len(profs)+1, self.prof_resolution))
+    def get_profile_xyz_data(self, hist, profs, norm):
+
+        xyz_data = []
         for i, p in enumerate(profs):
             y = p.get(self.yaxis)
             c = p.get(self.caxis)
 
-            if self.logy:
-                y = np.log10(y)
-            if self.logc:
-                c = np.log10(c)
+            #Normalize
+            y_min = np.min(y)
+            y_max = np.max(y)
+            y_norm = (y - y_min)/(y_max - y_min)
+            c_norm = norm(c)
+            c_norm = c_norm.filled(np.nan)
 
-            y_min = min(y)
-            y_max = max(y)
-            y_range = y_max - y_min
-            min_dy = y_range / (10 * self.prof_resolution)
+            idx = pu.decimate_RDP(np.asarray([y_norm, c_norm]).T, epsilon=1/self.prof_resolution, return_index=True)
 
-            # TODO: Try following specific values of c? Might only work for always monotonic things.
-            # or equally spaced in int |dc/dy| dy. But likely only works for smooth c.
+            # If using norm's clip, remove first and last block of clipped values.
+            if norm.clip:
+                if (c_norm[idx[0]] <= 0 or (c_norm[idx[0]] >= 1)):
+                    idx = idx[1:]
+                if (c_norm[idx[-1]] <= 0 or (c_norm[idx[-1]] >= 1)):
+                    idx = idx[:-1]
+            xyz = np.zeros((3, idx.shape[0]))
 
-            # this will have too much wasted resolution, but use as initial guess
-            max_i = len(p) - 1
-            interp_x = np.linspace(max_i, 0, self.prof_resolution, dtype=int)  # Equally spaced in zone number
-            y_ip = y[interp_x]
-            dy = np.abs(np.diff(y_ip, append=y_max))
-            too_small = dy < min_dy
+            xyz[0] = p.get_hist_index(hist)
+            xyz[1] = y[idx]
+            xyz[2] = norm.inverse(c_norm[idx])
+            xyz_data.append(xyz)
 
-            # Find contiguous blocks of too small zones
-            i_too_small = np.where(too_small)[0]
-            num_small = len(i_too_small)
-            if num_small > 0:
-                start = 0
-                breaks = np.where(np.diff(i_too_small) != 1)[0]
-                blocks = [i_too_small[0]]
-                if len(breaks) > 0:
-                    for end in np.where(np.diff(i_too_small) != 1)[0]:
-                        blocks.append(i_too_small[end])
-                        blocks.append(i_too_small[end + 1])
-                blocks.append(i_too_small[-1])
-            num_blocks = len(blocks) // 2
-
-            # resample
-            interp_weight = np.ones_like(y)
-            for j in range(num_blocks):
-                start, end = blocks[j * 2:(j + 1) * 2]
-                interp_weight[interp_x[start]:interp_x[end] + 1:-1] = np.abs((y[start] - y[end]) / min_dy)
-            sum_weight = np.cumsum(interp_weight)
-            sum_weight *= max_i / sum_weight[-1]
-            new_interp_x = np.interp(interp_x, sum_weight, np.arange(max_i + 1)).astype(int)
-
-            xyz_data[0][i] = p.get_hist_index(hist)
-            xyz_data[1][i] = y[new_interp_x]
-            xyz_data[2][i] = c[new_interp_x]
-        xyz_data[0, -1] = -1  # Extend the last profile to last hist index
-        xyz_data[1][-1] = xyz_data[1][-2]
-        xyz_data[2][-1] = xyz_data[2][-2]
-
+        xyz_data = np.concatenate(xyz_data, axis=1)
         return xyz_data
 
     def get_hist_data(self, hist, kind):
@@ -488,11 +475,25 @@ class Kipp_data:
             get_xlim = False
 
         if get_xlim:
-            for _, path in self.color_zones:
-                min_ix = min(min_ix, min(path.vertices[:, 0]))
-                max_ix = max(max_ix, max(path.vertices[:, 0]))
+            if self.color_zones is not None:
+                if isinstance(self.color_zones, list):
+                    for _, path in self.color_zones:
+                        min_ix = min(min_ix, min(path.vertices[:, 0]))
+                        max_ix = max(max_ix, max(path.vertices[:, 0]))
+                elif isinstance(self.color_zones, np.ndarray):
+                    x = self.color_zones[0]  # Only need 1 column
+                    min_ix = min(min_ix, min(x))
+                    max_ix = max(max_ix, max(x))
+            else:
+                for _, path in self.mixing_zones:
+                    min_ix = min(min_ix, min(path.vertices[:, 0]))
+                    max_ix = max(max_ix, max(path.vertices[:, 0]))
 
-        for mix_type, path in self.mixing_zones:
+        patches_dict = {key:[] for key in kwargs_mixing.keys()}
+        patches_dict['order'] = np.zeros((len(kwargs_mixing), 2), dtype=int)
+        patches_dict['order'][:,1] = -1  # If still -1 then none were added
+        mix_type_index = dict(zip(kwargs_mixing.keys(), np.arange(len(kwargs_mixing))))
+        for i, (mix_type, path) in enumerate(self.mixing_zones):
             if mix_type in kwargs_mixing.keys():
                 mix_info = kwargs_mixing[mix_type]
                 color = mix_info['color']
@@ -522,8 +523,23 @@ class Kipp_data:
             new_vert[:,0] = self.xaxis_data[path.vertices[:,0].astype(int)]
             path = Path(new_vert, path.codes)
 
-            ax.add_patch(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+            # ax.add_patch(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+            patches_dict[mix_type].append(PathPatch(path, fill=False, hatch=hatch, edgecolor=color, linewidth=line))
+            patches_dict['order'][mix_type_index[mix_type]] = mix_type, i
             self.has_mixtype[mix_type] = True
+        patches_dict['order'] = patches_dict['order'][patches_dict['order'][:,1] != -1]  # Remove unused mix_types
+        ordered_mixtypes = patches_dict['order'][:,0][np.argsort(patches_dict['order'][:,1])]
+
+        for mix_type in ordered_mixtypes:
+            patches = patches_dict[mix_type]
+            mix_info = kwargs_mixing[mix_type]
+            color = mix_info['color']
+            hatch = mix_info['hatch']
+            line = mix_info['line']
+            show = mix_info['show']
+            if not show:
+                continue
+            ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True, hatch=hatch, edgecolor=color, linewidth=line))
         return x_extent
 
     def add_color(self, ax, xlims, ylims, clims, norm=None, cmap=None, kwargs_profile_color=None):
@@ -539,10 +555,10 @@ class Kipp_data:
             max_ix = min(len(self.xaxis_data)-1, max_ix+1)
             get_xlim = False
 
-        if isinstance(self.color_zones, list):
+        if (self.burn_zones is not None) and self.caxis == 'eps_net':  # Colors from burn_type_* from history.
             if clims is None:
-                vmin = min([_[0] for _ in self.color_zones])
-                vmax = max([_[0] for _ in self.color_zones])
+                vmin = min([_[0] for _ in self.burn_zones])
+                vmax = max([_[0] for _ in self.burn_zones])
             else:
                 vmin, vmax = clims
 
@@ -551,18 +567,19 @@ class Kipp_data:
             if cmap is None:
                 cmap = pu.cm.RdBu
 
-            self.color_info = (vmin, vmax, norm, cmap)
+            self.color_info = (norm, cmap)
 
             ax.set_facecolor(cmap(0.5))
             if get_xlim:
-                for burn_type, path in self.color_zones:
+                for burn_type, path in self.burn_zones:
                     min_ix = min(min_ix, min(path.vertices[:, 0]))
                     max_ix = max(max_ix, max(path.vertices[:, 0]))
             min_ix = int(min_ix)
             max_ix = int(max_ix)
             x_extent = self.xaxis_data[[min_ix, max_ix]]
 
-            for burn_type, path in self.color_zones:
+            patches = []
+            for burn_type, path in self.burn_zones:
                 # Keep no/very low burning as middle color and skip drawing as it is already the background color
                 if burn_type == 0 and cmap is pu.cm.RdBu:
                     continue
@@ -577,30 +594,88 @@ class Kipp_data:
                 new_vert[:, 0] = self.xaxis_data[path.vertices[:, 0].astype(int)]
 
                 path = Path(new_vert, path.codes)
-                ax.add_patch(
+                patches.append(
                     PathPatch(path, fill=True, edgecolor=None, color=cmap(norm(burn_type)),
-                              zorder=burn_type - len(self.color_zones)))
+                              zorder=burn_type - len(self.burn_zones)))
+            ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 
-        elif isinstance(self.color_zones, np.ndarray):
+        else:
+            x, y, c = self.color_zones
+            x = self.xaxis_data[x.astype(int)]
+
+            if clims is None:
+                vmin = np.nanmin(c)
+                vmax = np.nanmax(c)
+            else:
+                vmin, vmax = clims
+
             if kwargs_profile_color is None:
                 kwargs_profile_color = {'shading': 'gouraud'}
             else:
                 shading = {'shading': 'gouraud'}
-                shading.update(self.kwargs_profile_color)
+                shading.update(kwargs_profile_color)
                 kwargs_profile_color = shading
 
-            # Convert hist index coords to x-data coords
-            x, y, c = self.color_zones
-            x = self.xaxis_data[x.astype(int)]
-            ax.pcolormesh(x, y, c, **kwargs_profile_color)
-            x_extent = np.array([0, len(self.xaxis_data)-1])
+            if norm is not None:
+                if 'norm' in kwargs_profile_color.keys():
+                    print(f'Using norm from add_color argument.')
+                kwargs_profile_color['norm'] = norm
+            else:
+                if 'norm' not in kwargs_profile_color.keys() or kwargs_profile_color['norm'] is None:
+                    kwargs_profile_color['norm'] = mpl.colors.Normalize(vmin, vmax)
+                    norm = kwargs_profile_color['norm']
+            if cmap is not None:
+                if 'cmap' in kwargs_profile_color.keys():
+                    print(f'Using cmap from add_color argument.')
+            kwargs_profile_color['cmap'] = cmap
 
-            vmin = np.nanmin(c)
-            vmax = np.nanmax(c)
-            self.color_info = (vmin, vmax, norm, cmap)
+            triangulation_pts = self.color_zones.copy().T
+
+            all_simplices = self._triangulate(triangulation_pts[:, :2])
+
+            ax.tripcolor(x.flat, y.flat, c.flat, triangles=all_simplices, **kwargs_profile_color)
+            # ax.triplot(x.flat, y.flat, triangles=all_simplices, marker='.')
+            x_extent = np.array([x[0], x[-1]])
+
+            self.color_info = (kwargs_profile_color['norm'], kwargs_profile_color['cmap'])
+            self.triangulation_pts = triangulation_pts
+            self.simplices = all_simplices
 
         return x_extent
 
+    def _triangulate(self, pts):
+        """
+        Normalize and triangulate `pts`.
+
+        Args:
+            pts:
+
+        Returns:
+            Triangulation simplices.
+        """
+        if not np.all(np.isfinite(pts)):
+            raise ValueError(f'Non-finite value in triangulation points.')
+        sort_order = np.argsort(pts[:,0], kind='stable')
+        undo_sort = np.argsort(sort_order, kind='stable')
+        pts = pts[sort_order]
+
+        unique_x, cts = np.unique(pts[:,0], return_counts=True)
+        i_start_end = np.cumsum([0, *cts])
+        i_start_end[-1] = -1
+
+        pts[:,0] = np.digitize(pts[:,0], unique_x, right=True)
+
+        pts = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
+
+        all_simplices = []
+        for i in range(len(cts) - 1):  # Generate triangulation
+            i_start = i_start_end[i]
+            i_end = i_start_end[i + 2]
+            delan = Delaunay(pts[i_start:i_end], qhull_options='')
+            all_simplices.append(delan.simplices + np.sum(cts[:i]))
+        all_simplices = np.concatenate(all_simplices)
+        all_simplices = undo_sort[all_simplices]
+        return all_simplices
 
     def make_kipp(self, ax=None, xlims=None, ylims=None, clims=None, norm=None, cmap=None, mixing_min_height=0, kwargs_mixing=None,
                   kwargs_profile_color=None):
@@ -610,8 +685,10 @@ class Kipp_data:
         f, ax = pu.get_figure(ax)
 
         mixing_min_height *= (self.ymax - self.ymin)
-
-        c_extent = self.add_color(ax, xlims, ylims, clims, norm, cmap, kwargs_profile_color)
+        if (self.color_zones is not None or self.burn_zones is not None) and self.caxis:
+            c_extent = self.add_color(ax, xlims, ylims, clims, norm, cmap, kwargs_profile_color)
+        else:
+            c_extent = [1e99, -1e99]
         m_extent = self.add_mixing(ax, xlims, ylims, mixing_min_height, kwargs_mixing)
 
         xextent = np.zeros(2)
@@ -645,21 +722,22 @@ class Kipp_data:
     #                       with_labels=False, ax=ax,
     #                       node_size=32, hide_ticks=False)
 
-    def calc_color(self, hist, profs):
+    def calc_color(self, hist, profs, norm=None):
         if self.caxis == 'eps_net' and 'burn_qtop_1' in hist.columns:
             return self.calc_zones(*self.get_hist_data(hist, 'burn'))
 
         if ((profs is None) or len(profs) == 0):
             profs = ld.load_profs(hist, prefix=self.prof_prefix, suffix=self.prof_suffix)
-
+            if len(profs) == 0:
+                return None
             # Check if profiles have required columns
-            required_columns = []
-            if self.yaxis == 'mass':
-                required_columns.append('mass')
-            elif self.yaxis == 'radius':
-                required_columns.append('radius')
-            required_columns.append(self.caxis)
-
+            # required_columns = []
+            # if self.yaxis == 'mass':
+            #     required_columns.append('mass')
+            # elif self.yaxis == 'radius':
+            #     required_columns.append('radius')
+            # required_columns.append(self.caxis)
+            required_columns = [self.yaxis, self.caxis]
             missing_cols = []
             for p in profs:
                 for c in required_columns:
@@ -673,4 +751,20 @@ class Kipp_data:
                 raise ValueError(f'Missing required columns in profile files:\n'
                                  f'{missing_cols_str}')
 
-        return self.get_profile_xyz_data(hist, profs)
+        vmin = 1e99
+        vmax = -1e99
+        for p in profs:
+            c = p.get(self.caxis)
+            vmin = min(vmin, np.min(c))
+            vmax = max(vmax, np.max(c))
+
+        if norm is not None:
+            if norm.vmin is not None:
+                vmin = norm.vmin
+            if norm.vmax is not None:
+                vmax = norm.vmax
+            norm = norm.__class__(vmin=vmin, vmax=vmax, clip=norm.clip)
+        else:
+            norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+
+        return self.get_profile_xyz_data(hist, profs, norm)

@@ -458,42 +458,50 @@ def get_default_mixing_kwargs():
             drawn.
     """
     default_kwargs_mixing = {
-        uf.mix_dict['merged']['convective_mixing']: {'color': "Chartreuse",
+        uf.mix_dict['merged']['convective_mixing']: {'name': 'convective_mixing',
+                                                     'color': "Chartreuse",
                                                      'hatch': "//",
                                                      'line': 1,
                                                      'show': True
                                                      },
-        uf.mix_dict['merged']['overshoot_mixing']: {'color': "purple",
+        uf.mix_dict['merged']['overshoot_mixing']: {'name': 'overshoot_mixing',
+                                                    'color': "purple",
                                                     'hatch': "x",
                                                     'line': 1,
                                                     'show': True
                                                     },
-        uf.mix_dict['merged']['semiconvective_mixing']: {'color': "red",
+        uf.mix_dict['merged']['semiconvective_mixing']: {'name': 'semiconvective_mixing',
+                                                         'color': "red",
                                                          'hatch': "\\\\",
                                                          'line': 1,
                                                          'show': True
                                                          },
-        uf.mix_dict['merged']['thermohaline_mixing']: {'color': "Gold",
+        uf.mix_dict['merged']['thermohaline_mixing']: {'name': 'thermohaline_mixing',
+                                                       'color': "Gold",
                                                        'hatch': "||",
                                                        'line': 1,
                                                        'show': False
                                                        },
-        uf.mix_dict['merged']['rotation_mixing']: {'color': "brown",
+        uf.mix_dict['merged']['rotation_mixing']: {'name': 'rotation_mixing',
+                                                   'color': "brown",
                                                    'hatch': "*",
                                                    'line': 1,
                                                    'show': True
                                                    },
-        uf.mix_dict['merged']['anonymous_mixing']: {'color': "white",
-                                                    'hatch': None,
-                                                    'line': 0,
+        uf.mix_dict['merged']['anonymous_mixing']: {'name': 'anonymous_mixing',
+                                                    'color': "tab:grey",
+                                                    'hatch': "+",
+                                                    'line': 1,
                                                     'show': True
                                                     },
-        uf.mix_dict['merged']['minimum_mixing']: {'color': "cyan",
+        uf.mix_dict['merged']['minimum_mixing']: {'name': 'minimum_mixing',
+                                                  'color': "cyan",
                                                   'hatch': "-",
                                                   'line': 1,
                                                   'show': True
                                                   },
-        uf.mix_dict['merged']['no_mixing']: {'color': "",
+        uf.mix_dict['merged']['no_mixing']: {'name': 'no_mixing',
+                                             'color': "",
                                              'hatch': "",
                                              'line': 0,
                                              'show': False
@@ -688,3 +696,79 @@ def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=No
                 text.set_path_effects(
                     [patheffects.Stroke(linewidth=background_width, foreground=background),
                      patheffects.Normal()])
+
+
+
+def decimate_RDP(pts, epsilon, return_index=False):
+    """
+    Ramer–Douglas–Peucker decimation algorithm with some adjustments.
+    Args:
+        pts (np.array): 2-d array containing points to decimate.
+        epsilon: Tolerance for keeping line segments
+        return_index (bool, optional): If True, return indeces instead of values. Defaults to False.
+
+    Returns:
+        np.array: Decimated version of pts.
+    """
+    good = np.isfinite(pts[:,1])
+    good_loc = np.where(good)[0]
+    last_i = good_loc[-1]
+    # First and last non-nan point
+    i_start = good_loc[0]
+    i_end = good_loc[-1]
+
+    if return_index:
+        new_pts = np.zeros(len(pts), dtype=int)
+        new_pts[0] = i_start
+    else:
+        new_pts = np.zeros_like(pts)
+        new_pts[0] = pts[i_start]
+    i_insert = 1
+
+    while i_start <= last_i:
+        pt0, pt1 = pts[i_start], pts[i_end]
+        if np.isnan(pt0 + pt1).any():  # Keep one NaN as separator for blocks
+            if return_index:
+                new_pts[i_insert] = i_end
+            else:
+                new_pts[i_insert] = pts[i_end]
+            i_insert += 1
+            i_start = good_loc[good_loc > i_end][0]  # First good point after current end
+            i_end = last_i
+            pt0, pt1 = pts[i_start], pts[i_end]
+
+        if i_end - i_start <= 1:  # If next point has difference larger than epsilon keep it and start from next.
+            if return_index:
+                new_pts[i_insert] = i_end
+            else:
+                new_pts[i_insert] = pts[i_end]
+            i_insert += 1
+            i_start += 1
+            i_end = last_i
+            pt0, pt1 = pts[i_start], pts[i_end]
+
+        # Perpendicular distance
+        delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1:i_end]) / np.linalg.norm(pt1 - pt0))
+        try:
+            i_dmax = np.nanargmax(delta)
+        except ValueError:
+            print(i_start, i_end, pt0, pt1)
+            print(np.linalg.norm(pt1 - pt0))
+            print(delta)
+            raise
+        dmax = delta[i_dmax]
+
+        if dmax <= epsilon:  # Keep i_end and skip points in between
+            if return_index:
+                new_pts[i_insert] = i_end
+            else:
+                new_pts[i_insert] = pts[i_end]
+            i_insert += 1
+            i_start = i_end
+            i_end = last_i
+        else:
+            i_end = i_start + i_dmax + 1
+        if i_start >= last_i:  # Done
+            break
+    new_pts = new_pts[:i_insert]
+    return new_pts
