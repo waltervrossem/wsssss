@@ -699,47 +699,76 @@ def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=No
 
 
 
-def decimate_RDP(pts, epsilon):
+def decimate_RDP(pts, epsilon, return_index=False):
     """
     Ramer–Douglas–Peucker decimation algorithm with some adjustments.
     Args:
         pts (np.array): 2-d array containing points to decimate.
         epsilon: Tolerance for keeping line segments
+        return_index (bool, optional): If True, return indeces instead of values. Defaults to False.
 
     Returns:
         np.array: Decimated version of pts.
     """
-    num_pts = len(pts)
-    i_start = 0
-    i_end = num_pts - 1
+    good = np.isfinite(pts[:,1])
+    good_loc = np.where(good)[0]
+    last_i = good_loc[-1]
+    # First and last non-nan point
+    i_start = good_loc[0]
+    i_end = good_loc[-1]
 
-    new_pts = np.zeros_like(pts)
-    new_pts[0] = pts[0]
+    if return_index:
+        new_pts = np.zeros(len(pts), dtype=int)
+        new_pts[0] = i_start
+    else:
+        new_pts = np.zeros_like(pts)
+        new_pts[0] = pts[i_start]
     i_insert = 1
 
-    # cts = 0
-    while i_start <= num_pts - 1:
-        # cts += 1
+    while i_start <= last_i:
+        pt0, pt1 = pts[i_start], pts[i_end]
+        if np.isnan(pt0 + pt1).any():  # Keep one NaN as separator for blocks
+            if return_index:
+                new_pts[i_insert] = i_end
+            else:
+                new_pts[i_insert] = pts[i_end]
+            i_insert += 1
+            i_start = good_loc[good_loc > i_end][0]  # First good point after current end
+            i_end = last_i
+            pt0, pt1 = pts[i_start], pts[i_end]
+
         if i_end - i_start <= 1:  # If next point has difference larger than epsilon keep it and start from next.
-            new_pts[i_insert] = pts[i_end]
+            if return_index:
+                new_pts[i_insert] = i_end
+            else:
+                new_pts[i_insert] = pts[i_end]
             i_insert += 1
             i_start += 1
-            i_end = num_pts - 1
+            i_end = last_i
+            pt0, pt1 = pts[i_start], pts[i_end]
 
         # Perpendicular distance
-        pt0, pt1 = pts[i_start], pts[i_end]
         delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1:i_end]) / np.linalg.norm(pt1 - pt0))
-        i_dmax = np.argmax(delta)
+        try:
+            i_dmax = np.nanargmax(delta)
+        except ValueError:
+            print(i_start, i_end, pt0, pt1)
+            print(np.linalg.norm(pt1 - pt0))
+            print(delta)
+            raise
         dmax = delta[i_dmax]
-        # print(cts, i_start, i_dmax/epsilon, i_end, num_pts-1)
-        if dmax <= epsilon:  # Keep i_end and remove points in between
-            new_pts[i_insert] = pts[i_end]
+
+        if dmax <= epsilon:  # Keep i_end and skip points in between
+            if return_index:
+                new_pts[i_insert] = i_end
+            else:
+                new_pts[i_insert] = pts[i_end]
             i_insert += 1
             i_start = i_end
-            i_end = num_pts - 1
+            i_end = last_i
         else:
-            i_end = i_start + i_dmax
-        if i_start >= num_pts-1:  # Done
+            i_end = i_start + i_dmax + 1
+        if i_start >= last_i:  # Done
             break
     new_pts = new_pts[:i_insert]
     return new_pts
