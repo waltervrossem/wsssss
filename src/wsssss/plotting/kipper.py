@@ -89,11 +89,13 @@ class Kipp_data:
         else:
             self.load_zones = False
 
+        burn_zones = None
+        color_zones = None
         if self.load_zones:
             if self.verbose:
                 print(f'Loading zonefile {self.zone_file}')
             try:
-                loaded_version, loaded_yaxis, mixing_zones, loaded_caxis, color_zones, yminmax = self.read_zones()
+                loaded_version, loaded_yaxis, mixing_zones, loaded_caxis, burn_zones, yminmax = self.read_zones()
                 self.ymin = yminmax[0]
                 self.ymax = yminmax[1]
                 if loaded_version != self.__version__:
@@ -112,7 +114,8 @@ class Kipp_data:
                 load_success = False
 
         if (not self.load_zones) or (not load_success):
-            color_zones = self.calc_color(hist, profs)
+            if self.caxis == 'eps_net':
+                burn_zones = self.calc_zones(*self.get_hist_data(hist, 'burn'))
             mixing_zones = self.calc_zones(*self.get_hist_data(hist, 'mix'))
             self.load_zones = False
 
@@ -122,11 +125,13 @@ class Kipp_data:
                 if self.verbose:
                     print(f'yaxis from loaded zones and settings mismatch, recalculating yaxis and caxis: {loaded_yaxis} {yaxis}')
                 mixing_zones = self.calc_zones(*self.get_hist_data(hist, 'mix'))
-                color_zones = self.calc_color(hist, profs)
+                if caxis == 'eps_net':
+                    burn_zones = self.calc_color(hist, profs)
             elif loaded_caxis != self.caxis:
                 if self.verbose:
                     print(f'caxis from loaded zones and settings mismatch, recalculating caxis: {loaded_caxis} {caxis}')
-                color_zones = self.calc_color(hist, profs)
+                if caxis == 'eps_net':
+                    burn_zones = self.calc_color(hist, profs)
             else:  # Loaded correctly
                 self.save_zones = False
 
@@ -134,7 +139,12 @@ class Kipp_data:
             joblib.externals.loky.get_reusable_executor().shutdown(wait=True)  # Kill workers
 
         self.mixing_zones = mixing_zones
-        self.color_zones = color_zones
+        self.burn_zones = burn_zones
+
+        if self.caxis not in ('', None, 'eps_net'):
+            self.color_zones = self.calc_color(hist, profs, norm)
+        else:
+            self.color_zones = None
         if self.save_zones or clobber_zones:
             self.write_zones()
 
@@ -142,7 +152,7 @@ class Kipp_data:
         if self.verbose:
             print(f'Writing zonefile {self.zone_file}')
         with open(self.zone_file, 'wb') as handle:
-            dill.dump((self.__version__, self.yaxis, self.mixing_zones, self.caxis, self.color_zones, (self.ymin, self.ymax)), handle)
+            dill.dump((self.__version__, self.yaxis, self.mixing_zones, self.caxis, self.burn_zones, (self.ymin, self.ymax)), handle)
 
     def read_zones(self):
         if self.verbose:
@@ -540,10 +550,11 @@ class Kipp_data:
             max_ix = min(len(self.xaxis_data)-1, max_ix+1)
             get_xlim = False
 
-        if isinstance(self.color_zones, list):  # Colors from burn_type_* from history.
+        if (self.burn_zones is not None) and self.caxis == 'eps_net':
+        # if isinstance(self.color_zones, list):  # Colors from burn_type_* from history.
             if clims is None:
-                vmin = min([_[0] for _ in self.color_zones])
-                vmax = max([_[0] for _ in self.color_zones])
+                vmin = min([_[0] for _ in self.burn_zones])
+                vmax = max([_[0] for _ in self.burn_zones])
             else:
                 vmin, vmax = clims
 
@@ -556,7 +567,7 @@ class Kipp_data:
 
             ax.set_facecolor(cmap(0.5))
             if get_xlim:
-                for burn_type, path in self.color_zones:
+                for burn_type, path in self.burn_zones:
                     min_ix = min(min_ix, min(path.vertices[:, 0]))
                     max_ix = max(max_ix, max(path.vertices[:, 0]))
             min_ix = int(min_ix)
@@ -564,7 +575,7 @@ class Kipp_data:
             x_extent = self.xaxis_data[[min_ix, max_ix]]
 
             patches = []
-            for burn_type, path in self.color_zones:
+            for burn_type, path in self.burn_zones:
                 # Keep no/very low burning as middle color and skip drawing as it is already the background color
                 if burn_type == 0 and cmap is pu.cm.RdBu:
                     continue
@@ -581,11 +592,10 @@ class Kipp_data:
                 path = Path(new_vert, path.codes)
                 patches.append(
                     PathPatch(path, fill=True, edgecolor=None, color=cmap(norm(burn_type)),
-                              zorder=burn_type - len(self.color_zones)))
+                              zorder=burn_type - len(self.burn_zones)))
             ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 
-        elif isinstance(self.color_zones, np.ndarray):  # Colors from profiles
-            # Convert hist index coords to x-data coords
+        else:
             x, y, c = self.color_zones
             x = self.xaxis_data[x.astype(int)]
 
@@ -631,7 +641,7 @@ class Kipp_data:
         f, ax = pu.get_figure(ax)
 
         mixing_min_height *= (self.ymax - self.ymin)
-        if self.color_zones is not None:
+        if (self.color_zones is not None or self.burn_zones is not None) and self.caxis:
             c_extent = self.add_color(ax, xlims, ylims, clims, norm, cmap, kwargs_profile_color)
         else:
             c_extent = [1e99, -1e99]
