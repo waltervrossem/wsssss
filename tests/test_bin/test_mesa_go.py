@@ -21,14 +21,14 @@ mesa_dir = os.environ['MESA_DIR']
 @unittest.skipIf(os.name == 'nt', 'Skipping on Windows')
 class TestMesaGO(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(self):
         if len(missing_environ) > 0:
             raise EnvironmentError(f'{",".join(missing_environ)} not set.')
         if not MESASDK_initialized:
             raise EnvironmentError('The MESASDK has not been initialized.')
 
-        cls.init_dir = os.path.abspath('.')
-        cls.base_grid_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../data/mesago'))
+        self.init_dir = os.path.abspath('.')
+        self.base_grid_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../data/mesago'))
         grid = cg.MesaGrid()
 
         grid.star_job['history_columns_file'] = 'history_test.list'
@@ -55,13 +55,25 @@ class TestMesaGO(unittest.TestCase):
         for dirname in ['make', 'src']:
             grid.add_dir(os.path.join(mesa_dir, 'star/work', dirname))
 
-        cls.grid = grid
+        self.grid = grid
+
+        # Compile star so we can skip the compilation step for each test
+        cwd = os.path.abspath('.')
+        self.grid.create_grid(f'{self.base_grid_dir}/tmp')
+        os.chdir(f'{self.base_grid_dir}/tmp/0000')
+        os.system('./mk')
+        shutil.copy2('star', f'{self.base_grid_dir}/star')
+        shutil.rmtree(f'{self.base_grid_dir}/tmp')
+        os.chdir(cwd)
 
     def setUp(self):
         testname = self.id().split('.')[-1].replace('test', '')
         self.grid_dir = os.path.join(self.base_grid_dir, testname)
         self.grid.create_grid(self.grid_dir)
-        print(self.grid_dir, os.path.isdir(self.grid_dir))
+
+        for dirname in self.grid.dirnames:
+            shutil.copy2(f'{self.base_grid_dir}/star', f'{self.base_grid_dir}/{testname}/{dirname}/')
+
         os.chdir(self.grid_dir)
         sys.argv = ['mesa-go', '']
 
@@ -86,12 +98,14 @@ class TestMesaGO(unittest.TestCase):
 
     def test_mesago(self):
         sys.argv = ['mesa-go', '--verbose', '--cmd-pre', 'touch pre', '--cmd-post', 'touch post']
+        os.remove(f'{self.grid_dir}/0000/star')  # Check that auto-compile works
         ierr = mesa_go.run()
         if ierr != 0:
             raise SystemError(ierr)
         self.check_output()
         self.assertTrue(os.path.isfile(f'{self.grid_dir}/pre'))
         self.assertTrue(os.path.isfile(f'{self.grid_dir}/post'))
+        self.assertTrue(os.path.isfile(f'{self.grid_dir}/0000/star'))
         os.remove(f'{self.grid_dir}/pre')
         os.remove(f'{self.grid_dir}/post')
         for dirname in self.grid.dirnames:
@@ -100,7 +114,7 @@ class TestMesaGO(unittest.TestCase):
             self.assertEqual(131, len(lines))
 
     def test_mesago_each(self):
-        sys.argv = ['mesa-go', '--verbose', '--cmd-pre-each', 'cp ../../test_mesago/0000/star ./; touch preeach', '--cmd-post-each', 'touch posteach']
+        sys.argv = ['mesa-go', '--verbose', '--cmd-pre-each', 'touch preeach', '--cmd-post-each', 'touch posteach']
         ierr = mesa_go.run()
         if ierr != 0:
             raise SystemError(ierr)
@@ -152,5 +166,4 @@ class TestMesaGO(unittest.TestCase):
         for dirname in self.grid.dirnames:
             with open(f'{self.grid_dir}/out_{dirname}', 'r') as handle:
                 lines = handle.readlines()
-            print(lines)
             self.assertEqual({'0000':60, '0001':131}[dirname], len(lines))

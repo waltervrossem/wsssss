@@ -166,7 +166,6 @@ def start_mesa(args, run_name, logger):
     else:
         photos = []
     if args.restart and len(photos) > 0:
-        print(args.restart, args.restart_settings)
         if args.restart_settings is None:
             photos_int = [photo.replace('x', '0') for photo in photos]
             photos_order = np.argsort(np.array([int(photo) for photo in photos_int if photo.isdigit()]))

@@ -24,7 +24,7 @@ class TestGyreDriver(unittest.TestCase):
 
     def test_gyre_driver(self):
         os.chdir(test_data)
-        sys.argv = ['gyre-driver', '0', 'MESA', 'LOGS/profile10.data.GYRE']
+        sys.argv = ['gyre-driver', '0', 'MESA', 'LOGS/profile10.data.GYRE', '--gyre', 'G7']
         ierr = gyre_driver.run()
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
@@ -34,7 +34,7 @@ class TestGyreDriver(unittest.TestCase):
 
     def test_gyre_min_numax(self):
         os.chdir(test_data)
-        sys.argv = ['gyre-driver', '01', 'MESA', 'LOGS/profile10.data.GYRE', '--min-numax', '45']
+        sys.argv = ['gyre-driver', '01', 'MESA', 'LOGS/profile10.data.GYRE', '--min-numax', '45', '--gyre', 'G7']
         ierr = gyre_driver.run()
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
