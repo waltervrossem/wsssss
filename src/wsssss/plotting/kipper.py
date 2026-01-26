@@ -7,6 +7,8 @@ import joblib.externals.loky.process_executor
 import numpy as np
 
 from scipy import sparse
+from scipy.spatial import Delaunay
+from scipy import integrate as ig
 from joblib import Parallel, delayed
 
 import matplotlib as mpl
@@ -26,10 +28,10 @@ from . import utils as pu
 
 
 class Kipp_data:
-    def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
-                 verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data',
-                 prof_resolution=200, parallel=True, ignore_monotonic=False):
-        self.__version__ = '0.0.7'
+    def __init__(self, hist, profs, xaxis='model_number', yaxis='mass', caxis='eps_net', norm=None,
+                 zone_filename='zones_wsssss.dat', verbose=False, save_zones=True, clobber_zones=False,
+                 prof_prefix='profile', prof_suffix='.data', prof_resolution=500, parallel=True, ignore_monotonic=False):
+        self.__version__ = '0.1.0'
         self.parallel = parallel
         self.verbose = verbose
         self.xaxis = xaxis
@@ -39,6 +41,7 @@ class Kipp_data:
         self.xaxis_data[:-1] = hist.get(self.xaxis)
         self.xaxis_data[-1] = self.xaxis_data[-2] + (self.xaxis_data[-2] - self.xaxis_data[-3])
         self.has_mixtype = {}
+        self.norm = norm
         self.color_info = None
 
         if os.name == 'nt':
@@ -160,7 +163,8 @@ class Kipp_data:
         with open(self.zone_file, 'rb') as handle:
             return dill.load(handle)
 
-    def get_profile_xyz_data(self, hist, profs):
+    def get_profile_xyz_data(self, hist, profs, norm):
+
         xyz_data = []
         for i, p in enumerate(profs):
             y = p.get(self.yaxis)
@@ -170,24 +174,25 @@ class Kipp_data:
             y_min = np.min(y)
             y_max = np.max(y)
             y_norm = (y - y_min)/(y_max - y_min)
-            c_min = np.min(c)
-            c_max = np.max(c)
-            c_norm = (c - c_min) / (c_max - c_min)
+            c_norm = norm(c)
+            c_norm = c_norm.filled(np.nan)
 
-            # Decrease resolution keeping main features
-            out = pu.decimate_RDP(np.asarray([y_norm, c_norm]).T, epsilon=1/self.prof_resolution)
+            idx = pu.decimate_RDP(np.asarray([y_norm, c_norm]).T, epsilon=1/self.prof_resolution, return_index=True)
 
-            xyz = np.zeros((3, out.shape[0]))
-            xyz[0, :] = p.get_hist_index(hist)
-            xyz[1, :] = out[:,0] * (y_max - y_min) + y_min
-            xyz[2, :] = out[:,1] * (c_max - c_min) + c_min
+            # If using norm's clip, remove first and last block of clipped values.
+            if norm.clip:
+                if (c_norm[idx[0]] <= 0 or (c_norm[idx[0]] >= 1)):
+                    idx = idx[1:]
+                if (c_norm[idx[-1]] <= 0 or (c_norm[idx[-1]] >= 1)):
+                    idx = idx[:-1]
+            xyz = np.zeros((3, idx.shape[0]))
+
+            xyz[0] = p.get_hist_index(hist)
+            xyz[1] = y[idx]
+            xyz[2] = norm.inverse(c_norm[idx])
             xyz_data.append(xyz)
 
-        xyz_data.append((xyz.copy()))
-        xyz_data[-1][0, :] = len(self.xaxis_data) - 1  # Extend the last profile to last hist index
-
         xyz_data = np.concatenate(xyz_data, axis=1)
-
         return xyz_data
 
     def get_hist_data(self, hist, kind):
@@ -550,8 +555,7 @@ class Kipp_data:
             max_ix = min(len(self.xaxis_data)-1, max_ix+1)
             get_xlim = False
 
-        if (self.burn_zones is not None) and self.caxis == 'eps_net':
-        # if isinstance(self.color_zones, list):  # Colors from burn_type_* from history.
+        if (self.burn_zones is not None) and self.caxis == 'eps_net':  # Colors from burn_type_* from history.
             if clims is None:
                 vmin = min([_[0] for _ in self.burn_zones])
                 vmax = max([_[0] for _ in self.burn_zones])
@@ -619,19 +623,59 @@ class Kipp_data:
             else:
                 if 'norm' not in kwargs_profile_color.keys() or kwargs_profile_color['norm'] is None:
                     kwargs_profile_color['norm'] = mpl.colors.Normalize(vmin, vmax)
+                    norm = kwargs_profile_color['norm']
             if cmap is not None:
                 if 'cmap' in kwargs_profile_color.keys():
                     print(f'Using cmap from add_color argument.')
             kwargs_profile_color['cmap'] = cmap
 
-            print(kwargs_profile_color)
-            ax.tripcolor(x.flat, y.flat, c.flat, **kwargs_profile_color)
+            triangulation_pts = self.color_zones.copy().T
+
+            all_simplices = self._triangulate(triangulation_pts[:, :2])
+
+            ax.tripcolor(x.flat, y.flat, c.flat, triangles=all_simplices, **kwargs_profile_color)
+            # ax.triplot(x.flat, y.flat, triangles=all_simplices, marker='.')
             x_extent = np.array([x[0], x[-1]])
 
             self.color_info = (kwargs_profile_color['norm'], kwargs_profile_color['cmap'])
+            self.triangulation_pts = triangulation_pts
+            self.simplices = all_simplices
 
         return x_extent
 
+    def _triangulate(self, pts):
+        """
+        Normalize and triangulate `pts`.
+
+        Args:
+            pts:
+
+        Returns:
+            Triangulation simplices.
+        """
+        if not np.all(np.isfinite(pts)):
+            raise ValueError(f'Non-finite value in triangulation points.')
+        sort_order = np.argsort(pts[:,0], kind='stable')
+        undo_sort = np.argsort(sort_order, kind='stable')
+        pts = pts[sort_order]
+
+        unique_x, cts = np.unique(pts[:,0], return_counts=True)
+        i_start_end = np.cumsum([0, *cts])
+        i_start_end[-1] = -1
+
+        pts[:,0] = np.digitize(pts[:,0], unique_x, right=True)
+
+        pts = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
+
+        all_simplices = []
+        for i in range(len(cts) - 1):  # Generate triangulation
+            i_start = i_start_end[i]
+            i_end = i_start_end[i + 2]
+            delan = Delaunay(pts[i_start:i_end], qhull_options='')
+            all_simplices.append(delan.simplices + np.sum(cts[:i]))
+        all_simplices = np.concatenate(all_simplices)
+        all_simplices = undo_sort[all_simplices]
+        return all_simplices
 
     def make_kipp(self, ax=None, xlims=None, ylims=None, clims=None, norm=None, cmap=None, mixing_min_height=0, kwargs_mixing=None,
                   kwargs_profile_color=None):
@@ -678,7 +722,7 @@ class Kipp_data:
     #                       with_labels=False, ax=ax,
     #                       node_size=32, hide_ticks=False)
 
-    def calc_color(self, hist, profs):
+    def calc_color(self, hist, profs, norm=None):
         if self.caxis == 'eps_net' and 'burn_qtop_1' in hist.columns:
             return self.calc_zones(*self.get_hist_data(hist, 'burn'))
 
@@ -687,13 +731,13 @@ class Kipp_data:
             if len(profs) == 0:
                 return None
             # Check if profiles have required columns
-            required_columns = []
-            if self.yaxis == 'mass':
-                required_columns.append('mass')
-            elif self.yaxis == 'radius':
-                required_columns.append('radius')
-            required_columns.append(self.caxis)
-
+            # required_columns = []
+            # if self.yaxis == 'mass':
+            #     required_columns.append('mass')
+            # elif self.yaxis == 'radius':
+            #     required_columns.append('radius')
+            # required_columns.append(self.caxis)
+            required_columns = [self.yaxis, self.caxis]
             missing_cols = []
             for p in profs:
                 for c in required_columns:
@@ -707,4 +751,20 @@ class Kipp_data:
                 raise ValueError(f'Missing required columns in profile files:\n'
                                  f'{missing_cols_str}')
 
-        return self.get_profile_xyz_data(hist, profs)
+        vmin = 1e99
+        vmax = -1e99
+        for p in profs:
+            c = p.get(self.caxis)
+            vmin = min(vmin, np.min(c))
+            vmax = max(vmax, np.max(c))
+
+        if norm is not None:
+            if norm.vmin is not None:
+                vmin = norm.vmin
+            if norm.vmax is not None:
+                vmax = norm.vmax
+            norm = norm.__class__(vmin=vmin, vmax=vmax, clip=norm.clip)
+        else:
+            norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+
+        return self.get_profile_xyz_data(hist, profs, norm)
