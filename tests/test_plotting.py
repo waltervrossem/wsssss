@@ -146,3 +146,9 @@ class TestFunctions(unittest.TestCase):
         gss = self.gss
         f, ax = pl.make_kipp(hist)
         f, ax = pl.make_kipp(hist, profs, yaxis='mass')
+        f, ax = pl.make_kipp(hist, profs, caxis='brunt_N2')
+        norm = pl.pu.colors.LogNorm()
+        f, ax = pl.make_kipp(hist, profs, caxis='brunt_N2', norm=norm)
+        kwargs_colors = {'norm':norm}
+        f, ax = pl.make_kipp(hist, profs, caxis='brunt_N2', kwargs_profile_color=kwargs_colors)
+        f, ax = pl.make_kipp(hist, profs, caxis='brunt_N2', norm=norm, kwargs_profile_color=kwargs_colors)

@@ -755,7 +755,10 @@ class Kipp_data:
         vmax = -1e99
         for p in profs:
             c = p.get(self.caxis)
-            vmin = min(vmin, np.min(c))
+            if isinstance(norm, mpl.colors.LogNorm):
+                vmin = min(vmin, np.min(c[c>0]))  # Smallest positive
+            else:
+                vmin = min(vmin, np.min(c))
             vmax = max(vmax, np.max(c))
 
         if norm is not None:

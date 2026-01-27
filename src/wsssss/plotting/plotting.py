@@ -1152,7 +1152,7 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
 
 def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data', mixing_min_height=0,
-                 prof_resolution=200, xlims=None, ylims=None, clims=None, kwargs_mixing=None, norm=None, cmap=None,
+                 prof_resolution=500, xlims=None, ylims=None, clims=None, kwargs_mixing=None, norm=None, cmap=None,
                  kwargs_profile_color=None, return_Kipp_data=False, parallel=True, ignore_monotonic=False, legend_loc=None, add_cbar=False):
     """
     Create a Kippenhahn diagram.
@@ -1192,9 +1192,11 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
         clims = [-3, 8]
 
     if norm is not None:
-        if 'norm' in kwargs_profile_color.keys():
-            print(f'Using norm from argument.')
-        kwargs_profile_color['norm'] = norm
+        if kwargs_profile_color is not None:
+            if 'norm' in kwargs_profile_color.keys():
+                print(f'Using norm from argument.')
+        else:
+            kwargs_profile_color = {'norm': norm}
     else:
         if kwargs_profile_color is None:
             norm = None
