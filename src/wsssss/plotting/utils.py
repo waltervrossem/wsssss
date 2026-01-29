@@ -710,38 +710,28 @@ def decimate_RDP(pts, epsilon, return_index=False):
     Returns:
         np.array: Decimated version of pts.
     """
-    good = np.isfinite(pts[:,1])
+    good = np.isfinite(pts[:,1]) & (pts[:,1] >= 0) & (pts[:,1] <= 1)
     good_loc = np.where(good)[0]
     last_i = good_loc[-1]
     # First and last non-nan point
     i_start = good_loc[0]
     i_end = good_loc[-1]
 
-    if return_index:
-        new_pts = np.zeros(len(pts), dtype=int)
-        new_pts[0] = i_start
-    else:
-        new_pts = np.zeros_like(pts)
-        new_pts[0] = pts[i_start]
+    new_pts = np.zeros(len(pts), dtype=int)
+    new_pts[0] = i_start
     i_insert = 1
 
     while i_start <= last_i:
         pt0, pt1 = pts[i_start], pts[i_end]
         if np.isnan(pt0 + pt1).any():  # Keep one NaN as separator for blocks
-            if return_index:
-                new_pts[i_insert] = i_end
-            else:
-                new_pts[i_insert] = pts[i_end]
+            new_pts[i_insert] = i_end
             i_insert += 1
             i_start = good_loc[good_loc > i_end][0]  # First good point after current end
             i_end = last_i
             pt0, pt1 = pts[i_start], pts[i_end]
 
         if i_end - i_start <= 1:  # If next point has difference larger than epsilon keep it and start from next.
-            if return_index:
-                new_pts[i_insert] = i_end
-            else:
-                new_pts[i_insert] = pts[i_end]
+            new_pts[i_insert] = i_end
             i_insert += 1
             i_start += 1
             i_end = last_i
@@ -751,18 +741,22 @@ def decimate_RDP(pts, epsilon, return_index=False):
         delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1:i_end]) / np.linalg.norm(pt1 - pt0))
         try:
             i_dmax = np.nanargmax(delta)
+            dmax = delta[i_dmax]
         except ValueError:
-            print(i_start, i_end, pt0, pt1)
-            print(np.linalg.norm(pt1 - pt0))
-            print(delta)
-            raise
-        dmax = delta[i_dmax]
+            if np.all(np.isnan(delta)):
+                dmax = 0
+            else:
+                print('Bad delta in RDP decimation')
+                print('i_start, i_end, pt0, pt1')
+                print(i_start, i_end, pt0, pt1)
+                print('np.linalg.norm(pt1 - pt0)')
+                print(np.linalg.norm(pt1 - pt0))
+                print('delta')
+                print(delta)
+                raise
 
         if dmax <= epsilon:  # Keep i_end and skip points in between
-            if return_index:
-                new_pts[i_insert] = i_end
-            else:
-                new_pts[i_insert] = pts[i_end]
+            new_pts[i_insert] = i_end
             i_insert += 1
             i_start = i_end
             i_end = last_i
@@ -771,4 +765,9 @@ def decimate_RDP(pts, epsilon, return_index=False):
         if i_start >= last_i:  # Done
             break
     new_pts = new_pts[:i_insert]
-    return new_pts
+    new_pts = np.sort(new_pts)
+    new_pts = new_pts[(new_pts >= 0) & (new_pts < len(pts))]
+    if return_index:
+        return new_pts
+    else:
+        return pts[new_pts]
