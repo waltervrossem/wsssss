@@ -548,10 +548,10 @@ def make_echelle(gs, hist=None, ax=None, l_list=(0, 1, 2), offset='auto', delta_
         fmid = nu_max
         fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
 
-    fmin = max(1e-4, fmid - 2 * fsig - 0.5 * delta_nu)
-    fmax = fmid + 2 * fsig + 0.5 * delta_nu
+        fmin = max(1e-4, fmid - 2 * fsig - 0.5 * delta_nu)
+        fmax = fmid + 2 * fsig + 0.5 * delta_nu
 
-    ax.set_ylim(fmin, fmax)
+        ax.set_ylim(fmin, fmax)
 
     # ax.text(0, 0, rf'$\Delta\nu = {delta_nu:.2f}')
 
