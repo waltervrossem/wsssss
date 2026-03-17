@@ -463,12 +463,13 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
     return f, ax
 
 
-def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='median',
+def make_echelle(gs, hist=None, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='weighted',
                  prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz', legend_loc='upper right'):
     f, ax = pu.get_figure(ax)
 
-    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_profile_index(pnum)[0]
+    if hist is not None:
+        pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
+        hist_i = hist.get_profile_index(pnum)[0]
     nu_all = gs.get_frequencies(freq_units)
 
     if type(delta_nu) == str:
@@ -542,9 +543,10 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
 
     ax.set_xlim(0, delta_nu)
 
-    nu_max = hist.get('nu_max')[hist_i]
-    fmid = nu_max
-    fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
+    if hist is not None:
+        nu_max = hist.get('nu_max')[hist_i]
+        fmid = nu_max
+        fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
 
     fmin = max(1e-4, fmid - 2 * fsig - 0.5 * delta_nu)
     fmax = fmid + 2 * fsig + 0.5 * delta_nu
@@ -970,12 +972,14 @@ def make_gradients(prof, xname='mass', hist=None, ax=None, add_legend=True, n_co
     return f, ax
 
 
-def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', suffix='.data.GYRE.sgyre_l',
+def make_period_spacing(gs, hist=None, ax=None, freq_units='uHz', prefix='profile', suffix='.data.GYRE.sgyre_l',
                         l_list=(0, 1, 2), legend_loc='upper right'):
     f, ax = pu.get_figure(ax)
-    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_profile_index(pnum)[0]
-    ax.axvline(hist.get('nu_max')[hist_i], color='k', zorder=-3)
+
+    if hist is not None:
+        pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
+        hist_i = hist.get_profile_index(pnum)[0]
+        ax.axvline(hist.get('nu_max')[hist_i], color='k', zorder=-3)
     for i, l in enumerate(l_list):
         if l == 0:  # No radial g-modes
             continue
