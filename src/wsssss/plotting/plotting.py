@@ -592,6 +592,12 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
     freqs = gs.get_frequencies(freq_units)
 
     mask = gs.get('l') == 0
+    if div:
+        f_min_l0 = freqs[mask].min()
+        f_max_l0 = freqs[mask].max()
+    else:
+        f_min_l0 = 0
+        f_max_l0 = 1e99
     E_l0 = gs.get('E_norm')[mask]
     # interpolate over log10 inertia for better behaviour
     try:
@@ -600,7 +606,7 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
         log_f_El0 = interp1d(freqs[mask], np.log10(E_l0), kind='linear', bounds_error=True)
 
     for i, l in enumerate(l_list):
-        mask = gs.get('l') == l
+        mask = (gs.get('l') == l) & (freqs >= f_min_l0) & (freqs <= f_max_l0)
         E = gs.get('E_norm')[mask]
         if scale_marker:
             ms = pu.calc_inertia_marker_size(gs, l, freq_units)
@@ -621,7 +627,7 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
                     ax.scatter(freqs[mask], E, s=ms, color=f'C{l}', label=fr'$\ell={l}$',
                                marker=['o', 's', '^', 'v'][i % 4])
                 else:
-                    ax.plot(freqs[mask], E, 'C0.', lw=1)
+                    ax.plot(freqs[mask], E, 'C0o', lw=1)
                     ax.plot([], [], 'C0', lw=1, label=fr'$\ell={l}$', marker=['o', 's', '^', 'v'][i % 4])
             else:
                 if scale_marker:
