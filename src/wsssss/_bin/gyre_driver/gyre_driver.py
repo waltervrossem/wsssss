@@ -537,10 +537,14 @@ def split_scan(fmin, fmax, n_freq, grid_type, args):
 
 
 def do_gyre_sim(fpath, args):
-    grid_type = 'LINEAR'
     num_scan = 0
     try:
         for l in args.ll:
+            if l == 0:
+                grid_type = 'LINEAR'
+            else:
+                grid_type = 'INVERSE'
+
             fmin, fmax, n_freq, num_scan, nu_max = calc_scan(fpath, l, args)
             if (l > 0) and (nu_max < args.min_numax):
                 print(f'Skipping {fpath} l={l} as numax {nu_max} below min-numax {args.min_numax}.')
