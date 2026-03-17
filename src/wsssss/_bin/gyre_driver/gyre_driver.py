@@ -735,15 +735,15 @@ def get_parser():
     return parser
 
 
-def run():
+def run(args=None):
     t_start = time.time()
     cwd = os.getcwd()
 
-    parser = get_parser()
-    args = parser.parse_args()
+    if args is None:
+        parser = get_parser()
+        args = parser.parse_args()
 
-    args.sort = True
-    if len(args.files) > 1:
+    if not args.nosort and len(args.files) > 1:
         args.files = sort_files(args.files)
 
     if args.filetype == 'LOSC':
