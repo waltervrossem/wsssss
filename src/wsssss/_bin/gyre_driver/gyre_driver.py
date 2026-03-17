@@ -311,9 +311,9 @@ def run_gyre(model_name, l, suffix, args):
                 if "ASSERT 'k == k_chk' failed at line 303" in output.stderr.decode():
                     raise ValueError(f"Gyre 4.4 does not support the version of MESA used to generate {model_name}")
 
-            raise ChildProcessError(f'The following command encountered an error:\n.'
-                                    f'{output.args}\n\n'
-                                    f'{output.stderr.decode()}\n')
+                raise ChildProcessError(f'The following command encountered an error:\n.'
+                                        f'{output.args}\n\n'
+                                        f'{output.stderr.decode()}\n')
     else:
         output = f'skipped {gyre_exec} {gyre_adin}'
 
@@ -645,8 +645,7 @@ def check_args(args):
     # Create output directory
     if args.out_dir != '':
         args.out_dir = pathlib.Path(args.out_dir)
-        if not args.out_dir.exists():
-            os.mkdir(args.out_dir)
+        args.out_dir.mkdir(exist_ok=True)
 
     # Create and/or clean input directory
     if args.in_dir != '':
@@ -655,9 +654,7 @@ def check_args(args):
         args.in_dir = 'gyre_ad.in'
         gyre_adin_template = 'gyre_ad.in/gyre_ad.in_'
     args.in_dir = pathlib.Path(args.in_dir)
-    if args.in_dir.exists():
-        shutil.rmtree(args.in_dir)
-    os.mkdir(args.in_dir)
+    args.in_dir.mkdir(exist_ok=True)
 
     if args.base_in != '':
         args.base_in = pathlib.Path(args.base_in)
