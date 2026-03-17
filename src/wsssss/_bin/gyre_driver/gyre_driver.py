@@ -10,7 +10,7 @@ import time
 from argparse import ArgumentParser
 
 import numpy as np
-from scipy.integrate import trapezoid as trapz
+from scipy.integrate import trapezoid
 
 from wsssss import load_data as ld
 
@@ -120,7 +120,7 @@ def get_nu_max_dnu_dp(args, fpath, l):
     nu_max = numax_sun * M_star / (R_star ** 2 * np.sqrt(Teff_star / Teff_sun))
     Dnu = Dnu_sun * np.sqrt(M_star / R_star ** 3)
 
-    DP = np.abs(trapz(N_div_r, r))
+    DP = np.abs(trapezoid(N_div_r, r))
     DP = 2 * pi ** 2 * (1 / DP) / np.sqrt(l * (l + 1))
 
     if args.verbose:
@@ -182,6 +182,9 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
             base_in = _this_dir / 'INPUT_GYRE_7_ad.in'
             base_in_exists = base_in.exists()
         elif args.gyre == 'G8':  # Can use the same base inlist
+            base_in = _this_dir / 'INPUT_GYRE_8_ad.in'
+            base_in_exists = base_in.exists()
+        elif args.gyre == 'G9':  # Can use the same base inlist
             base_in = _this_dir / 'INPUT_GYRE_8_ad.in'
             base_in_exists = base_in.exists()
         else:
@@ -676,7 +679,7 @@ def get_parser():
                         help='Filetype of profiles that gyre will read.')
     parser.add_argument('files', type=str, nargs='*',
                         help='Paths to profile files for gyre to use.')
-    parser.add_argument('--gyre', type=str, choices=['G4', 'G5', 'G6', 'G7', 'G8'], default='G8',
+    parser.add_argument('--gyre', type=str, choices=['G4', 'G5', 'G6', 'G7', 'G8', 'G9'], default='G9',
                         help='Which version of gyre to use.')
     parser.add_argument('--pmode', action='store_const', const=True, default=False,
                         help='If set, scan for modes around the expected frequencies.')
