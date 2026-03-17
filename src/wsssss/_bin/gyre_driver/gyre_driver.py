@@ -639,7 +639,7 @@ def check_args(args):
         args.files = do_files
 
     # Sort files by length, then by filename.
-    if args.sort and len(args.files) > 1:
+    if not args.nosort and len(args.files) > 1:
         args.files = sort_files(args.files)
 
     # Create output directory
@@ -706,6 +706,8 @@ def get_parser():
                         help='Directory in which to save inlist files.')
     parser.add_argument('--base-in', type=str, default='',
                         help='Path to the base inlist to use.')
+    parser.add_argument('--nosort', action='store_const', const=True, default=False,
+                        help="Don't sort input files by profile number.")
     parser.add_argument('--no-merge', '-m', action='store_const', const=True, default=False,
                         help="Don't merge the final summary files into a single file.")
     parser.add_argument('--batch', type=int, default=None,
@@ -763,7 +765,7 @@ def run():
         print(f'--out-dir       = {args.out_dir}')
         print(f'--in-dir        = {args.in_dir}')
         print(f'--base-in       = {args.base_in}')
-        print(f'--sort          = {args.sort}')
+        print(f'--nosort        = {args.nosort}')
         print(f'--no-merge      = {args.no_merge}')
         print(f'--batch         = {args.batch}')
         print(f'--skip-calc     = {args.skip_calc}')
@@ -803,7 +805,8 @@ def run():
 
     t_end = time.time()
     t_taken = t_end - t_start
-    print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
+    if not args.no_output:
+        print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
 
     if args.original_gyre != args.gyre:
         print('###################################################################')
