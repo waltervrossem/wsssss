@@ -465,13 +465,8 @@ def calc_scan(model_name, l, args):
         fmax = fmax0
     else:
         l0_summary_file = summary_path(model_name, 0, '', args)
-        with open(l0_summary_file, 'r') as handle:
-            lines = []
-            for i in range(6):
-                lines.append(handle.readline())
-        colnames = lines[5].split()
-        i_freq = colnames.index('Re(freq)')
-        freqs_l0 = np.loadtxt(l0_summary_file, skiprows=6, usecols=i_freq)
+        gs = ld.GyreSummary(l0_summary_file)
+        freqs_l0 = gs.get('Re(freq)')[gs.get('l') == 0]
 
         n_freqDP = np.ceil((fmax0 - fmin0) / (1e6 / (1e6 / fmin0 - DP) - fmin0)).astype(int)
 
