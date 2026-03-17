@@ -590,6 +590,7 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
     freqs = gs.get_frequencies(freq_units)
 
     mask = gs.data.l == 0
+    mask = gs.get('l') == 0
     E_l0 = gs.get('E_norm')[mask]
     # interpolate over log10 inertia for better behaviour
     try:
@@ -739,7 +740,7 @@ def make_age_nu(hist, gss, l=1, ax=None, gyre_summary_prefix='profile',
     ages = hist.get('star_age')[hist_i] / age_factor
 
     for i, gs in enumerate(gss):
-        mask = gs.data.l == l
+        mask = gs.get('l') == l
         mask = np.logical_and(mask, gs.data.n_pg > 0)
         nu = gs.get_frequencies('uHz')[mask]
 
@@ -789,7 +790,7 @@ def make_mesa_gyre_delta_nu(hist, gss, l_list=(0, 1, 2), xaxis='model_number', g
         pnum = int(gs.fname[len(gyre_summary_prefix):-len(gyre_summary_suffix)])
         delta_nus = []
         for l in l_list:
-            mask = gs.data.l == l
+            mask = gs.get('l') == l
             mask = np.logical_and(mask, gs.data.n_pg > 0)
 
             delta_nus.extend(np.diff(gs.get_frequencies('uHz')[mask]))
@@ -979,7 +980,7 @@ def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', s
     for i, l in enumerate(l_list):
         if l == 0:  # No radial g-modes
             continue
-        mask = gs.data.l == l
+        mask = gs.get('l') == l
         nu = gs.get_frequencies(freq_units)[mask]
         dPi = -np.diff((nu * {'uHz': 1e-6, 'mHz': 1e-3, 'Hz': 1}[freq_units]) ** -1)
 
@@ -1122,7 +1123,7 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
         l = gef.header['l']
         n_pg = gef.header['n_pg']
         n_p = gef.header['n_p']
-        mask = (gs.data.l == l) & (gs.data.n_pg == n_pg) & (gs.data.n_p == n_p)
+        mask = (gs.get('l') == l) & (gs.data.n_pg == n_pg) & (gs.data.n_p == n_p)
         intertia = gs.data.E_norm[mask]
         axes['D'].plot(gs.get('Re(freq)')[mask], intertia, f'kX', zorder=9)
         axes['D'].plot(gs.get('Re(freq)')[mask], intertia, f'C{i % 10}x', zorder=10)
