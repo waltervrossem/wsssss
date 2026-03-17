@@ -284,6 +284,12 @@ def run_gyre(model_name, l, suffix, args):
     summary_file = summary_path(model_name, l, suffix, args)
 
     gyre_exec = get_gyre(args, True)[0]
+    if args.no_output:
+        cmd_end = ' > /dev/null 2>& 1'
+        pipe = None
+    else:
+        cmd_end = ''
+        pipe = subprocess.PIPE
 
     if args.verbose:
         print(os.getcwd())
@@ -294,15 +300,16 @@ def run_gyre(model_name, l, suffix, args):
 
     if not args.skip_calc or (args.skip_calc and l == 0):
         if args.source != '':
-            output = subprocess.run(f'source {args.source}; {gyre_exec} {gyre_adin}',
-                                    shell=True, executable="/bin/bash", stderr=subprocess.PIPE)
+            output = subprocess.run(f'source {args.source}; {gyre_exec} {gyre_adin} {cmd_end}',
+                                    shell=True, executable="/bin/bash", stderr=pipe)
         else:
-            output = subprocess.run(f'{gyre_exec} {gyre_adin}',
-                                    shell=True, executable="/bin/bash", stderr=subprocess.PIPE)
+            output = subprocess.run(f'{gyre_exec} {gyre_adin} {cmd_end}',
+                                    shell=True, executable="/bin/bash", stderr=pipe)
 
-        if not output.stderr == b'':
-            if "ASSERT 'k == k_chk' failed at line 303" in output.stderr.decode():
-                raise ValueError(f"Gyre 4.4 does not support the version of MESA used to generate {model_name}")
+        if not args.no_output:
+            if not output.stderr == b'':
+                if "ASSERT 'k == k_chk' failed at line 303" in output.stderr.decode():
+                    raise ValueError(f"Gyre 4.4 does not support the version of MESA used to generate {model_name}")
 
             raise ChildProcessError(f'The following command encountered an error:\n.'
                                     f'{output.args}\n\n'
@@ -722,6 +729,8 @@ def get_parser():
                         help='Factor to increase number of scan frequencies.')
     parser.add_argument('--summary-suffix', type=str, default='.sgyre_l',
                         help='Merged summary file suffix.')
+    parser.add_argument('--no-output', action='store_const', const=True, default=False,
+                        help='If set, pipe all terminal output to /dev/null.')
     return parser
 
 
