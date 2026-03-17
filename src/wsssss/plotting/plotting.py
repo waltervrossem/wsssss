@@ -589,7 +589,6 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
     f, ax = pu.get_figure(ax)
     freqs = gs.get_frequencies(freq_units)
 
-    mask = gs.data.l == 0
     mask = gs.get('l') == 0
     E_l0 = gs.get('E_norm')[mask]
     # interpolate over log10 inertia for better behaviour
