@@ -20,7 +20,7 @@ if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
 
-_version = '0.2.2'
+_version = '0.3.0'
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
