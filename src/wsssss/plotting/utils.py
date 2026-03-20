@@ -208,6 +208,9 @@ def top_legend(ax, ncol=2, **kwargs):
 
 
 def top_figure_legend(f, ncol, top=0.9, **kwargs):
+    if f.get_constrained_layout():
+        return f.legend(loc='outside upper center', ncol=ncol, borderaxespad=0.2, **kwargs)
+
     fig_size = f.bbox.corners()[3]
     f.subplots_adjust(top=top)
     corners = np.array([ax.bbox.corners() for ax in f.axes]) / fig_size
