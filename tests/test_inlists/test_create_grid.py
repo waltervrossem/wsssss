@@ -25,6 +25,11 @@ class TestCreateGrid(unittest.TestCase):
             shutil.rmtree(cls.grid_dir)
 
 
+    @classmethod
+    def tearDownClass(cls):
+        os.remove(os.path.join(os.path.dirname(__file__), '../data/grid/test_create_grid.py', ))
+
+
     def setUp(self):
         grid = cg.MesaGrid()
 
