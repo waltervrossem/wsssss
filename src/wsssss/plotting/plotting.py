@@ -463,12 +463,13 @@ def make_propagation2(p, hist, xname='logR', l=1, ax=None, only_NS=True, do_redu
     return f, ax
 
 
-def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='median',
+def make_echelle(gs, hist=None, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='weighted',
                  prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz', legend_loc='upper right'):
     f, ax = pu.get_figure(ax)
 
-    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_profile_index(pnum)[0]
+    if hist is not None:
+        pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
+        hist_i = hist.get_profile_index(pnum)[0]
     nu_all = gs.get_frequencies(freq_units)
 
     if type(delta_nu) == str:
@@ -542,14 +543,15 @@ def make_echelle(gs, hist, ax=None, l_list=(0, 1, 2), offset='auto', delta_nu='m
 
     ax.set_xlim(0, delta_nu)
 
-    nu_max = hist.get('nu_max')[hist_i]
-    fmid = nu_max
-    fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
+    if hist is not None:
+        nu_max = hist.get('nu_max')[hist_i]
+        fmid = nu_max
+        fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
 
-    fmin = max(1e-4, fmid - 2 * fsig - 0.5 * delta_nu)
-    fmax = fmid + 2 * fsig + 0.5 * delta_nu
+        fmin = max(1e-4, fmid - 2 * fsig - 0.5 * delta_nu)
+        fmax = fmid + 2 * fsig + 0.5 * delta_nu
 
-    ax.set_ylim(fmin, fmax)
+        ax.set_ylim(fmin, fmax)
 
     # ax.text(0, 0, rf'$\Delta\nu = {delta_nu:.2f}')
 
@@ -589,7 +591,13 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
     f, ax = pu.get_figure(ax)
     freqs = gs.get_frequencies(freq_units)
 
-    mask = gs.data.l == 0
+    mask = gs.get('l') == 0
+    if div:
+        f_min_l0 = freqs[mask].min()
+        f_max_l0 = freqs[mask].max()
+    else:
+        f_min_l0 = 0
+        f_max_l0 = 1e99
     E_l0 = gs.get('E_norm')[mask]
     # interpolate over log10 inertia for better behaviour
     try:
@@ -598,7 +606,7 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
         log_f_El0 = interp1d(freqs[mask], np.log10(E_l0), kind='linear', bounds_error=True)
 
     for i, l in enumerate(l_list):
-        mask = gs.get('l') == l
+        mask = (gs.get('l') == l) & (freqs >= f_min_l0) & (freqs <= f_max_l0)
         E = gs.get('E_norm')[mask]
         if scale_marker:
             ms = pu.calc_inertia_marker_size(gs, l, freq_units)
@@ -619,7 +627,7 @@ def make_inertia(gs, ax=None, l_list=(0, 1, 2), freq_units='uHz', div=True, lege
                     ax.scatter(freqs[mask], E, s=ms, color=f'C{l}', label=fr'$\ell={l}$',
                                marker=['o', 's', '^', 'v'][i % 4])
                 else:
-                    ax.plot(freqs[mask], E, 'C0.', lw=1)
+                    ax.plot(freqs[mask], E, 'C0o', lw=1)
                     ax.plot([], [], 'C0', lw=1, label=fr'$\ell={l}$', marker=['o', 's', '^', 'v'][i % 4])
             else:
                 if scale_marker:
@@ -739,7 +747,7 @@ def make_age_nu(hist, gss, l=1, ax=None, gyre_summary_prefix='profile',
     ages = hist.get('star_age')[hist_i] / age_factor
 
     for i, gs in enumerate(gss):
-        mask = gs.data.l == l
+        mask = gs.get('l') == l
         mask = np.logical_and(mask, gs.data.n_pg > 0)
         nu = gs.get_frequencies('uHz')[mask]
 
@@ -789,7 +797,7 @@ def make_mesa_gyre_delta_nu(hist, gss, l_list=(0, 1, 2), xaxis='model_number', g
         pnum = int(gs.fname[len(gyre_summary_prefix):-len(gyre_summary_suffix)])
         delta_nus = []
         for l in l_list:
-            mask = gs.data.l == l
+            mask = gs.get('l') == l
             mask = np.logical_and(mask, gs.data.n_pg > 0)
 
             delta_nus.extend(np.diff(gs.get_frequencies('uHz')[mask]))
@@ -970,16 +978,18 @@ def make_gradients(prof, xname='mass', hist=None, ax=None, add_legend=True, n_co
     return f, ax
 
 
-def make_period_spacing(gs, hist, ax=None, freq_units='uHz', prefix='profile', suffix='.data.GYRE.sgyre_l',
+def make_period_spacing(gs, hist=None, ax=None, freq_units='uHz', prefix='profile', suffix='.data.GYRE.sgyre_l',
                         l_list=(0, 1, 2), legend_loc='upper right'):
     f, ax = pu.get_figure(ax)
-    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
-    hist_i = hist.get_profile_index(pnum)[0]
-    ax.axvline(hist.get('nu_max')[hist_i], color='k', zorder=-3)
+
+    if hist is not None:
+        pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
+        hist_i = hist.get_profile_index(pnum)[0]
+        ax.axvline(hist.get('nu_max')[hist_i], color='k', zorder=-3)
     for i, l in enumerate(l_list):
         if l == 0:  # No radial g-modes
             continue
-        mask = gs.data.l == l
+        mask = gs.get('l') == l
         nu = gs.get_frequencies(freq_units)[mask]
         dPi = -np.diff((nu * {'uHz': 1e-6, 'mHz': 1e-3, 'Hz': 1}[freq_units]) ** -1)
 
@@ -1122,7 +1132,7 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
         l = gef.header['l']
         n_pg = gef.header['n_pg']
         n_p = gef.header['n_p']
-        mask = (gs.data.l == l) & (gs.data.n_pg == n_pg) & (gs.data.n_p == n_p)
+        mask = (gs.get('l') == l) & (gs.data.n_pg == n_pg) & (gs.data.n_p == n_p)
         intertia = gs.data.E_norm[mask]
         axes['D'].plot(gs.get('Re(freq)')[mask], intertia, f'kX', zorder=9)
         axes['D'].plot(gs.get('Re(freq)')[mask], intertia, f'C{i % 10}x', zorder=10)
@@ -1152,7 +1162,7 @@ def make_eigenfunc_compare(gs, gefs, prof, hist, l_list=(1,), prop_y_lims=(3e0, 
 
 def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', caxis='eps_net', zone_filename='zones_wsssss.dat',
                  verbose=False, save_zones=True, clobber_zones=False, prof_prefix='profile', prof_suffix='.data', mixing_min_height=0,
-                 prof_resolution=200, xlims=None, ylims=None, clims=None, kwargs_mixing=None, norm=None, cmap=None,
+                 prof_resolution=500, xlims=None, ylims=None, clims=None, kwargs_mixing=None, norm=None, cmap=None,
                  kwargs_profile_color=None, return_Kipp_data=False, parallel=True, ignore_monotonic=False, legend_loc=None, add_cbar=False):
     """
     Create a Kippenhahn diagram.
@@ -1192,9 +1202,11 @@ def make_kipp(hist, profs=None, ax=None, xaxis='model_number', yaxis='mass', cax
         clims = [-3, 8]
 
     if norm is not None:
-        if 'norm' in kwargs_profile_color.keys():
-            print(f'Using norm from argument.')
-        kwargs_profile_color['norm'] = norm
+        if kwargs_profile_color is not None:
+            if 'norm' in kwargs_profile_color.keys():
+                print(f'Using norm from argument.')
+        else:
+            kwargs_profile_color = {'norm': norm}
     else:
         if kwargs_profile_color is None:
             norm = None

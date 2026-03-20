@@ -431,7 +431,7 @@ class History(_Mesa):
         new_self.data = self._discard_rows_rec_array(self.data, mask)
         if hasattr(self, 'index'):
             if self.index is not None:
-                mnum0, mnum1 = self.data.model_number[[0, -1]]
+                mnum0, mnum1 = new_self.data.model_number[[0, -1]]
                 idx_mask = (self.index[:, 0] >= mnum0) & (self.index[:, 0] <= mnum1)
                 new_self.index = self.index[idx_mask]
         return new_self
@@ -477,9 +477,9 @@ class History(_Mesa):
             ind = np.where(model_diff <= 0)[0][-1]
         elif method == 'next':
             model_diff = self.index[:, 0] - model_num
-            ind = np.where(model_diff >= 0)[0][-1]
+            ind = np.where(model_diff >= 0)[0][0]
         else:
-            raise ValueError("method must be 'closest' or 'previous'.")
+            raise ValueError("method must be 'closest' or 'previous' or 'next'.")
         pmod, _, pnum = self.index[ind]
         m_min, m_max = self.get('model_number')[[0, -1]]
         if (m_min <= pmod) and (m_max >= pmod):
@@ -493,7 +493,7 @@ class History(_Mesa):
         """
         Returns the corresponding indeces of `profile_nums`.
         `profile_nums` can be an integer, a list of integers,
-        a `Profile`, or a list of `Profile`\ s.
+        a `Profile`, or a list of `Profile`s.
 
         Args:
             profile_nums (int or list of int): Profile numbers for which to calculate the indeces.
@@ -759,7 +759,7 @@ class GyreProfile:
                             'nuclear_energy_generation_partial_rho', 'gravothermal_energy_generation', 'rotation']
             self.formats = [int] + 19 * [float]
         else:
-            raise NotImplementedError('Only fileversions 100, 101, and 120 are implemented implemented.')
+            raise NotImplementedError('Only fileversions 100, 101, and 120 are implemented.')
 
         self.loaded = False
 

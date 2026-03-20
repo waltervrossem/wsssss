@@ -10,7 +10,7 @@ import time
 from argparse import ArgumentParser
 
 import numpy as np
-from scipy.integrate import trapezoid as trapz
+from scipy.integrate import trapezoid
 
 from wsssss import load_data as ld
 
@@ -20,7 +20,7 @@ if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
 
-_version = '0.2.2'
+_version = '0.3.0'
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
@@ -120,7 +120,7 @@ def get_nu_max_dnu_dp(args, fpath, l):
     nu_max = numax_sun * M_star / (R_star ** 2 * np.sqrt(Teff_star / Teff_sun))
     Dnu = Dnu_sun * np.sqrt(M_star / R_star ** 3)
 
-    DP = np.abs(trapz(N_div_r, r))
+    DP = np.abs(trapezoid(N_div_r, r))
     DP = 2 * pi ** 2 * (1 / DP) / np.sqrt(l * (l + 1))
 
     if args.verbose:
@@ -159,13 +159,13 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         print(f'grid_type       = {grid_type}')
         print(f'file_type       = {file_type}')
         if single_scan:
-            print(f'freq_min        = {freq_min:.5f}')
-            print(f'freq_max        = {freq_max:.5f}')
+            print(f'freq_min        = {freq_min}')
+            print(f'freq_max        = {freq_max}')
             print(f'n_freq          = {n_freq}')
         else:
-            print(f'freq_min        = {freq_min:}')
-            print(f'freq_max        = {freq_max:}')
-            print(f'n_freq          = {n_freq}')
+            print(f'freq_min        = {repr(freq_min.tolist())}')
+            print(f'freq_max        = {repr(freq_max.tolist())}')
+            print(f'n_freq          = {repr(n_freq.tolist())}')
         print()
 
     if args.base_in == '':
@@ -184,13 +184,16 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         elif args.gyre == 'G8':  # Can use the same base inlist
             base_in = _this_dir / 'INPUT_GYRE_8_ad.in'
             base_in_exists = base_in.exists()
+        elif args.gyre == 'G9':  # Can use the same base inlist
+            base_in = _this_dir / 'INPUT_GYRE_8_ad.in'
+            base_in_exists = base_in.exists()
         else:
             raise FileNotFoundError(f'No default base inlist associated with gyre {args.gyre}.')
     else:
         base_in = args.base_in
         base_in_exists = base_in.exists()
     if not base_in_exists:
-        raise FileNotFoundError('Cannot find a base inlist for gyre.')
+        raise FileNotFoundError(f'Cannot find a base inlist for gyre. {base_in}')
 
     shutil.copy2(base_in, gyre_adin)
 
@@ -281,6 +284,12 @@ def run_gyre(model_name, l, suffix, args):
     summary_file = summary_path(model_name, l, suffix, args)
 
     gyre_exec = get_gyre(args, True)[0]
+    if args.no_output:
+        cmd_end = ' > /dev/null 2>& 1'
+        pipe = None
+    else:
+        cmd_end = ''
+        pipe = subprocess.PIPE
 
     if args.verbose:
         print(os.getcwd())
@@ -291,19 +300,20 @@ def run_gyre(model_name, l, suffix, args):
 
     if not args.skip_calc or (args.skip_calc and l == 0):
         if args.source != '':
-            output = subprocess.run(f'source {args.source}; {gyre_exec} {gyre_adin}',
-                                    shell=True, executable="/bin/bash", stderr=subprocess.PIPE)
+            output = subprocess.run(f'source {args.source}; {gyre_exec} {gyre_adin} {cmd_end}',
+                                    shell=True, executable="/bin/bash", stderr=pipe)
         else:
-            output = subprocess.run(f'{gyre_exec} {gyre_adin}',
-                                    shell=True, executable="/bin/bash", stderr=subprocess.PIPE)
+            output = subprocess.run(f'{gyre_exec} {gyre_adin} {cmd_end}',
+                                    shell=True, executable="/bin/bash", stderr=pipe)
 
-        if not output.stderr == b'':
-            if "ASSERT 'k == k_chk' failed at line 303" in output.stderr.decode():
-                raise ValueError(f"Gyre 4.4 does not support the version of MESA used to generate {model_name}")
+        if not args.no_output:
+            if not output.stderr == b'':
+                if "ASSERT 'k == k_chk' failed at line 303" in output.stderr.decode():
+                    raise ValueError(f"Gyre 4.4 does not support the version of MESA used to generate {model_name}")
 
-            raise ChildProcessError(f'The following command encountered an error:\n.'
-                                    f'{output.args}\n\n'
-                                    f'{output.stderr.decode()}\n')
+                raise ChildProcessError(f'The following command encountered an error:\n.'
+                                        f'{output.args}\n\n'
+                                        f'{output.stderr.decode()}\n')
     else:
         output = f'skipped {gyre_exec} {gyre_adin}'
 
@@ -367,8 +377,8 @@ def merge_summary_parts(model_name, l, num_scan, keep_files=False):
     summary_files = []
     set_header = False
     for i in range(num_scan):
-        suffix = f'.part{i + 1}of{num_scan}'
-        summary_file = summary_path(model_name, l, suffix, args)
+        partial = f'.part{i + 1}of{num_scan}'
+        summary_file = summary_path(model_name, l, partial, args)
         if not summary_file.exists():  # Skip summary files which found no modes.
             continue
 
@@ -414,7 +424,7 @@ def merge_summary_l(model_name, args, keep_files=False):
             all_lines += lines[6:]
 
     new_summary_file = summary_path(model_name, '', '', args)
-
+    new_summary_file = pathlib.Path(str(new_summary_file).replace('.sgyre_l', args.summary_suffix))
     with open(new_summary_file, 'w') as handle:
         handle.writelines(all_lines)
 
@@ -437,40 +447,39 @@ def summary_path(model_name, l, suffix, args):
 # noinspection PyPep8Naming
 def calc_scan(model_name, l, args):
     nu_max, Dnu, DP = get_nu_max_dnu_dp(args, model_name, l)
+    n_sig_lo = args.n_sig_lo
+    n_sig_hi = args.n_sig_hi
 
     fmid = nu_max
     fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
 
-    fmin = max(1e-4, fmid - 2 * fsig)
-    fmax = fmid + 2 * fsig
+    fmin0 = max(1e-4, fmid - n_sig_lo * fsig)
+    fmax0 = fmid + n_sig_hi * fsig
 
-    n_freqDnu = int(np.ceil((fmax - fmin) / Dnu))
+    n_freqDnu = int(np.ceil((fmax0 - fmin0) / Dnu))
 
     if l == 0:
         n_freq = 3 * n_freqDnu
         num_scan = 1
+        fmin = fmin0
+        fmax = fmax0
     else:
         l0_summary_file = summary_path(model_name, 0, '', args)
-        with open(l0_summary_file, 'r') as handle:
-            lines = []
-            for i in range(6):
-                lines.append(handle.readline())
-        colnames = lines[5].split()
-        i_freq = colnames.index('Re(freq)')
-        freqs_l0 = np.loadtxt(l0_summary_file, skiprows=6, usecols=i_freq)
-        fmin = freqs_l0[0]
-        fmax = freqs_l0[-1]
+        gs = ld.GyreSummary(l0_summary_file)
+        freqs_l0 = gs.get('Re(freq)')[gs.get('l') == 0]
 
-        n_freqDP = np.ceil((fmax - fmin) / (1e6 / (1e6 / fmin - DP) - fmin)).astype(int)
+        n_freqDP = np.ceil((fmax0 - fmin0) / (1e6 / (1e6 / fmin0 - DP) - fmin0)).astype(int)
 
         if n_freqDnu > n_freqDP:
-            n_freqDnu = np.ceil((fmax - fmin) / Dnu)
+            n_freqDnu = np.ceil((fmax0 - fmin0) / Dnu)
             n_freq = int(5 * n_freqDnu)
             num_scan = 1
+            fmin = fmin0
+            fmax = fmax0
 
         else:
-            fmin = freqs_l0[:-1]
-            fmax = freqs_l0[1:]
+            fmin = np.concatenate([[fmin0], freqs_l0[:-1]])
+            fmax = np.concatenate([freqs_l0[1:], [fmax0]])
 
             if args.pmode:
                 # See figure 4 in https://arxiv.org/abs/1108.4777 for origin of 0.13.
@@ -487,10 +496,10 @@ def calc_scan(model_name, l, args):
                 fmin = np.maximum(fmin, freqs_l0[0])
                 fmax = np.minimum(fmax, freqs_l0[-1])
 
-            n_freq = 5 * np.ceil((fmax - fmin) / (1e6 / (1e6 / fmin - DP) - fmin)).astype(int)
+            n_freq = 5 * np.maximum(5, np.ceil((fmax - fmin) / (1e6 / (1e6 / fmin - DP) - fmin)).astype(int))
 
             num_scan = len(fmin)
-
+    n_freq = n_freq * args.f_nfreq
     return fmin, fmax, n_freq, num_scan, nu_max
 
 
@@ -528,10 +537,14 @@ def split_scan(fmin, fmax, n_freq, grid_type, args):
 
 
 def do_gyre_sim(fpath, args):
-    grid_type = 'LINEAR'
     num_scan = 0
     try:
         for l in args.ll:
+            if l == 0:
+                grid_type = 'LINEAR'
+            else:
+                grid_type = 'INVERSE'
+
             fmin, fmax, n_freq, num_scan, nu_max = calc_scan(fpath, l, args)
             if (l > 0) and (nu_max < args.min_numax):
                 print(f'Skipping {fpath} l={l} as numax {nu_max} below min-numax {args.min_numax}.')
@@ -612,9 +625,9 @@ def check_args(args):
         args.ll = [0] + args.ll  # Need l=0 modes to estimate frequency scans.
 
     if type(args.files) == list:
-        args.files = [pathlib.PurePath(fpath.strip()) for fpath in args.files]
+        args.files = [pathlib.Path(fpath.strip()) for fpath in args.files]
     else:
-        args.files = [pathlib.PurePath(args.files.strip())]
+        args.files = [pathlib.Path(args.files.strip())]
 
     if args.skip_existing:
         existing_out_files = list(pathlib.Path(args.out_dir).glob('*.sgyre_l'))
@@ -626,14 +639,13 @@ def check_args(args):
         args.files = do_files
 
     # Sort files by length, then by filename.
-    if args.sort and len(args.files) > 1:
+    if not args.nosort and len(args.files) > 1:
         args.files = sort_files(args.files)
 
     # Create output directory
     if args.out_dir != '':
         args.out_dir = pathlib.Path(args.out_dir)
-        if not args.out_dir.exists():
-            os.mkdir(args.out_dir)
+        args.out_dir.mkdir(exist_ok=True)
 
     # Create and/or clean input directory
     if args.in_dir != '':
@@ -642,12 +654,10 @@ def check_args(args):
         args.in_dir = 'gyre_ad.in'
         gyre_adin_template = 'gyre_ad.in/gyre_ad.in_'
     args.in_dir = pathlib.Path(args.in_dir)
-    if args.in_dir.exists():
-        shutil.rmtree(args.in_dir)
-    os.mkdir(args.in_dir)
+    args.in_dir.mkdir(exist_ok=True)
 
     if args.base_in != '':
-        args.base_in = pathlib.PurePath(args.base_in)
+        args.base_in = pathlib.Path(args.base_in)
 
     # If --lenient, switch to the version of gyre found.
     original_gyre = args.gyre
@@ -672,7 +682,7 @@ def get_parser():
                         help='Filetype of profiles that gyre will read.')
     parser.add_argument('files', type=str, nargs='*',
                         help='Paths to profile files for gyre to use.')
-    parser.add_argument('--gyre', type=str, choices=['G4', 'G5', 'G6', 'G7', 'G8'], default='G8',
+    parser.add_argument('--gyre', type=str, choices=['G4', 'G5', 'G6', 'G7', 'G8', 'G9'], default='G9',
                         help='Which version of gyre to use.')
     parser.add_argument('--pmode', action='store_const', const=True, default=False,
                         help='If set, scan for modes around the expected frequencies.')
@@ -693,6 +703,8 @@ def get_parser():
                         help='Directory in which to save inlist files.')
     parser.add_argument('--base-in', type=str, default='',
                         help='Path to the base inlist to use.')
+    parser.add_argument('--nosort', action='store_const', const=True, default=False,
+                        help="Don't sort input files by profile number.")
     parser.add_argument('--no-merge', '-m', action='store_const', const=True, default=False,
                         help="Don't merge the final summary files into a single file.")
     parser.add_argument('--batch', type=int, default=None,
@@ -705,25 +717,30 @@ def get_parser():
     parser.add_argument('--min-numax', type=float, default=0,
                         help='Models with numax in uHz lower than this will only calculate l=0 modes.')
     parser.add_argument('--version', action='version', version=f'gyre_driver {_version}')
-    parser.add_argument('--summary-item-list', type=str, default='M_star,R_star,L_star,l,n_pg,n_p,n_g,freq,E,E_norm',
+    parser.add_argument('--summary-item-list', type=str, default='l,n_pg,n_p,n_g,freq,E_norm,M_star,R_star,L_star,E',
                         help='Summary item list for gyre.')
+    parser.add_argument('--n-sig-lo', type=float, default=2,
+                        help="Number of power envelope sigma to look for modes below numax.")
+    parser.add_argument('--n-sig-hi', type=float, default=2,
+                        help="Number of power envelope sigma to look for modes above numax.")
+    parser.add_argument('--f-nfreq', type=int, default=1,
+                        help='Factor to increase number of scan frequencies.')
+    parser.add_argument('--summary-suffix', type=str, default='.sgyre_l',
+                        help='Merged summary file suffix.')
+    parser.add_argument('--no-output', action='store_const', const=True, default=False,
+                        help='If set, pipe all terminal output to /dev/null.')
     return parser
 
 
-
-
-if __name__ == '__main__':
-    run()
-
-def run():
+def run(args=None):
     t_start = time.time()
     cwd = os.getcwd()
 
-    parser = get_parser()
-    args = parser.parse_args()
+    if args is None:
+        parser = get_parser()
+        args = parser.parse_args()
 
-    args.sort = True
-    if len(args.files) > 1:
+    if not args.nosort and len(args.files) > 1:
         args.files = sort_files(args.files)
 
     if args.filetype == 'LOSC':
@@ -745,11 +762,15 @@ def run():
         print(f'--out-dir       = {args.out_dir}')
         print(f'--in-dir        = {args.in_dir}')
         print(f'--base-in       = {args.base_in}')
-        print(f'--sort          = {args.sort}')
+        print(f'--nosort        = {args.nosort}')
         print(f'--no-merge      = {args.no_merge}')
         print(f'--batch         = {args.batch}')
         print(f'--skip-calc     = {args.skip_calc}')
         print(f'--skip-existing = {args.skip_existing}')
+        print(f'--n-sig-lo      = {args.n_sig_lo}')
+        print(f'--n-sig-hi      = {args.n_sig_hi}')
+        print(f'--f-nfreq      = {args.f_nfreq}')
+        print(f'--summary-suffix= {args.summary_suffix}')
         print()
 
     # Load environment variables from --source and keep a copy of the old ones.
@@ -781,7 +802,8 @@ def run():
 
     t_end = time.time()
     t_taken = t_end - t_start
-    print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
+    if not args.no_output:
+        print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
 
     if args.original_gyre != args.gyre:
         print('###################################################################')
@@ -794,3 +816,6 @@ def run():
     os.environ.clear()
     os.environ.update(environ_original)
     return 0
+
+if __name__ == '__main__':
+    run()

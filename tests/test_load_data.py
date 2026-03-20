@@ -34,6 +34,8 @@ class TestLoadData(unittest.TestCase):
 
         np.testing.assert_array_equal(hist.index[:, 0]-1, hist.get_profile_index(hist.index[:, 2]))
         np.testing.assert_array_equal((2, 100, 99), hist.get_profile_num(150))
+        np.testing.assert_array_equal((2, 100, 99), hist.get_profile_num(150, method='previous'))
+        np.testing.assert_array_equal((3, 200, 199), hist.get_profile_num(150, method='next'))
         np.testing.assert_array_equal((3, 200, 199), hist.get_profile_num(150, earlier=False))
 
         hist_cols = ld.History(os.path.join(test_data, '0000', 'LOGS', 'history.data'), keep_columns=['model_number', 'center_he4'])

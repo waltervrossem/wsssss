@@ -369,7 +369,7 @@ class MesaGrid:
             if os.path.isfile(calling_file) and not calling_file.endswith('IPython/core/interactiveshell.py'):
                 shutil.copy2(calling_file, grid_path)
             else:
-                print(f"Cannot copy calling file {calling_file} to grid directory.")
+                print(f"Cannot copy calling file {calling_file} to grid directory {grid_path}.")
         else:
             pass
 
@@ -648,9 +648,10 @@ class MesaGrid:
         if os.path.exists(grid_path) and os.path.isdir(grid_path) and rm_dir:  # Remove existing grid.
             shutil.rmtree(grid_path)
 
-        os.makedirs(grid_path)
+        os.makedirs(grid_path, exist_ok=True)
         for dirname in self.dirnames:
-            os.makedirs(os.path.join(grid_path, dirname))
+            os.makedirs(os.path.join(grid_path, dirname), exist_ok=True)
+
 
     def _write_inlists(self, grid_path):
         """
@@ -663,6 +664,13 @@ class MesaGrid:
         for i, dirname in enumerate(self.dirnames):
             dirpath = os.path.join(grid_path, dirname)
             unpacked = self.unpacked[i]
+
+            # Must remove pre-existing inlist files first
+            for namelist in unpacked.keys():
+                file_path = os.path.join(dirpath, unpacked[namelist][f'{non_mesa_key_start}filename'])
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+
             for namelist in unpacked.keys():
                 file_path = os.path.join(dirpath, unpacked[namelist][f'{non_mesa_key_start}filename'])
                 if not os.path.exists(file_path):
@@ -670,7 +678,7 @@ class MesaGrid:
                 else:
                     prepend = ''
                 with open(file_path, 'a') as handle:
-                    handle.write(prepend + self._generate_inlist_string(self.unpacked[i][namelist]))
+                    handle.write(prepend + self._generate_inlist_string(unpacked[namelist]))
 
     def _generate_inlist_string(self, inlist_dict):
         """

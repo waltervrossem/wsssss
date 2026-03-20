@@ -10,7 +10,7 @@ wsssss documentation
 quick (except for the compute time) and easy.
 
 Install with
-``pip install git+https://github.com/waltervrossem/wsssss``
+``pip install wsssss``
 
 ``inlists.create_grid`` and ``mesa-go`` require a version of `MESA <https://docs.mesastar.org>`_ to be installed.
 ``gyre-driver`` requires a version of `gyre <https://gyre.readthedocs.io/en/stable/>`_ to be installed.
@@ -22,3 +22,9 @@ Install with
 
    API reference <modules>
    CLI reference <cmd>
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples:
+
+   examples/examples

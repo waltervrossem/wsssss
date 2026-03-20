@@ -15,6 +15,12 @@ for env in must_have_environ:
     if env not in os.environ:
         raise EnvironmentError(f'{env} not set.')
 
+
+def assert_allclose_recarray(arr1, arr2):
+    for colname in arr1.dtype.names:
+        np.testing.assert_allclose(arr1[colname], arr2[colname])
+
+
 @unittest.skipIf(os.name == 'nt', 'Skipping on Windows')
 class TestGyreDriver(unittest.TestCase):
     @classmethod
@@ -24,23 +30,23 @@ class TestGyreDriver(unittest.TestCase):
 
     def test_gyre_driver(self):
         os.chdir(test_data)
-        sys.argv = ['gyre-driver', '0', 'MESA', 'LOGS/profile10.data.GYRE', '--gyre', 'G7']
+        sys.argv = ['gyre-driver', '0', 'MESA', 'LOGS/profile10.data.GYRE', '--gyre', 'G9']
         ierr = gyre_driver.run()
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
         gs = ld.GyreSummary(gs_path)
-        np.testing.assert_array_equal(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
+        assert_allclose_recarray(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
         os.remove(gs_path)
 
     def test_gyre_min_numax(self):
         os.chdir(test_data)
-        sys.argv = ['gyre-driver', '01', 'MESA', 'LOGS/profile10.data.GYRE', '--min-numax', '45', '--gyre', 'G7']
+        sys.argv = ['gyre-driver', '01', 'MESA', 'LOGS/profile10.data.GYRE', '--min-numax', '45', '--gyre', 'G9']
         ierr = gyre_driver.run()
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
         gs = ld.GyreSummary(gs_path)
         # Should only have l=0 modes as the Model's numax is 44.6
-        np.testing.assert_array_equal(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
+        assert_allclose_recarray(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
         os.remove(gs_path)
 
     def test_lenient(self):
@@ -49,7 +55,7 @@ class TestGyreDriver(unittest.TestCase):
         self.assertEqual(0, ierr)
         gs_path = os.path.join(test_data, 'gyre_out', 'profile10.data.GYRE.sgyre_l')
         gs = ld.GyreSummary(gs_path)
-        np.testing.assert_array_equal(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
+        assert_allclose_recarray(self.ref_gs.data[self.ref_gs.data.l == 0], gs.data)
         os.remove(gs_path)
 
     def test_gyre_versions(self):
@@ -75,6 +81,8 @@ class TestGyreDriver(unittest.TestCase):
             major_version = version_str.split('.')[0]
             os.environ["GYRE_DIR"] = path
             sys.argv = ['gyre-driver', '0', 'MESA', 'LOGS/profile10.data.GYRE', '--gyre', f'G{major_version}']
+            ierr = gyre_driver.run()
+            if ierr == 0:
+                tested_versions.append(version_str)
 
-            tested_versions.append(version_str)
-        np.testing.assert_array_equal(np.array([6, 7, 8]), np.unique(np.array([int(v.split('.')[0]) for v in tested_versions])))
+        np.testing.assert_array_equal(np.array([6, 7, 8, 9]), np.unique(np.array([int(v.split('.')[0]) for v in tested_versions])))

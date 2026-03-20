@@ -177,19 +177,29 @@ class Kipp_data:
             c_norm = norm(c)
             c_norm = c_norm.filled(np.nan)
 
-            idx = pu.decimate_RDP(np.asarray([y_norm, c_norm]).T, epsilon=1/self.prof_resolution, return_index=True)
-
+            # Do a forwards and backwards pass to assist in triangulation
+            idx = np.concatenate([pu.decimate_RDP(np.asarray([y_norm, c_norm]).T, epsilon=1/self.prof_resolution, return_index=True),
+                                  pu.decimate_RDP(np.asarray([y_norm, c_norm]).T[::-1], epsilon=1 / self.prof_resolution, return_index=True)])
+            idx = np.unique(idx)
             # If using norm's clip, remove first and last block of clipped values.
             if norm.clip:
                 if (c_norm[idx[0]] <= 0 or (c_norm[idx[0]] >= 1)):
                     idx = idx[1:]
                 if (c_norm[idx[-1]] <= 0 or (c_norm[idx[-1]] >= 1)):
                     idx = idx[:-1]
-            xyz = np.zeros((3, idx.shape[0]))
 
+            # Insert 0 and 1 crossings and keep valid (0 < c < 1) points
+            idx = np.concatenate([idx, np.where((c_norm[:-1] <= 0) & (c_norm[1:] > 0))[0]+1,  # Next good
+                                       np.where((c_norm[:-1] > 0) & (c_norm[1:] <= 0))[0],  # Current good
+                                       np.where((c_norm[:-1] < 1) & (c_norm[1:] >= 1))[0],  # Current good
+                                       np.where((c_norm[:-1] >= 1) & (c_norm[1:] < 1))[0]+1])  # Next good
+            idx = np.unique(idx)[::-1]
+
+            xyz = np.zeros((3, idx.shape[0]))
             xyz[0] = p.get_hist_index(hist)
             xyz[1] = y[idx]
-            xyz[2] = norm.inverse(c_norm[idx])
+            xyz[2] = c[idx]
+            xyz[2][(c_norm[idx] <= 0) | (c_norm[idx] >= 1)] = np.nan
             xyz_data.append(xyz)
 
         xyz_data = np.concatenate(xyz_data, axis=1)
@@ -630,20 +640,42 @@ class Kipp_data:
             kwargs_profile_color['cmap'] = cmap
 
             triangulation_pts = self.color_zones.copy().T
-
             all_simplices = self._triangulate(triangulation_pts[:, :2])
 
-            ax.tripcolor(x.flat, y.flat, c.flat, triangles=all_simplices, **kwargs_profile_color)
-            # ax.triplot(x.flat, y.flat, triangles=all_simplices, marker='.')
+            # if any vertex contains a nan, remove triangles containing it
+            finite = np.all(np.isfinite(triangulation_pts[all_simplices]), axis=(1, 2))
+            all_simplices = all_simplices[finite]
+
+            # Retriangulate connected areas
+            adjacency_matrix = sparse.dok_array((self.color_zones.shape[1], self.color_zones.shape[1]), dtype=int)
+            adjacency_matrix[all_simplices[:, 0], all_simplices[:, 1]] = 1
+            adjacency_matrix[all_simplices[:, 1], all_simplices[:, 2]] = 1
+            adjacency_matrix[all_simplices[:, 2], all_simplices[:, 0]] = 1
+
+            adjacency_matrix = adjacency_matrix.tocsr()
+            n_components, labels = sparse.csgraph.connected_components(adjacency_matrix, directed=False)
+            cts, _ = np.histogram(labels, np.arange(n_components))
+
+            all_triangles = []
+            main_index = np.arange(len(triangulation_pts), dtype=int)
+            for good_label in np.where(cts > 2)[0]:
+                mask = labels == good_label
+                # triangles = self._triangulate(triangulation_pts[mask, :2], cumulative_integral=False)
+                triangles = self._triangulate(triangulation_pts[mask], cumulative_integral=True)
+
+                ax.tripcolor(x.flat[mask], y.flat[mask], c.flat[mask], triangles=triangles, **kwargs_profile_color)
+                # ax.triplot(x.flat[mask], y.flat[mask], triangles=triangles, marker='.')
+                triangles = main_index[mask][triangles]  # Unmask indeces
+                all_triangles.append(triangles)
             x_extent = np.array([x[0], x[-1]])
 
             self.color_info = (kwargs_profile_color['norm'], kwargs_profile_color['cmap'])
             self.triangulation_pts = triangulation_pts
-            self.simplices = all_simplices
+            self.simplices = all_triangles
 
         return x_extent
 
-    def _triangulate(self, pts):
+    def _triangulate(self, pts, cumulative_integral=False):
         """
         Normalize and triangulate `pts`.
 
@@ -655,9 +687,6 @@ class Kipp_data:
         """
         if not np.all(np.isfinite(pts)):
             raise ValueError(f'Non-finite value in triangulation points.')
-        sort_order = np.argsort(pts[:,0], kind='stable')
-        undo_sort = np.argsort(sort_order, kind='stable')
-        pts = pts[sort_order]
 
         unique_x, cts = np.unique(pts[:,0], return_counts=True)
         i_start_end = np.cumsum([0, *cts])
@@ -667,14 +696,23 @@ class Kipp_data:
 
         pts = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
 
+        if cumulative_integral:
+            for i in range(len(cts)):
+                i_start = i_start_end[i]
+                i_end = i_start_end[i + 1]
+                pts[i_start:i_end, 2] = ig.cumulative_trapezoid(pts[i_start:i_end, 2], pts[i_start:i_end, 1], initial=0)
+                if i_end - i_start > 2:
+                    pts[i_start:i_end, 2] -= pts[i_start+1, 2]
+                pts[i_start:i_end, 2] /= pts[i_end-1, 2]
+            pts = pts[:, [0,2]]  # Remove 3rd dimension for triangulation.
+
         all_simplices = []
         for i in range(len(cts) - 1):  # Generate triangulation
             i_start = i_start_end[i]
             i_end = i_start_end[i + 2]
-            delan = Delaunay(pts[i_start:i_end], qhull_options='')
+            delan = Delaunay(pts[i_start:i_end])
             all_simplices.append(delan.simplices + np.sum(cts[:i]))
         all_simplices = np.concatenate(all_simplices)
-        all_simplices = undo_sort[all_simplices]
         return all_simplices
 
     def make_kipp(self, ax=None, xlims=None, ylims=None, clims=None, norm=None, cmap=None, mixing_min_height=0, kwargs_mixing=None,
@@ -755,7 +793,10 @@ class Kipp_data:
         vmax = -1e99
         for p in profs:
             c = p.get(self.caxis)
-            vmin = min(vmin, np.min(c))
+            if isinstance(norm, mpl.colors.LogNorm):
+                vmin = min(vmin, np.min(c[c>0]))  # Smallest positive
+            else:
+                vmin = min(vmin, np.min(c))
             vmax = max(vmax, np.max(c))
 
         if norm is not None:

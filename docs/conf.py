@@ -21,7 +21,8 @@ author = 'Walter van Rossem'
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinxarg.ext',
-              'sphinx_rtd_theme'
+              'sphinx_rtd_theme',
+              'nbsphinx',
               ]
 
 templates_path = ['_templates']
