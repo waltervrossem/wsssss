@@ -21,10 +21,9 @@ class TestCreateGrid(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.grid_dir = os.path.join(os.path.dirname(__file__), '../data/grid')
+        if os.path.exists(cls.grid_dir):
+            shutil.rmtree(cls.grid_dir)
 
-    @classmethod
-    def tearDownClass(cls):
-        shutil.rmtree(cls.grid_dir)
 
     def setUp(self):
         grid = cg.MesaGrid()
@@ -131,3 +130,6 @@ class TestCreateGrid(unittest.TestCase):
             self.assertIn(key, unpacked['controls'])
         self.assertEqual(8, len(self.grid.unpacked))
 
+    def test_exist_ok(self):
+        self.grid.create_grid(self.grid_dir)
+        self.grid.create_grid(self.grid_dir, rm_dir=False)
