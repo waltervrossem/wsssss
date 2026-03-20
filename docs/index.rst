@@ -22,3 +22,9 @@ Install with
 
    API reference <modules>
    CLI reference <cmd>
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples:
+
+   examples/examples
