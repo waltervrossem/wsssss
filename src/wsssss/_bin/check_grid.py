@@ -29,7 +29,7 @@ def get_parser():
                          help='The names of the sub directories if they are not named 0000 0001 etc.')
     _parser.add_argument('--history-file', '-f', type=str, default='history.data',
                          help='Name of the MESA history file in the LOGS directory. {} will be expanded to the '
-                              'directory name.')
+                              'directory name. If it contains a star will glob match.')
     _parser.add_argument('--exclude', nargs='*', type=str, default=['figs', 'template_11701', 'slurm*'],
                          help='Directory names to exclude from sub-dirs (i.e. do not contain MESA runs).')
     _parser.add_argument('--out-file', '-o', type=str, default='../out_{}',
@@ -46,6 +46,9 @@ def get_parser():
                          help='Run the check ignoring any slurm output.')
     _parser.add_argument('--list-all', action='store_const', const=True, default=False,
                          help='Print all termination reasons.')
+    _parser.add_argument('--full-termcode', action='store_const', const=True, default=False,
+                         help='If set, scan the full MESA terminal output file for a termination code, otherwise'
+                              'only search in the last part of the file.')
     return _parser
 
 
@@ -126,15 +129,17 @@ def get_mesa_termcode(sub_dir, args):
     out_file = os.path.join(args.grid_dir, sub_dir, args.out_file).format(sub_dir)
     if os.path.exists(out_file):
         with open(out_file, 'r') as handle:
-            out_file_lines = handle.readlines()
-
-        # slurm_stats_file = os.path.join(args.grid_dir, sub_dir, args.slurm_stats_file).format(sub_dir)
-
+            if not args.full_termcode:
+                # Seek to end of file and look in end of file for termination code
+                handle.seek(0, os.SEEK_END)
+                size = handle.tell()
+                handle.seek(max(0, size - 4096 * 2))  # Go back atleast ~28 lines of full MESA output (146 chars)
+                out_file_lines = handle.readlines()[1:]  # First line might be garbled
+            else:
+                out_file_lines = handle.readlines()
         term_code = get_termination_code(out_file_lines)
-        # walltime = get_timedelta(out_file_lines)
     else:
         term_code = 'NotRun'
-
     return sub_dir, term_code
 
 
@@ -311,7 +316,14 @@ def run():
                   f'when inserting value {jobid}.')
 
     for subdir in args.subdirs:
-        hist_path = os.path.join(args.grid_dir, subdir, f'LOGS/{args.history_file.format(subdir, subdir)}')
+        if '*' in args.history_file:
+            matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
+            if len(matches) > 1:
+                raise ValueError(f'Found too many files:\n{matches}')
+            hist_path = matches[0]
+        else:
+            hist_path = os.path.join(args.grid_dir, subdir, f'LOGS/{args.history_file.format(subdir, subdir)}')
+
         mesa_termcode = get_mesa_termcode(subdir, args)[1]
         if os.path.exists(hist_path) and (mesa_termcode != 'NotRun'):
             data = read_hist_first_last_row(hist_path)
@@ -438,9 +450,16 @@ def run():
                 if photo == 'last':
                     restart_photo = photos[np.where((photo_modelnum[-1] - photo_modelnum) > 200)[0][-1]]
                 elif photo == 'preRC':
-                    histpath = os.path.join(args.grid_dir, subdir, f'LOGS/{args.history_file.format(subdir, subdir)}')
-                    if os.path.exists(histpath):
-                        hist = ld.History(histpath)
+                    if '*' in args.history_file:
+                        matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
+                        if len(matches) != 1:
+                            raise ValueError(f'Found too many files:\n{matches}')
+                        hist_path = matches[0]
+                    else:
+                        hist_path = os.path.join(args.grid_dir, subdir,
+                                                 f'LOGS/{args.history_file.format(subdir, subdir)}')
+                    if os.path.exists(hist_path):
+                        hist = ld.History(hist_path, index_name=None)
                         cheb_mask = uf.get_cheb_mask(hist)
                         first_model_rc = hist.data.model_number[cheb_mask][0]
                         restart_photo = photos[np.where((first_model_rc - photo_modelnum) > 200)[0][-1]]
