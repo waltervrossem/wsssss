@@ -233,12 +233,6 @@ def invert_dict(dct, reference_key, filter_dct_keys=None, reverse_filter=False, 
             out_dict[key] = sorted(out_dict[key])
     return out_dict
 
-
-
-
-if __name__ == "__main__":
-    run()
-
 def run():
     parser = get_parser()
     args = parser.parse_args()
@@ -482,3 +476,6 @@ def run():
         with open(os.path.join(args.grid_dir, 'grid_restart'), 'w') as f:
             f.writelines((' '.join(line) + '\n' for line in grid_restart_photos))
     return 0
+
+if __name__ == "__main__":
+    run()
