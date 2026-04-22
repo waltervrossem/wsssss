@@ -314,12 +314,15 @@ def run():
             matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
             if len(matches) > 1:
                 raise ValueError(f'Found too many files:\n{matches}')
-            hist_path = matches[0]
+            elif len(matches) == 0:
+                hist_path = ''
+            else:
+                hist_path = matches[0]
         else:
             hist_path = os.path.join(args.grid_dir, subdir, f'LOGS/{args.history_file.format(subdir, subdir)}')
 
         mesa_termcode = get_mesa_termcode(subdir, args)[1]
-        if os.path.exists(hist_path) and (mesa_termcode != 'NotRun'):
+        if os.path.exists(hist_path)  and hist_path != '' and (mesa_termcode != 'NotRun'):
             data = read_hist_first_last_row(hist_path)
             run_info[subdir]['mesa_termcode'] = mesa_termcode
             run_info[subdir]['mesa_last_model'] = data.model_number[-1]
@@ -448,11 +451,14 @@ def run():
                         matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
                         if len(matches) != 1:
                             raise ValueError(f'Found too many files:\n{matches}')
-                        hist_path = matches[0]
+                        elif len(matches) == 0:  # History not found
+                            hist_path = ''
+                        else:
+                            hist_path = matches[0]
                     else:
                         hist_path = os.path.join(args.grid_dir, subdir,
                                                  f'LOGS/{args.history_file.format(subdir, subdir)}')
-                    if os.path.exists(hist_path):
+                    if os.path.exists(hist_path) and hist_path != '':
                         hist = ld.History(hist_path, index_name=None)
                         cheb_mask = uf.get_cheb_mask(hist)
                         first_model_rc = hist.data.model_number[cheb_mask][0]
