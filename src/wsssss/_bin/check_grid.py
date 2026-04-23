@@ -435,6 +435,7 @@ def run():
                 photos = sorted(os.listdir(photodir))
             else:
                 photos = []
+            photos = [_ for _ in photos if _.replace('x', '').isdigit()]
             photo_modelnum = np.array([int(_.replace('x', '')) for _ in photos])
 
             if args.make_restart_file == 'pre-CHeX':
