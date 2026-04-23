@@ -781,6 +781,26 @@ class GyreProfile:
         self.loaded = True
         return data
 
+    def get(self, *args, mask=None):
+        """
+        Get a single or multiple columns from ``data``.
+
+        Args:
+            *args (str): Column name(s) to get.
+            mask (np.array): Mask to apply to column(s).
+
+        Returns:
+            ``np.rec.array`` or list of ``np.rec.array``: Column(s) of ``data``.
+
+        """
+        if mask is None:
+            mask = ...
+
+        if len(args) == 1:
+            return self.data[args[0]][mask]
+        else:
+            return [self.data[cname][mask] for cname in args]
+
 
 def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=None, mask_kwargs=None):
     """
