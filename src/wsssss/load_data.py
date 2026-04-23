@@ -380,28 +380,32 @@ class _Mesa(_Data):
         super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip, empty_on_error)
 
         self.LOGS = self.directory
-        if os.path.isfile(index_name):
-            self.index_path = os.path.abspath(index_name)
-        else:
-            self.index_path = os.path.join(self.LOGS, index_name)
 
-        try:
-            index = np.genfromtxt(self.index_path, skip_header=1, dtype=int)
-            if index.shape == (3,):
-                index = index.reshape((1, 3))
-
-            # Scrub index of backups and retries
-            max_model = index[-1, 0]
-            index = index[index[:, 0] <= max_model]
-            if isinstance(self, History):
-                min_model = self._first_row.model_number
-                index = index[index[:, 0] >= min_model]
-            u, i = np.unique(index[:, 0][::-1], return_index=True)
-            index = index[::-1][i]
-        except OSError:
-            if self.verbose:
-                print('Index file not found, expected path {}'.format(self.index_path))
+        if index_name is None or index_name == '':
             index = None
+            self.index_path = ''
+        else:
+            if os.path.isfile(index_name):
+                self.index_path = os.path.abspath(index_name)
+            else:
+                self.index_path = os.path.join(self.LOGS, index_name)
+            try:
+                index = np.genfromtxt(self.index_path, skip_header=1, dtype=int)
+                if index.shape == (3,):
+                    index = index.reshape((1, 3))
+
+                # Scrub index of backups and retries
+                max_model = index[-1, 0]
+                index = index[index[:, 0] <= max_model]
+                if isinstance(self, History):
+                    min_model = self._first_row.model_number
+                    index = index[index[:, 0] >= min_model]
+                u, i = np.unique(index[:, 0][::-1], return_index=True)
+                index = index[::-1][i]
+            except OSError:
+                if self.verbose:
+                    print('Index file not found, expected path {}'.format(self.index_path))
+                index = None
 
         self.index = index
 
