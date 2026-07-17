@@ -20,7 +20,7 @@ if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
 
-_version = '0.3.0'
+_version = '0.4.0'
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
@@ -266,10 +266,18 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
          f"   freq_units = 'UHZ'\n"
          f"{mode_output}\n"
          f"{nad_output}\n"
-         f"{scan_str}"
-         f"&mode\n"
-         f"   l = {l}\n"
-         f"/\n")
+         f"{scan_str}\n")
+    if args.rotation:
+        for m in range(-l, l+1):
+            s += (f"&mode\n"
+                  f"   l = {l}\n"
+                  f"   m = {m}\n"
+                  f"/\n")
+    else:
+        s += (f"&mode\n"
+              f"   l = {l}\n"
+              f"/\n")
+
 
     with open(gyre_adin, 'a') as handle:
         handle.write(s)
@@ -729,6 +737,8 @@ def get_parser():
                         help='Merged summary file suffix.')
     parser.add_argument('--no-output', action='store_const', const=True, default=False,
                         help='If set, pipe all terminal output to /dev/null.')
+    parser.add_argument('--rotation', action='store_const', const=True, default=False,
+                        help='Also search for rotationally split modes.')
     return parser
 
 
@@ -769,8 +779,9 @@ def run(args=None):
         print(f'--skip-existing = {args.skip_existing}')
         print(f'--n-sig-lo      = {args.n_sig_lo}')
         print(f'--n-sig-hi      = {args.n_sig_hi}')
-        print(f'--f-nfreq      = {args.f_nfreq}')
+        print(f'--f-nfreq       = {args.f_nfreq}')
         print(f'--summary-suffix= {args.summary_suffix}')
+        print(f'--rotation      = {args.rotation}')
         print()
 
     # Load environment variables from --source and keep a copy of the old ones.
