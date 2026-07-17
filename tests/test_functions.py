@@ -50,8 +50,8 @@ class TestFunctions(unittest.TestCase):
         types_pre = uf.convert_mixing_type(types, '11701', -1)
         types_post = uf.convert_mixing_type(types, '15140', -1)
 
-        np.testing.assert_array_equal(np.array([100, 101,  -1, 103, 104, 105, 106,  -1, 107, 109]), types_pre)
-        np.testing.assert_array_equal(np.array([100, 101, 103, 104, 105, 106,  -1, 107, 109,  -1]), types_post)
+        np.testing.assert_array_equal(types_pre, np.array([100, 101,  -1, 103, 104, 105, 106,  -1, 107, 109]))
+        np.testing.assert_array_equal(types_post, np.array([100, 101, 103, 104, 105, 106,  -1, 107, 109,  -1]))
 
     def test_masks(self):
         for mask_func in uf.mask_functions:

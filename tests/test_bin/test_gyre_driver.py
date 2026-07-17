@@ -85,4 +85,4 @@ class TestGyreDriver(unittest.TestCase):
             if ierr == 0:
                 tested_versions.append(version_str)
 
-        np.testing.assert_array_equal(np.array([6, 7, 8, 9]), np.unique(np.array([int(v.split('.')[0]) for v in tested_versions])))
+        np.testing.assert_array_equal(np.unique(np.array([int(v.split('.')[0]) for v in tested_versions])), np.array([6, 7, 8, 9]))

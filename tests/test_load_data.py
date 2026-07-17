@@ -18,39 +18,39 @@ class TestLoadData(unittest.TestCase):
         hist.dump()
 
         hist_dill = ld.History(os.path.join(test_data, '0000', 'LOGS', 'history.data.dill'))
-        np.testing.assert_array_equal(hist.data, hist_dill.data)
+        np.testing.assert_array_equal(hist_dill.data, hist.data)
         self.assertDictEqual(hist.header, hist_dill.header)
         del hist_dill
 
         hist_reload = ld.History(os.path.join(test_data, '0000', 'LOGS', 'history.data'), save_dill=True, reload=True)
-        np.testing.assert_array_equal(hist.data, hist_reload.data)
+        np.testing.assert_array_equal(hist_reload.data, hist.data)
         self.assertDictEqual(hist.header, hist_reload.header)
         del hist_reload
 
-        np.testing.assert_array_equal(np.arange(1, 1001), hist.get('model_number'))
-        np.testing.assert_array_equal(np.arange(1, 1001), hist.data.model_number)
-        np.testing.assert_array_equal(np.ones(1000), hist.data.star_mass)
-        np.testing.assert_array_equal(np.arange(1, 11), hist[:10].data.model_number)
+        np.testing.assert_array_equal(hist.get('model_number'), np.arange(1, 1001))
+        np.testing.assert_array_equal(hist.data.model_number, np.arange(1, 1001))
+        np.testing.assert_array_equal(hist.data.star_mass, np.ones(1000))
+        np.testing.assert_array_equal(hist[:10].data.model_number, np.arange(1, 11))
 
-        np.testing.assert_array_equal(hist.index[:, 0]-1, hist.get_profile_index(hist.index[:, 2]))
-        np.testing.assert_array_equal((2, 100, 99), hist.get_profile_num(150))
-        np.testing.assert_array_equal((2, 100, 99), hist.get_profile_num(150, method='previous'))
-        np.testing.assert_array_equal((3, 200, 199), hist.get_profile_num(150, method='next'))
-        np.testing.assert_array_equal((3, 200, 199), hist.get_profile_num(150, earlier=False))
+        np.testing.assert_array_equal(hist.get_profile_index(hist.index[:, 2]), hist.index[:, 0]-1)
+        np.testing.assert_array_equal(hist.get_profile_num(150), (2, 100, 99))
+        np.testing.assert_array_equal(hist.get_profile_num(150, method='previous'), (2, 100, 99))
+        np.testing.assert_array_equal(hist.get_profile_num(150, method='next'), (3, 200, 199))
+        np.testing.assert_array_equal(hist.get_profile_num(150, earlier=False), (3, 200, 199))
 
         hist_cols = ld.History(os.path.join(test_data, '0000', 'LOGS', 'history.data'), keep_columns=['model_number', 'center_he4'])
         self.assertListEqual(['model_number', 'center_he4'], hist_cols.columns)
         self.assertListEqual(hist_cols.columns, list(hist_cols.data.dtype.names))
-        np.testing.assert_array_equal(hist.data[hist_cols.columns], hist_cols.data[hist_cols.columns])
+        np.testing.assert_array_equal(hist_cols.data[hist_cols.columns], hist.data[hist_cols.columns])
 
     def test_Profile(self):
         prof = ld.Profile(os.path.join(test_data, '0000', 'LOGS', 'profile1.data'))
         hist = ld.History(os.path.join(test_data, '0000', 'LOGS', 'history.data'))
 
-        np.testing.assert_array_equal(np.zeros(1), hist.get_profile_index(prof))
-        np.testing.assert_array_equal(np.zeros(1), hist.get_profile_index([prof]))
-        np.testing.assert_array_equal(np.zeros(1), hist.get_profile_index(prof.profile_num))
-        np.testing.assert_array_equal(np.zeros(1), hist.get_profile_index([prof.profile_num]))
+        np.testing.assert_array_equal(hist.get_profile_index(prof), np.zeros(1))
+        np.testing.assert_array_equal(hist.get_profile_index([prof]), np.zeros(1))
+        np.testing.assert_array_equal(hist.get_profile_index(prof.profile_num), np.zeros(1))
+        np.testing.assert_array_equal(hist.get_profile_index([prof.profile_num]), np.zeros(1))
 
         prof = ld.Profile(os.path.join(test_data, '0000', 'LOGS', 'profile1.data'), load_GyreProfile=True)
 
