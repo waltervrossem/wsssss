@@ -662,7 +662,7 @@ def check_args(args):
         args.in_dir = 'gyre_ad.in'
         gyre_adin_template = 'gyre_ad.in/gyre_ad.in_'
     args.in_dir = pathlib.Path(args.in_dir)
-    args.in_dir.mkdir(exist_ok=True)
+    args.in_dir.mkdir(exist_ok=True, parents=True)
 
     if args.base_in != '':
         args.base_in = pathlib.Path(args.base_in)
