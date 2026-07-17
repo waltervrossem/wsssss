@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import functools
-import multiprocessing as mp
 import os
 import re
 
-import dill
 import numpy as np
 from scipy import integrate as ig
 from scipy import interpolate as ip
-from scipy import stats
-from scipy.optimize import newton
 from .constants import post15140
 from .constants import pre15140
 
@@ -62,13 +57,6 @@ def compare_version(version1, version2, operator):
         r_version1 = True
     if version2.startswith('r'):
         r_version2 = True
-
-    lt = None
-    gt = None
-    lte = None
-    gte = None
-    eq = None
-    neq = None
 
     eq = version1 == version2
     neq = not eq
@@ -152,20 +140,23 @@ mix_dict = {'pre15140': {-1:'no_region',
                        'anonymous_mixing': 'Anonymous'},
             }
 mix_dict['merged_r'] = {v:k for k,v in mix_dict['merged'].items()}  # Reversed merged.
-def convert_mixing_type(mix_type, version, unknown_mixing=100, other_mixing=[(None, None)]):
+def convert_mixing_type(mix_type, version, unknown_mixing=100, other_mixing=None):
     """
     Convert the mixing type codes to a merged version compatible with pre- and post-15140 MESA.
 
     Args:
         mix_type (np.array):
         version (str): MESA version
-        unknown_mixing (int, optional): Mixing type code to use for unreckognized mixing type code.
+        unknown_mixing (int, optional): Mixing type code to use for unrecognized mixing type code.
             Defaults to 100, which is the merged code for no_mixing.
         other_mixing (list of tuple(str, int), optional):  Information on custom mixing types. (name, mix_type_code)
 
     Returns:
         np.array: New mixing type codes associated with mix_type.
     """
+    if other_mixing is None:
+        other_mixing = [(None, None)]
+
     if compare_version(version, '15140', '>='):
         pre_post = 'post'
     else:
@@ -191,7 +182,7 @@ def cell2face(val, dm, dm_is_m=False, m_center=0):
         val (np.array): Value to convert.
         dm (np.array): Cell mass or mass coordinate if dm_is_m is True.
         dm_is_m (bool, optional): If True, treat dm as mass coordinate instead of cell mass.
-        m_center (float, optional: If dm_is_m is True, set this as the interior mass.
+        m_center (float, optional): If dm_is_m is True, set this as the interior mass.
 
     Returns:
         np.array: Value at cell face of val.
@@ -389,7 +380,7 @@ def get_pms_mask(hist, invert=False, ZAMS_method='Xc', fXc=0.99):
             end = np.where(np.diff(maskL))[0][0]
             mask[:end + 1] = True
     elif ZAMS_method == 'Xc':
-        mask = hist.data.center_h1 >= hist.data.center_h1[0] * 0.99
+        mask = hist.data.center_h1 >= hist.data.center_h1[0] * fXc
     elif callable(ZAMS_method):
         mask = ZAMS_method(hist)
     else:
@@ -443,6 +434,8 @@ def get_sgb_mask(hist, min_Xc=1e-3, fCZ=0.35):
             center_Rho = hist.get('center_Rho')
         elif 'log_center_Rho' in hist.columns:
             center_Rho = 10 ** hist.get('log_center_Rho')
+        else:
+            raise ValueError("Can not determine central density.")
         if np.log10(center_Rho[0]) >= 3.5:  # starts during or after SGB
             return np.zeros_like(ms_mask, dtype=bool)
         min_mod = hist.data.model_number[0]
@@ -503,7 +496,8 @@ def get_tip_mask(hist, logT_lim=3.8, min_logL=2.0):
 
     Args:
         hist (History):
-        logT_lim (float, optional): Maximum logT below which to look for the RGB tip.
+        logT_lim (float, optional): Maximum logT below which to look for the RGB tip. Defaults to 3.8.
+        min_logL (float, optional): Minimum logL above which to look for the RGB tip. Defaults to 2.0.
 
     Returns:
         array of bool:
@@ -734,8 +728,7 @@ def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=
         mean = np.nan
         std = np.nan
     else:
-        mean = ig.trapz(ydat, xdat) / (xdat[-1] - xdat[0])
-        std = (ig.trapz((ydat - mean) ** 2, xdat) / (xdat[-1] - xdat[0])) ** 0.5
+        mean = ig.trapezoid(ydat, xdat) / (xdat[-1] - xdat[0])
         std = np.mean(np.diff(
             np.quantile(ip.interp1d(xdat, ydat)(np.linspace(min(xdat), max(xdat), 201)), [0.15865, 0.50, 0.84135])))
     if get_std:
@@ -849,8 +842,7 @@ def get_evo_phase(hist, phase_funcs):
 
 def get_evo_stretch_func(hist, xaxis='star_age', phase_funcs=None):
     if phase_funcs is None:
-        phase_funcs = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_flashes_mask, get_cheb_mask,
-                       get_agb_mask]
+        phase_funcs = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_flashes_mask, get_cheb_mask]
     evo_phase, max_phase, phase_pass = get_evo_phase(hist, phase_funcs)
 
     xdata = hist.get(xaxis)
@@ -1039,7 +1031,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
 
     Returns:
         If do_deltanu is True, returns the corrected delta_nus. If do_deltaP is True, also returns corrected delta_Pg.
-        If get_poly is True, returns the the correction polynomials instead of corrected values.
+        If get_poly is True, returns the correction polynomials instead of corrected values.
     """
     mask = get_mask(hist, use_mask=mask)
 
