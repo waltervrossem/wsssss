@@ -488,7 +488,7 @@ def make_echelle(gs, hist=None, ax=None, l_list=(0, 1, 2), offset='auto', delta_
             elif delta_nu == 'median':
                 delta_nu = np.median(delta_nus)
             elif delta_nu in ['weighted', 'envelope', 'gaussian']:
-                delta_nu = uf.calc_deltanu(gs, hist)
+                delta_nu = uf.calc_deltanu(gs, hist, suffix=suffix, prefix=prefix)
 
     mask = gs.data.l == 0
     E_l0 = gs.get('E_norm')[mask]
