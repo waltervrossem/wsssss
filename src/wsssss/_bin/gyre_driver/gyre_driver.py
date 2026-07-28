@@ -20,7 +20,7 @@ if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
 
-_version = '0.4.0'
+_version = '0.5.0'
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
@@ -140,7 +140,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
     """Create the gyre inlist."""
 
     reduced_name = model_name.name
-    gyre_adin = args.gyre_adin_template + reduced_name + f'_l{l}' + suffix
+    gyre_adin = args.gyre_adin_template + reduced_name + suffix + f'{l}'
     summary_file = summary_path(model_name, l, suffix, args)
     if args.out_dir == '':
         mode_name_base = model_name
@@ -228,7 +228,9 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         freq_units = "freq_units = 'UHZ'"
         ad_ = ''
         nad_output = ''
-
+    if args.rotation:
+        rot_str ="   grid_frame ='COROT_O'\n"
+    else: rot_str = ""
     if single_scan:
         scan_str = (f"&scan\n"
                     f"   grid_type = '{grid_type}'\n"
@@ -236,6 +238,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
                     f"   freq_min =   {freq_min}\n"
                     f"   freq_max =   {freq_max}\n"
                     f"   n_freq =     {n_freq}\n"
+                    f"{rot_str}"
                     f"/")
     else:
         num_scan = len(n_freq)
@@ -250,6 +253,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
                          f"   freq_min =   {freq_min_i}\n"
                          f"   freq_max =   {freq_max_i}\n"
                          f"   n_freq =     {n_freq_i}\n"
+                         f"{rot_str}"
                          f"/\n")
 
     s = (f"\n"
@@ -282,14 +286,13 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
     with open(gyre_adin, 'a') as handle:
         handle.write(s)
 
-    return
+    return gyre_adin
 
 
-def run_gyre(model_name, l, suffix, args):
+def run_gyre(model_name, l, part_suffix, gyre_adin, args):
     """Run gyre an instance of gyre."""
     reduced_name = model_name.name
-    gyre_adin = args.gyre_adin_template + reduced_name + f'_l{l}' + suffix
-    summary_file = summary_path(model_name, l, suffix, args)
+    summary_file = summary_path(model_name, l, part_suffix + args.summary_suffix, args)
 
     gyre_exec = get_gyre(args, True)[0]
     if args.no_output:
@@ -378,7 +381,7 @@ def get_gyre(args, check, print_warning=False):
     return path, version
 
 
-def merge_summary_parts(model_name, l, num_scan, keep_files=False):
+def merge_summary_parts(model_name, l, num_scan, args, keep_files=False):
     """Append all partial runs for a single `l` into one summary file."""
 
     all_lines = []
@@ -386,7 +389,7 @@ def merge_summary_parts(model_name, l, num_scan, keep_files=False):
     set_header = False
     for i in range(num_scan):
         partial = f'.part{i + 1}of{num_scan}'
-        summary_file = summary_path(model_name, l, partial, args)
+        summary_file = summary_path(model_name, l, partial+args.summary_suffix, args)
         if not summary_file.exists():  # Skip summary files which found no modes.
             continue
 
@@ -400,7 +403,7 @@ def merge_summary_parts(model_name, l, num_scan, keep_files=False):
         else:
             all_lines += lines[6:]
 
-    new_summary_file = summary_path(model_name, l, '', args)
+    new_summary_file = summary_path(model_name, l, args.summary_suffix, args)
 
     with open(new_summary_file, 'w') as handle:
         handle.writelines(all_lines)
@@ -417,7 +420,7 @@ def merge_summary_l(model_name, args, keep_files=False):
     summary_files = []
     set_header = False
     for l in args.ll:
-        summary_file = summary_path(model_name, l, '', args)
+        summary_file = summary_path(model_name, l, args.summary_suffix, args)
         if not summary_file.exists():  # Skip summary files which found no modes.
             continue
 
@@ -431,8 +434,8 @@ def merge_summary_l(model_name, args, keep_files=False):
         else:
             all_lines += lines[6:]
 
-    new_summary_file = summary_path(model_name, '', '', args)
-    new_summary_file = pathlib.Path(str(new_summary_file).replace('.sgyre_l', args.summary_suffix))
+    new_summary_file = summary_path(model_name, '', args.summary_suffix, args)
+    # new_summary_file = pathlib.Path(str(new_summary_file).replace('.sgyre_l', args.summary_suffix))
     with open(new_summary_file, 'w') as handle:
         handle.writelines(all_lines)
 
@@ -445,9 +448,9 @@ def summary_path(model_name, l, suffix, args):
     reduced_name = model_name.name
 
     if args.out_dir == '':
-        summary_file = pathlib.Path(f'{model_name}.sgyre_l{l}{suffix}')
+        summary_file = pathlib.Path(f'{model_name}{suffix}{l}')
     else:
-        summary_file = pathlib.Path(args.out_dir) / f'{reduced_name}.sgyre_l{l}{suffix}'
+        summary_file = pathlib.Path(args.out_dir) / f'{reduced_name}{suffix}{l}'
 
     return summary_file
 
@@ -472,7 +475,7 @@ def calc_scan(model_name, l, args):
         fmin = fmin0
         fmax = fmax0
     else:
-        l0_summary_file = summary_path(model_name, 0, '', args)
+        l0_summary_file = summary_path(model_name, 0, args.summary_suffix, args)
         gs = ld.GyreSummary(l0_summary_file)
         freqs_l0 = gs.get('Re(freq)')[gs.get('l') == 0]
 
@@ -569,24 +572,24 @@ def do_gyre_sim(fpath, args):
                     fmax_i = fmax[i]
                     n_freq_i = n_freq[i]
 
-                    part_suffix = f'.part{i + 1}of{num_scan}'
+                    part_suffix = f'.part{i + 1}of{num_scan}' + args.summary_suffix
 
-                    write_gyre_adin(fpath, l, args.filetype, part_suffix, args.save_modes,
+                    gyre_adin = write_gyre_adin(fpath, l, args.filetype, part_suffix, args.save_modes,
                                     grid_type, fmin_i, fmax_i, n_freq_i, args)
-                    run_gyre(fpath, l, part_suffix, args)
+                    run_gyre(fpath, l, part_suffix, gyre_adin, args)
 
             else:
-                write_gyre_adin(fpath, l, args.filetype, '', args.save_modes, grid_type, fmin, fmax, n_freq, args)
-                run_gyre(fpath, l, '', args)
+                gyre_adin = write_gyre_adin(fpath, l, args.filetype, args.summary_suffix, args.save_modes, grid_type, fmin, fmax, n_freq, args)
+                run_gyre(fpath, l, '', gyre_adin, args)
 
             if args.parts and num_scan > 1:
-                merge_summary_parts(fpath, l, num_scan)
+                merge_summary_parts(fpath, l, num_scan, args)
         if not args.no_merge:
             merge_summary_l(fpath, args)
     except KeyboardInterrupt:
         print('Stopping GYRE')
         if num_scan > 1 and args.parts:
-            merge_summary_parts(fpath, l, num_scan, keep_files=True)  # Merge the summaries for the interrupted l.
+            merge_summary_parts(fpath, l, num_scan, args, keep_files=True)  # Merge the summaries for the interrupted l.
         merge_summary_l(fpath, args, keep_files=True)
         raise
 
@@ -641,7 +644,7 @@ def check_args(args):
         existing_out_files = list(pathlib.Path(args.out_dir).glob('*.sgyre_l'))
         existing_out_files = [_.absolute() for _ in existing_out_files]
         do_files = [model_name for model_name in args.files if
-                    summary_path(model_name, '', '', args).absolute() not in existing_out_files]
+                    summary_path(model_name, '', args.summary_suffix, args).absolute() not in existing_out_files]
         if args.verbose:
             print(f'num_prof_skipped= {len(args.files) - len(do_files)}')
         args.files = do_files
@@ -662,7 +665,7 @@ def check_args(args):
         args.in_dir = 'gyre_ad.in'
         gyre_adin_template = 'gyre_ad.in/gyre_ad.in_'
     args.in_dir = pathlib.Path(args.in_dir)
-    args.in_dir.mkdir(exist_ok=True)
+    args.in_dir.mkdir(exist_ok=True, parents=True)
 
     if args.base_in != '':
         args.base_in = pathlib.Path(args.base_in)
