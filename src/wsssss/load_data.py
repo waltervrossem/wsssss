@@ -602,6 +602,48 @@ class _Gyre(_Data):
         super().__init__(path, keep_columns, save_dill, reload, verbose, nanval, nanclip)
         self.gyre_version = gyre_version
 
+    def _dimless_to_Hz(self):  # Dummy
+        return np.nan
+
+    def get_frequencies(self, freq_units, Re_freq_unit='uHz'):
+        """
+        Get frequencies in the specicied units. Will use 'Re(omega)' first and 'Re(freq)' otherwise.
+        Args:
+            freq_units (str): Unit to convert to, must be one of 'uHz', 'mHz', or 'Hz'.
+            Re_freq_unit (str, optional): Unit of the 'Re(freq)' column, must be one of 'uHz', 'mHz', or 'Hz'.
+
+        Returns:
+            np.rec.array: Frequencies in unit specified by Re_freq_unit.
+        """
+        unit_dict = {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}
+        if 'freq_units' in self.header.keys():
+            header_freq_units = self.header['freq_units'].lower().replace('hz', 'Hz')
+            if header_freq_units != Re_freq_unit:
+                print(f'Warning! Frequency units in header ({header_freq_units}) and Re_freq_unit ({Re_freq_unit}) are '
+                      f'not the same, using header frequency units.')
+                Re_freq_unit = header_freq_units
+
+        if 'Re(omega)' in self.columns:
+            dimless_to_Hz = self._dimless_to_Hz() * unit_dict[freq_units]
+            freq_name = 'Re(omega)'
+            freq = self.data[freq_name]
+        elif 'Re(freq)' in self.columns:  # Assumes freq already in uHz.
+            dimless_to_Hz = unit_dict[freq_units] / unit_dict[Re_freq_unit]
+            freq_name = 'Re(freq)'
+            freq = self.data[freq_name]
+        else:
+            if 'Re(omega)' in self.header:
+                dimless_to_Hz = self._dimless_to_Hz() * unit_dict[freq_units]
+                freq_name = 'Re(omega)'
+                freq = self.header[freq_name]
+            elif 'Re(freq)' in self.header:  # Assumes freq already in uHz.
+                dimless_to_Hz = unit_dict[freq_units] / unit_dict[Re_freq_unit]
+                freq_name = 'Re(freq)'
+                freq = self.header[freq_name]
+            else:
+                raise ValueError('Frequency column/header not recognized.')
+        return freq * dimless_to_Hz
+
 
 class GyreSummary(_Gyre):
 
@@ -639,33 +681,7 @@ class GyreSummary(_Gyre):
             M_star = self.get('M_star')[0]
             R_star = self.get('R_star')[0]
             G = post15140.standard_cgrav  # This changed in version 6.
-        return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
-
-    def get_frequencies(self, freq_units, Re_freq_unit='uHz'):
-        """
-        Get frequencies in the specicied units. Will use 'Re(omega)' first and 'Re(freq)' otherwise.
-        Args:
-            freq_units (str): Unit to convert to, must be one of 'uHz', 'mHz', or 'Hz'.
-            Re_freq_unit (str, optional): Unit of the 'Re(freq)' column, must be one of 'uHz', 'mHz', or 'Hz'.
-
-        Returns:
-            np.rec.array: Frequencies in unit specified by Re_freq_unit.
-        """
-        unit_dict = {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}
-        if 'freq_units' in self.header.keys():
-            header_freq_units = self.header['freq_units'].lower().replace('hz', 'Hz')
-            if header_freq_units != Re_freq_unit:
-                print(f'Warning! Frequency units in header ({header_freq_units}) and Re_freq_unit ({Re_freq_unit}) are '
-                      f'not the same, using header frequency units.')
-                Re_freq_unit = header_freq_units
-
-        if 'Re(omega)' in self.columns:
-            dimless_to_Hz = self._calc_dimless_to_Hz() * unit_dict[freq_units]
-            freq_name = 'Re(omega)'
-        elif 'Re(freq)' in self.columns:  # Assumes freq already in uHz.
-            dimless_to_Hz = unit_dict[freq_units] / unit_dict[Re_freq_unit]
-            freq_name = 'Re(freq)'
-        return self.data[freq_name] * dimless_to_Hz
+        return 1.0 / (2 * np.pi) * (G * M_star / R_star ** 3)
 
 
 class GyreMode(_Gyre):
@@ -702,26 +718,7 @@ class GyreMode(_Gyre):
             G = pre15140.standard_cgrav
         else:
             G = post15140.standard_cgrav
-        return 1.0 / (2 * np.pi) * ((G * M_star / (R_star) ** 3))
-
-    def get_frequencies(self, freq_units):
-        """
-        Get frequencies in the specicied units. Will use 'Re(omega)' first and 'Re(freq)' otherwise.
-        Args:
-            freq_units (str): Unit to convert to, must be one of 'uHz', 'mHz', or 'Hz'.
-            Re_freq_unit (str, optional): Unit of the 'Re(freq)' column, must be one of 'uHz', 'mHz', or 'Hz'.
-
-        Returns:
-            np.rec.array: Frequencies in unit specified by Re_freq_unit.
-        """
-        unit_dict = {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}
-        if 'Re(omega)' in self.header:
-            dimless_to_Hz = self._calc_dimless_to_Hz() * unit_dict[freq_units]
-            freq_name = 'Re(omega)'
-        elif 'Re(freq)' in self.header:  # Assumes freq already in uHz.
-            dimless_to_Hz = unit_dict[freq_units] / unit_dict[Re_freq_unit]
-            freq_name = 'Re(freq)'
-        return self.data[freq_name] * dimless_to_Hz
+        return 1.0 / (2 * np.pi) * (G * M_star / R_star ** 3)
 
 
 class GyreProfile:
