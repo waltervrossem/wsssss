@@ -66,9 +66,23 @@ class _Data:
         self.path = os.path.abspath(path)
         self.directory = os.path.dirname(self.path)
         self.dill_only = False
+        self.verbose = verbose
+        self.nanval = nanval
+        if nanclip is not None:
+            self.nanclip = sorted(nanclip)
+        else:
+            self.nanclip = None
+        self.keep_columns = keep_columns
+        self.save_dill = save_dill
+        if self.path.endswith('.dill'):
+            self.dill_path = self.path
+            self.path = self.path[:-5]  # Best guess for original file name
+        else:
+            self.dill_path = self.path + '.dill'
+
         if os.path.isfile(self.path):
             self.fname = os.path.basename(self.path)
-        elif os.path.isfile(self.path + '.dill') and not os.path.isfile(self.path):
+        elif os.path.isfile(self.dill_path):
             self.fname = os.path.basename(self.path)
             self.dill_only = True
         else:
@@ -81,23 +95,7 @@ class _Data:
             else:
                 raise FileNotFoundError(self.path)
 
-        self.keep_columns = keep_columns
-        self.save_dill = save_dill
-        if self.path.endswith('.dill'):
-            self.dill_path = path
-        elif self.dill_only:
-            self.dill_path = path + '.dill'
-        else:
-            self.dill_path = os.path.join(self.directory, self.fname + '.dill')
-
         self.loaded = False
-        self.verbose = verbose
-        self.nanval = nanval
-        if nanclip is not None:
-            self.nanclip = sorted(nanclip)
-        else:
-            self.nanclip = None
-
         if os.path.isfile(self.dill_path) and not reload:
             with open(self.dill_path, 'rb') as handle:
                 try:
@@ -118,10 +116,13 @@ class _Data:
                 except Exception:
                     if self.verbose:
                         print("Failed to load dill from: \n{}".format(self.dill_path))
-                    header, columns, first_row = self._read_data_file_header_columns()
-                    self.header = header
-                    self.columns = columns
-                    self._first_row = first_row
+                    if not self.dill_only:
+                        header, columns, first_row = self._read_data_file_header_columns()
+                        self.header = header
+                        self.columns = columns
+                        self._first_row = first_row
+                    else:
+                        raise FileNotFoundError(f'Cannot load non-dill file for {self.dill_path}')
 
         else:
             header, columns, first_row = self._read_data_file_header_columns()
