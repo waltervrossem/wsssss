@@ -42,6 +42,11 @@ class TestLoadData(unittest.TestCase):
         self.assertListEqual(['model_number', 'center_he4'], hist_cols.columns)
         self.assertListEqual(hist_cols.columns, list(hist_cols.data.dtype.names))
         np.testing.assert_array_equal(hist_cols.data[hist_cols.columns], hist.data[hist_cols.columns])
+        del hist_cols
+
+        self.assertRaises(ValueError, ld.History, os.path.join(test_data, '0000', 'LOGS', 'history.data'),
+                               keep_columns=['model_number', 'center_he4', 'does_not_exist'])
+
 
     def test_Profile(self):
         prof = ld.Profile(os.path.join(test_data, '0000', 'LOGS', 'profile1.data'))

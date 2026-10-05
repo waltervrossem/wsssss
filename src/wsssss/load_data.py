@@ -109,9 +109,7 @@ class _Data:
                     self.columns = tmp.columns
                     self.data = tmp.data
                     self._first_row = tmp._first_row
-                    if self.keep_columns != 'all':
-                        self.columns = self.keep_columns
-                        self.data = self._discard_columns_rec_array(self.data, self.columns)
+
                     self.loaded = True
                 except Exception:
                     if self.verbose:
@@ -131,13 +129,17 @@ class _Data:
             self._first_row = first_row
 
         if self.keep_columns != 'all':
-            for col_keep in self.keep_columns:  # Check if columns present
-                missing_cols = []
+            missing_cols = []
+            for col_keep in self.keep_columns:
                 if col_keep not in self.columns:
                     missing_cols.append(col_keep)
-                if len(missing_cols) > 0:
-                    raise ValueError(f'Columns in `keep_columns` not present in data file:\n'
-                                     f'{" ".join(missing_cols)}')
+
+            if len(missing_cols) > 0:
+                raise ValueError(f'Columns in `keep_columns` not present in data file:\n'
+                                 f'{" ".join(missing_cols)}')
+
+            self.data = self._discard_columns_rec_array(self.data, self.keep_columns, error_on_missing_column=True)
+            self.columns = list(self.data.dtype.names)
 
     def __len__(self):
         return len(self.data)
@@ -252,13 +254,14 @@ class _Data:
 
         return header, columns, data
 
-    def _discard_columns_rec_array(self, rec_array, to_keep):
+    def _discard_columns_rec_array(self, rec_array, to_keep, error_on_missing_column=True):
         """
         Recreate a record array from `rec_array` keeping only columns `to_keep`, and discarding other columns.
 
         Args:
             rec_array (np.rec.array): Record array from which to discard columns.
             to_keep (list of str): Columns names to keep.
+            error_on_missing_column (bool): Raise an error if any columns in `to_keep` do not exist in `rec_array`.
 
         Returns:
             np.rec.array: New ``np.rec.array`` without discarded columns.
@@ -267,6 +270,10 @@ class _Data:
         mask = (columns != '') & np.isin(columns, to_keep)
         columns = columns[mask]
         formats = formats[mask]
+        missing = np.asarray(to_keep)[np.isin(to_keep, columns, invert=True)]
+        if len(missing) > 0:
+            if error_on_missing_column:
+                raise ValueError(f'Columns {missing} in `to_keep` do not exist in `rec_array`.')
         return np.rec.array(rec_array[columns].tolist(), dtype=list(zip(columns, formats)))
 
     def _discard_rows_rec_array(self, rec_array, mask):
