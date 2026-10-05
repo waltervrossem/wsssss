@@ -455,7 +455,7 @@ class History(_Mesa):
 
         Args:
             model_num (int):
-            method (str): Must be one of `closest` or `previous`.
+            method (str): Must be one of `closest`, `previous`, or `next`.
             earlier (bool):
         Returns:
             A tuple (header, columns, first_line), where header is a dict containing the header of the data file,
@@ -526,6 +526,7 @@ class History(_Mesa):
         max_model = self.data['model_number'][-1]
         scrubbed = self.data[self.data['model_number'] <= max_model]
 
+        # Keep last appended model number
         u, i = np.unique(scrubbed['model_number'][::-1], return_index=True)
         scrubbed = scrubbed[::-1][i]
 
@@ -585,7 +586,7 @@ class Profile(_Mesa):
 
 class _Gyre(_Data):
 
-    def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
+    def __init__(self, path, keep_columns='all', gyre_version='9', save_dill=False, reload=False, verbose=False,
                  nanval=-1e99, nanclip=None):
         """
         Common methods and attributes for GyreSummary and GyreMode.
@@ -648,7 +649,7 @@ class _Gyre(_Data):
 
 class GyreSummary(_Gyre):
 
-    def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
+    def __init__(self, path, keep_columns='all', gyre_version='9', save_dill=False, reload=False, verbose=False,
                  nanval=-1e99, nanclip=None):
         """
         Gyre summary output.
@@ -674,6 +675,7 @@ class GyreSummary(_Gyre):
             float: Conversion factor between dimensionless frequency and Hz.
 
         """
+        # Structure of gyre summaries can detect if pre- or post-gyre 6.
         if 'M_star' in self.header.keys():
             M_star = self.header['M_star']
             R_star = self.header['R_star']
@@ -687,9 +689,8 @@ class GyreSummary(_Gyre):
 
 class GyreMode(_Gyre):
 
-    def __init__(self, path, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False,
+    def __init__(self, path, keep_columns='all', gyre_version='9', save_dill=False, reload=False, verbose=False,
                  nanval=-1e99, nanclip=None):
-        super().__init__(path, keep_columns, gyre_version, save_dill, reload, verbose, nanval, nanclip)
         """
         Gyre mode detail file.
 
@@ -703,6 +704,7 @@ class GyreMode(_Gyre):
             nanval (float, optional): Set all values equal to this to NaN.
             nanclip (2 floats, optional): Set all values outside this range to NaN.
         """
+        super().__init__(path, keep_columns, gyre_version, save_dill, reload, verbose, nanval, nanclip)
 
     def __repr__(self):
         return f'GyreMode at {self.path}'
@@ -715,7 +717,7 @@ class GyreMode(_Gyre):
         """
         M_star = self.header['M_star']
         R_star = self.header['R_star']
-        if self.gyre_version < '6':
+        if int(self.gyre_version) < 6:
             G = pre15140.standard_cgrav
         else:
             G = post15140.standard_cgrav
@@ -761,7 +763,7 @@ class GyreProfile:
                             'nuclear_energy_generation_partial_rho', 'gravothermal_energy_generation', 'rotation']
             self.formats = [int] + 19 * [float]
         else:
-            raise NotImplementedError('Only fileversions 100, 101, and 120 are implemented.')
+            raise NotImplementedError('Only file format versions 100, 101, and 120 are implemented.')
 
         self.loaded = False
 
@@ -844,7 +846,7 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
 
 
 def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre_summary_suffix='.data.GYRE.sgyre_l',
-             return_pnums=False, use_mask=None, keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99,
+             return_pnums=False, use_mask=None, keep_columns='all', gyre_version='9', save_dill=False, reload=False, verbose=False, nanval=-1e99,
                          nanclip=None):
     """
     Load `GyreSummary` associated with `History` hist.
@@ -901,7 +903,7 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
 
 
 def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode_suffix='.mgyre', keep_columns='all',
-                            gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
+                            gyre_version='9', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
     """
     Load all `GyreMode` associated with `Profile` prof.
 
@@ -939,7 +941,7 @@ def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode
 
 
 def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='', gyre_summary_suffix='.data.GYRE.sgyre_l',
-                         keep_columns='all', gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99,
+                         keep_columns='all', gyre_version='9', save_dill=False, reload=False, verbose=False, nanval=-1e99,
                          nanclip=None):
     """
     Load the `GyreSummary` associated with `Profile` prof.
@@ -980,7 +982,7 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
 
 # def load_modes(hist, gyre_summary_dir='gyre_out', gyre_summary_prefix='profile', gyre_summary_suffix='.data.GYRE.sgyre_l',
 #                mode_dir='gyre_out/detail', mode_prefix='profile{}.', mode_suffix='.mgyre', keep_columns='all',
-#                gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
+#                gyre_version='9', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
 #
 #     gss, pnums = load_gss(hist, gyre_summary_dir, gyre_summary_prefix, gyre_summary_suffix, return_pnums=True,
 #                           keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
@@ -1051,25 +1053,26 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
 #     return modes
 
 
-def naive_merge_hists(base_hist, hists):
+def naive_merge_hists(base_hist, histories_to_merge):
     """
-    Merge two `History` objects. This function simply stacks the history data onto a new copy of base_hist.
+    Merge multiple `History` objects. This function simply stacks the history data onto a new copy of base_hist.
 
     Args:
-        base_hist (History):
-        hists (list of History): Histories to stack.
+        base_hist (History): Attributes from this `History` object are used to create a new `History` object. The `data`
+            attribute is *not* used. If it needs to be included, also put it in `histories_to_merge`.
+        histories_to_merge (list of History): Histories to stack.
 
     Returns:
         History
     """
     new_hist = copy.copy(base_hist)
-    new_hist.data = np.lib.recfunctions.stack_arrays([h.data for h in hists], asrecarray=True, usemask=False)
+    new_hist.data = np.lib.recfunctions.stack_arrays([h.data for h in histories_to_merge], asrecarray=True, usemask=False)
     return new_hist
 
 
 def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile',
                      gyre_summary_suffix='.data.GYRE.sgyre_l', use_mask=None, keep_columns='all',
-                     gyre_version='7', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
+                     gyre_version='9', save_dill=False, reload=False, verbose=False, nanval=-1e99, nanclip=None):
     """
     Load ``GyreSummary`` and profile numbers associated with ``History`` hist and place in the attribute ``History.gsspnum``.
     This is equivalent to doing ``hist.gsspnum = load_gss(..., return_pnums=True, ...)``.
