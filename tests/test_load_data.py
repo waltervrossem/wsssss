@@ -60,6 +60,7 @@ class TestLoadData(unittest.TestCase):
         gsum = ld.GyreSummary(os.path.join(test_data, '0000', 'gyre_out', 'profile10.data.GYRE.sgyre_l'))
         self.assertEqual(7, len(gsum.data[gsum.data['l'] == 0]))
         self.assertEqual(236, len(gsum.data[gsum.data['l'] == 1]))
+        np.testing.assert_array_almost_equal_nulp(gsum.get_frequencies('Hz'), gsum.data['Re(freq)'] / 1e6)
 
     def test_GyreProfile(self):
         prof = ld.Profile(os.path.join(test_data, '0000', 'LOGS', 'profile1.data'))
@@ -70,11 +71,12 @@ class TestLoadData(unittest.TestCase):
     def test_GyreMode(self):
         gsum = ld.GyreSummary(os.path.join(test_data, '0000', 'gyre_out', 'profile10.data.GYRE.sgyre_l'))
         gmode = ld.GyreSummary(os.path.join(test_data, '0000', 'gyre_out', 'profile10.data.GYRE_l0_00005_np+9_ng+0.mgyre'))
-        np = 9
+        n_p = 9
         ng = 0
-        mask = (gsum.data.n_p == np) & (gsum.data.n_g == ng)
+        mask = (gsum.data.n_p == n_p) & (gsum.data.n_g == ng)
         self.assertEqual(1, sum(mask))
         self.assertEqual(gmode.header['Re(freq)'], gsum.data['Re(freq)'][mask])
+        np.testing.assert_array_almost_equal_nulp(gmode.get_frequencies('Hz'), gmode.header['Re(freq)'] / 1e6)
 
     def test_load_profs(self):
         hist = ld.History(os.path.join(test_data, '0000', 'LOGS', 'history.data'))
