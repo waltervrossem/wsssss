@@ -839,7 +839,7 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
             else:
                 prof = Profile(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)), save_dill=save_dill)
                 profs.append(prof)
-        except IndexError:
+        except FileNotFoundError:
             print(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)) +
                   ' not found in {}'.format(hist.index_path))
     return profs
