@@ -91,6 +91,7 @@ class _Data:
                 self.columns = []
                 self.data = np.array([])
                 self.loaded = False
+                self._first_row = None
                 return
             else:
                 raise FileNotFoundError(self.path)
@@ -300,6 +301,9 @@ class _Data:
         """
         header, columns, data = self._read_data_file()
 
+        self.header = header
+        self.columns = columns
+
         if self.nanclip is not None:
             for col in columns:
                 if data[col].dtype == np.float64:
@@ -399,18 +403,28 @@ class _Mesa(_Data):
                 self.index_path = os.path.join(self.LOGS, index_name)
             try:
                 index = np.genfromtxt(self.index_path, skip_header=1, dtype=int)
-                if index.shape == (3,):
+
+                if index.size == 0:
+                    index = None
+                elif index.shape == (3,):
                     index = index.reshape((1, 3))
 
-                # Scrub index of backups and retries
-                max_model = index[-1, 0]
-                index = index[index[:, 0] <= max_model]
-                if isinstance(self, History):
-                    min_model = self._first_row.model_number
-                    index = index[index[:, 0] >= min_model]
-                u, i = np.unique(index[:, 0][::-1], return_index=True)
-                index = index[::-1][i]
-            except OSError:
+                if index is not None:
+                    # Scrub index of backups and retries
+                    max_model = index[-1, 0]
+                    index = index[index[:, 0] <= max_model]
+
+                    if isinstance(self, History) and getattr(self, '_first_row', None) is not None:
+                        min_model = self._first_row.model_number
+                        index = index[index[:, 0] >= min_model]
+
+                    if len(index) > 0:
+                        u, i = np.unique(index[:, 0][::-1], return_index=True)
+                        index = index[::-1][i]
+                    else:
+                        index = None
+
+            except (OSError, ValueError, IndexError):
                 if self.verbose:
                     print('Index file not found, expected path {}'.format(self.index_path))
                 index = None
