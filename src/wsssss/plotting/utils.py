@@ -836,7 +836,11 @@ def decimate_RDP(pts, epsilon, return_index=False):
             pt0, pt1 = pts[i_start], pts[i_end]
 
         # Perpendicular distance
-        delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1 : i_end]) / np.linalg.norm(pt1 - pt0))
+        # delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1 : i_end]) / np.linalg.norm(pt1 - pt0))
+        v1 = pt1 - pt0
+        v1 = v1 / np.linalg.norm(v1)
+        v2 = pts[i_start + 1 : i_end]
+        delta = np.abs(v1[0] * v2[:, 1] - v1[1] * v2[:, 0])
         try:
             i_dmax = np.nanargmax(delta)
             dmax = delta[i_dmax]

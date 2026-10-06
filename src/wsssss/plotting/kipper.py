@@ -748,16 +748,19 @@ class Kipp_data:
         if not np.all(np.isfinite(pts)):
             raise ValueError(f"Non-finite value in triangulation points.")
 
+        print("Warning, experimental!")
+
         unique_x, cts = np.unique(pts[:, 0], return_counts=True)
         i_start_end = np.cumsum([0, *cts])
         i_start_end[-1] = -1
+        i_start_end = i_start_end[len(pts) - 1 != i_start_end]
 
         pts[:, 0] = np.digitize(pts[:, 0], unique_x, right=True)
 
         pts = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
 
         if cumulative_integral:
-            for i in range(len(cts)):
+            for i in range(len(i_start_end) - 1):
                 i_start = i_start_end[i]
                 i_end = i_start_end[i + 1]
                 pts[i_start:i_end, 2] = ig.cumulative_trapezoid(pts[i_start:i_end, 2], pts[i_start:i_end, 1], initial=0)
@@ -767,7 +770,7 @@ class Kipp_data:
             pts = pts[:, [0, 2]]  # Remove 3rd dimension for triangulation.
 
         all_simplices = []
-        for i in range(len(cts) - 1):  # Generate triangulation
+        for i in range(len(i_start_end) - 2):  # Generate triangulation
             i_start = i_start_end[i]
             i_end = i_start_end[i + 2]
             delan = Delaunay(pts[i_start:i_end])
