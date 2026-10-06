@@ -694,7 +694,8 @@ class GyreSummary(_Gyre):
             M_star = self.get('M_star')[0]
             R_star = self.get('R_star')[0]
             G = post15140.standard_cgrav  # This changed in version 6.
-        return 1.0 / (2 * np.pi) * (G * M_star / R_star ** 3)
+
+        return (1.0 / (2.0 * np.pi)) * np.sqrt(G * M_star / R_star ** 3)
 
 
 class GyreMode(_Gyre):
@@ -731,7 +732,8 @@ class GyreMode(_Gyre):
             G = pre15140.standard_cgrav
         else:
             G = post15140.standard_cgrav
-        return 1.0 / (2 * np.pi) * (G * M_star / R_star ** 3)
+
+        return (1.0 / (2.0 * np.pi)) * np.sqrt(G * M_star / R_star ** 3)
 
 
 class GyreProfile:
