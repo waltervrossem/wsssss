@@ -486,8 +486,9 @@ class History(_Mesa):
         if self.index is None:
             raise ValueError('No profile index available.')
 
+        model_diff = self.index[:, 0] - model_num
         if method == 'closest':
-            model_diff = np.abs(self.index[:, 0] - model_num)
+            model_diff = np.abs(model_diff)
             minval = min(model_diff)
 
             ind = np.where(model_diff == minval)[0]
@@ -498,14 +499,22 @@ class History(_Mesa):
                     ind = ind[1]
             else:
                 ind = ind[0]
+
         elif method == 'previous':
-            model_diff = self.index[:, 0] - model_num
-            ind = np.where(model_diff <= 0)[0][-1]
+            candidates = np.where(model_diff <= 0)[0]
+            if len(candidates) == 0:
+                raise ValueError('No previous profile found.')
+            ind = candidates[-1]
+
         elif method == 'next':
-            model_diff = self.index[:, 0] - model_num
-            ind = np.where(model_diff >= 0)[0][0]
+            candidates = np.where(model_diff >= 0)[0]
+            if len(candidates) == 0:
+                raise ValueError('No next profile found.')
+            ind = candidates[0]
+
         else:
             raise ValueError("method must be 'closest' or 'previous' or 'next'.")
+
         pmod, _, pnum = self.index[ind]
         m_min, m_max = self.get('model_number')[[0, -1]]
         if (m_min <= pmod) and (m_max >= pmod):
