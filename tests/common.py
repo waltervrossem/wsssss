@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 
 import os
+import subprocess
+import shutil
 
 curdir = os.path.dirname(__file__)
 def have_mesa_data():
-    test_data = os.path.join(os.path.dirname(__file__), 'data', 'mesa')
-    if not os.path.exists(test_data):
-        print('Extracting mesa_test_data.tgz')
-        os.system(f'tar -xzvf {curdir}/data/mesa_test_data.tgz -C {curdir}/data/')
-    available_data = os.listdir(test_data)
-    for req_data in ['0000', '0001', 'out_0000', 'out_0001']:
-        if not req_data in available_data:
-            print('Extracting mesa_test_data.tgz')
-            os.system(f'rm -r {curdir}/data/mesa && tar -xzvf {curdir}/data/mesa_test_data.tgz -C {curdir}/data/')
-            break
+    test_data = os.path.join(curdir, 'data', 'mesa')
+    if os.path.isdir(test_data):
+        shutil.rmtree(test_data)
+
+    print('Extracting mesa_test_data.tgz')
+    subprocess.call(f'tar -xzvf {curdir}/data/mesa_test_data.tgz -C {curdir}/data/', shell=True)
