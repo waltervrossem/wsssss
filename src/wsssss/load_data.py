@@ -589,7 +589,13 @@ class Profile(_Mesa):
         self.LOGS = self.directory
 
         if self.index is not None:
-            self.profile_num = self.index[np.where(self.index == self.header['model_number'])[0][0]][2]
+            model_number = self.header['model_number']
+            matches = np.where(self.index[:, 0] == model_number)[0]
+
+            if len(matches) > 0:
+                self.profile_num = self.index[matches[-1]][2]
+            else:
+                self.profile_num = None
         else:
             self.profile_num = None
         if load_GyreProfile:
