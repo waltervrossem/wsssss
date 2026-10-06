@@ -747,6 +747,8 @@ class GyreProfile:
         self.path = path
         if os.path.isfile(path):
             self.fname = os.path.basename(self.path)
+        else:
+            raise FileNotFoundError(f'File {self.path} does not exist.')
 
         num_zones, mass, radius, luminosity, version = np.loadtxt(f'{path}', max_rows=1)
         num_zones = int(num_zones)
@@ -1085,6 +1087,9 @@ def naive_merge_hists(base_hist, histories_to_merge):
     Returns:
         History
     """
+    if len(histories_to_merge) == 0:
+        raise ValueError('No histories to merge')
+
     new_hist = copy.copy(base_hist)
     new_hist.data = np.lib.recfunctions.stack_arrays([h.data for h in histories_to_merge], asrecarray=True, usemask=False)
     return new_hist
