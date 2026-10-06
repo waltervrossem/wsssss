@@ -464,13 +464,13 @@ class History(_Mesa):
             model_num (int):
             method (str): Must be one of `closest`, `previous`, or `next`.
             earlier (bool):
-        Returns:
-            A tuple (header, columns, first_line), where header is a dict containing the header of the data file,
-            columns is a list of column names, and first_line a np.rec.array containing the first row of data.
+
         Returns:
             A tuple (pnum, pmod, hist_ind), where pnum is the profile number, pmod is the model number of Profile, and
             hist_ind the index in History of Profile.
         """
+        if self.index is None:
+            raise ValueError('No profile index available.')
 
         if method == 'closest':
             model_diff = np.abs(self.index[:, 0] - model_num)
@@ -514,6 +514,9 @@ class History(_Mesa):
             int or np.array of int: Indeces of profile_nums in History.
 
         """
+        if self.index is None:
+            raise ValueError('No profile index available.')
+
         if hasattr(profile_nums, '__len__'):
             if isinstance(profile_nums, Profile):
                 profile_nums = [profile_nums]
@@ -616,7 +619,7 @@ class _Gyre(_Data):
 
     def get_frequencies(self, freq_units, Re_freq_unit='uHz'):
         """
-        Get frequencies in the specicied units. Will use 'Re(omega)' first and 'Re(freq)' otherwise.
+        Get frequencies in the specified units. Will use 'Re(omega)' first and 'Re(freq)' otherwise.
         Args:
             freq_units (str): Unit to convert to, must be one of 'uHz', 'mHz', or 'Hz'.
             Re_freq_unit (str, optional): Unit of the 'Re(freq)' column, must be one of 'uHz', 'mHz', or 'Hz'.
@@ -818,7 +821,7 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
         prefix (str, optional): Part of profile name before the profile number. Defaults to 'profile'.
         suffix (str, optional): Part of profile name after the profile number. Defaults to '.data'.
         save_dill (bool, optional): If True, will write a `.dill` file containing the `History` data.
-        mask (array of bool or function): Mask to apply to column(s).
+        mask (array of bool, bool, or function): Mask to apply to column(s).
         mask_kwargs (dict, optional): kwargs to pass to mask if it is a function.
 
     Returns:
@@ -933,6 +936,10 @@ def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode
         list of GyreMode:
     """
     dirpath = os.path.abspath(os.path.join(prof.LOGS, '..', gyre_data_dir))
+
+    if not os.path.isdir(dirpath):
+        raise FileNotFoundError(f'Directory {dirpath} not found.')
+
     fnames = os.listdir(dirpath)
 
     if mode_prefix == '':
@@ -970,6 +977,10 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
         GyreSummary:
     """
     dirpath = os.path.abspath(os.path.join(prof.LOGS, '..', gyre_data_dir))
+
+    if not os.path.isdir(dirpath):
+        raise FileNotFoundError(f'Directory {dirpath} not found.')
+
     fnames = os.listdir(dirpath)
 
     if gyre_summary_prefix == '':
@@ -978,8 +989,8 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
     for fname in fnames:
         if fname.startswith(gyre_summary_prefix) and fname.endswith(gyre_summary_suffix):
             break
-        else:
-            fname = ''
+    else:
+        raise FileNotFoundError(f'No GyreSummary file found with prefix={gyre_summary_prefix} and suffix={gyre_summary_suffix} in {dirpath}')
 
     path = os.path.join(dirpath, fname)
     gs = GyreSummary(path, keep_columns=keep_columns, gyre_version=gyre_version, save_dill=save_dill, reload=reload,
@@ -1100,8 +1111,7 @@ def load_gss_to_hist(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profil
         nanclip (2 floats, optional): Set all values outside this range to NaN.
 
     Returns:
-        list of GyreSummary or list of list of GyreSummary: If return_pnums is False returns only `GyreSummary`.
-            If return_pnums is True also return profile numbers.
+        History
     """
     hist.gsspnum = load_gss(hist, gyre_data_dir=gyre_data_dir, gyre_summary_prefix=gyre_summary_prefix,
                             gyre_summary_suffix=gyre_summary_suffix, return_pnums=True, use_mask=use_mask,
