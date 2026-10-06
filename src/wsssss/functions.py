@@ -629,7 +629,7 @@ def get_gridnum(hist):
     return int(os.path.split(hist.LOGS)[0][-4:])
 
 
-def get_mask(hist, use_mask):
+def get_mask(hist, use_mask, mask_kwargs=None):
     """
     Evaluate a mask.
 
@@ -651,7 +651,9 @@ def get_mask(hist, use_mask):
             raise IndexError(
                 f'Length of mask not the same as length of data ({len(use_mask)} vs {len(hist.get("model_number"))}')
     elif callable(use_mask):
-        mask = use_mask(hist)
+        if mask_kwargs is None:
+            mask_kwargs = {}
+        mask = use_mask(hist, **mask_kwargs)
     else:
         if use_mask:
             mask = get_pms_mask(hist, invert=True)

@@ -836,10 +836,7 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
     pnums = hist.index[:, 2]
 
     if mask is not None:
-        if hasattr(mask, '__call__'):
-            if mask_kwargs is None:
-                mask_kwargs = {}
-            mask = mask(hist, **mask_kwargs)
+        mask = uf.get_mask(hist, mask, mask_kwargs)
         valid_mod = hist.get('model_number')[mask]
         pnums = hist.index[:, 2][np.isin(hist.index[:, 0], valid_mod)]
 
