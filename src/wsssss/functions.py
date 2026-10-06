@@ -25,7 +25,7 @@ def get_mesa_version(mesa_dir):
         >>> get_mesa_version(os.environ['MESA_DIR'])
         '24.03.1'
     """
-    with open(f'{mesa_dir}/data/version_number', 'r') as handle:
+    with open(f"{mesa_dir}/data/version_number", "r") as handle:
         version = handle.read().strip()
     return version
 
@@ -46,16 +46,16 @@ def compare_version(version1, version2, operator):
         >>> compare_version('11701', '8118', '<')  # '11701' < '8118' would return True.
         False
     """
-    allowed_ops = ['<', '>', '<=', '>=', '==', '!=']
+    allowed_ops = ["<", ">", "<=", ">=", "==", "!="]
     if not operator in allowed_ops:
         raise ValueError(f'`operator` must be one of: {", ".join(allowed_ops)}.')
     i = allowed_ops.index(operator)
 
     r_version1 = False
     r_version2 = False
-    if version1.startswith('r'):
+    if version1.startswith("r"):
         r_version1 = True
-    if version2.startswith('r'):
+    if version2.startswith("r"):
         r_version2 = True
 
     eq = version1 == version2
@@ -88,58 +88,69 @@ def get_constants(p_or_hist):
     Returns:
         module: Module containing the constants for p_or_hist.
     """
-    version = str(p_or_hist.header['version_number'])
+    version = str(p_or_hist.header["version_number"])
 
-    if compare_version(version, '15140', '<'):
+    if compare_version(version, "15140", "<"):
         return pre15140
     else:
         return post15140
 
 
 # Mixing type codes for pre and post 15140
-mix_dict = {'pre15140': {-1:'no_region',
-                         0: 'no_mixing',
-                         1: 'convective_mixing',
-                         2: 'softened_convective_mixing',
-                         3: 'overshoot_mixing',
-                         4: 'semiconvective_mixing',
-                         5: 'thermohaline_mixing',
-                         6: 'rotation_mixing',
-                         7: 'rayleigh_taylor_mixing',
-                         8: 'minimum_mixing',
-                         9: 'anonymous_mixing'},
-            'post15140': {-1:'no_region',
-                          0: 'no_mixing',
-                          1: 'convective_mixing',
-                          2: 'overshoot_mixing',
-                          3: 'semiconvective_mixing',
-                          4: 'thermohaline_mixing',
-                          5: 'rotation_mixing',
-                          6: 'rayleigh_taylor_mixing',
-                          7: 'minimum_mixing',
-                          8: 'anonymous_mixing',
-                          9: 'leftover_convective_mixing'},
-            # Need a merged when combining histories from different versions
-            'merged': {'no_region': -1,
-                       'no_mixing': 100,
-                       'convective_mixing': 101,
-                       'overshoot_mixing': 103,
-                       'semiconvective_mixing': 104,
-                       'thermohaline_mixing': 105,
-                       'rotation_mixing': 106,
-                       'minimum_mixing': 107,
-                       'anonymous_mixing': 109},
-            'names':  {'no_region': '',
-                       'no_mixing': 'No mixing',
-                       'convective_mixing': 'Convection',
-                       'overshoot_mixing': 'Overshooting',
-                       'semiconvective_mixing': 'Semiconvection',
-                       'thermohaline_mixing': 'Thermohaline',
-                       'rotation_mixing': 'Rotational',
-                       'minimum_mixing': 'Minimum',
-                       'anonymous_mixing': 'Anonymous'},
-            }
-mix_dict['merged_r'] = {v:k for k,v in mix_dict['merged'].items()}  # Reversed merged.
+mix_dict = {
+    "pre15140": {
+        -1: "no_region",
+        0: "no_mixing",
+        1: "convective_mixing",
+        2: "softened_convective_mixing",
+        3: "overshoot_mixing",
+        4: "semiconvective_mixing",
+        5: "thermohaline_mixing",
+        6: "rotation_mixing",
+        7: "rayleigh_taylor_mixing",
+        8: "minimum_mixing",
+        9: "anonymous_mixing",
+    },
+    "post15140": {
+        -1: "no_region",
+        0: "no_mixing",
+        1: "convective_mixing",
+        2: "overshoot_mixing",
+        3: "semiconvective_mixing",
+        4: "thermohaline_mixing",
+        5: "rotation_mixing",
+        6: "rayleigh_taylor_mixing",
+        7: "minimum_mixing",
+        8: "anonymous_mixing",
+        9: "leftover_convective_mixing",
+    },
+    # Need a merged when combining histories from different versions
+    "merged": {
+        "no_region": -1,
+        "no_mixing": 100,
+        "convective_mixing": 101,
+        "overshoot_mixing": 103,
+        "semiconvective_mixing": 104,
+        "thermohaline_mixing": 105,
+        "rotation_mixing": 106,
+        "minimum_mixing": 107,
+        "anonymous_mixing": 109,
+    },
+    "names": {
+        "no_region": "",
+        "no_mixing": "No mixing",
+        "convective_mixing": "Convection",
+        "overshoot_mixing": "Overshooting",
+        "semiconvective_mixing": "Semiconvection",
+        "thermohaline_mixing": "Thermohaline",
+        "rotation_mixing": "Rotational",
+        "minimum_mixing": "Minimum",
+        "anonymous_mixing": "Anonymous",
+    },
+}
+mix_dict["merged_r"] = {v: k for k, v in mix_dict["merged"].items()}  # Reversed merged.
+
+
 def convert_mixing_type(mix_type, version, unknown_mixing=100, other_mixing=None):
     """
     Convert the mixing type codes to a merged version compatible with pre- and post-15140 MESA.
@@ -157,21 +168,21 @@ def convert_mixing_type(mix_type, version, unknown_mixing=100, other_mixing=None
     if other_mixing is None:
         other_mixing = [(None, None)]
 
-    if compare_version(version, '15140', '>='):
-        pre_post = 'post'
+    if compare_version(version, "15140", ">="):
+        pre_post = "post"
     else:
-        pre_post = 'pre'
-    key = f'{pre_post}15140'
+        pre_post = "pre"
+    key = f"{pre_post}15140"
 
-    merged = mix_dict['merged']
+    merged = mix_dict["merged"]
     for custom_name, custom_mix_type in other_mixing:
         if custom_name is not None and custom_mix_type is not None:
             mix_dict[key][custom_mix_type] = custom_name
             merged[custom_name] = custom_mix_type
-            mix_dict['merged_r'] = {v: k for k, v in mix_dict['merged'].items()}
+            mix_dict["merged_r"] = {v: k for k, v in mix_dict["merged"].items()}
 
     mix_names = np.vectorize(mix_dict[key].get)(mix_type, unknown_mixing)
-    return np.vectorize(mix_dict['merged'].get)(mix_names, unknown_mixing)
+    return np.vectorize(mix_dict["merged"].get)(mix_names, unknown_mixing)
 
 
 def cell2face(val, dm, dm_is_m=False, m_center=0):
@@ -196,34 +207,34 @@ def cell2face(val, dm, dm_is_m=False, m_center=0):
 
 
 def get_logTeffL(hist, mask=None, linear=False):
-    if 'log_Teff' in hist.columns:
-        logTeff = hist.get('log_Teff')
-    elif 'effective_T' in hist.columns:
-        logTeff = np.log10(hist.get('effective_T'))
+    if "log_Teff" in hist.columns:
+        logTeff = hist.get("log_Teff")
+    elif "effective_T" in hist.columns:
+        logTeff = np.log10(hist.get("effective_T"))
     else:
-        raise ValueError('log_Teff or effective_T not in history file.')
+        raise ValueError("log_Teff or effective_T not in history file.")
 
-    if 'photosphere_L' in hist.columns:
-        logL = np.log10(hist.get('photosphere_L'))
-    elif 'luminosity' in hist.columns:
-        logL = np.log10(hist.get('luminosity'))
-    elif 'log_L' in hist.columns:
-        logL = hist.get('log_L')
+    if "photosphere_L" in hist.columns:
+        logL = np.log10(hist.get("photosphere_L"))
+    elif "luminosity" in hist.columns:
+        logL = np.log10(hist.get("luminosity"))
+    elif "log_L" in hist.columns:
+        logL = hist.get("log_L")
     else:
-        if 'photosphere_r' in hist.columns:
-            print('Calculating logL from Teff and R_photosphere.')
-            R = hist.get('photosphere_r')
+        if "photosphere_r" in hist.columns:
+            print("Calculating logL from Teff and R_photosphere.")
+            R = hist.get("photosphere_r")
             logL = 2 * np.log10(R) + 4 * logTeff - 4 * np.log10(5777)
         else:
-            raise ValueError('log_L, luminosity, or photosphere_L not in history file.')
+            raise ValueError("log_L, luminosity, or photosphere_L not in history file.")
     mask = get_mask(hist, mask)
     if linear:
-        logTeff = 10 ** logTeff
-        logL = 10 ** logL
+        logTeff = 10**logTeff
+        logL = 10**logL
     return logTeff[mask], logL[mask]
 
 
-def get_radius(p, unit='cm'):
+def get_radius(p, unit="cm"):
     """
     Get the radius from Profile p and perform a unit conversion with the correct constants.
 
@@ -236,23 +247,23 @@ def get_radius(p, unit='cm'):
     """
     c = get_constants(p)
 
-    if 'radius' in p.columns:
-        radius = p.get('radius') * c.rsun
-    elif 'logR' in p.columns:
-        radius = 10 ** p.get('logR') * c.rsun
-    elif 'radius_cm' in p.columns:
-        radius = p.get('radius_cm')
+    if "radius" in p.columns:
+        radius = p.get("radius") * c.rsun
+    elif "logR" in p.columns:
+        radius = 10 ** p.get("logR") * c.rsun
+    elif "radius_cm" in p.columns:
+        radius = p.get("radius_cm")
     else:
         raise ValueError("No radius found in profile.")
 
-    if unit == 'log':
-        radius = np.log10(radius/c.rsun)
-    elif unit.lower().replace('_', '') in ['rsun', 'rsol']:
+    if unit == "log":
+        radius = np.log10(radius / c.rsun)
+    elif unit.lower().replace("_", "") in ["rsun", "rsol"]:
         radius = radius / c.rsun
-    elif unit.lower() == 'cm':
+    elif unit.lower() == "cm":
         radius = radius
     else:
-        raise ValueError(f'Unknown unit {unit}. Must be one of cm, rsun, rsol, or log.')
+        raise ValueError(f"Unknown unit {unit}. Must be one of cm, rsun, rsol, or log.")
     return radius
 
 
@@ -269,19 +280,23 @@ def get_m_bot_CZ(hist, mask=None, max_q_bot=0.999):
     Returns:
         array-like: Bottom of the convective envelope.
     """
-    if 'm_botCZ' in hist.columns:
-        return hist.get('m_botCZ', mask=mask)
-    m_bot_CZ = np.zeros_like(hist.get('star_mass', mask=mask))
+    if "m_botCZ" in hist.columns:
+        return hist.get("m_botCZ", mask=mask)
+    m_bot_CZ = np.zeros_like(hist.get("star_mass", mask=mask))
     n_mix = 0
     for col in hist.columns:
-        if col.startswith('mix_qtop'):
+        if col.startswith("mix_qtop"):
             n_mix += 1
     for i in range(n_mix):
         i += 1
-        mix_type = convert_mixing_type(hist.get(f'mix_type_{i}', mask=mask), hist.header['version_number'])
-        m_bot_CZ = np.maximum(m_bot_CZ,
-                              hist.get('star_mass', mask=mask) * hist.get(f'mix_qtop_{i}', mask=mask) *
-                              (mix_type == mix_dict['merged']['no_mixing']) * (hist.get(f'mix_qtop_{i}', mask=mask) <= max_q_bot))
+        mix_type = convert_mixing_type(hist.get(f"mix_type_{i}", mask=mask), hist.header["version_number"])
+        m_bot_CZ = np.maximum(
+            m_bot_CZ,
+            hist.get("star_mass", mask=mask)
+            * hist.get(f"mix_qtop_{i}", mask=mask)
+            * (mix_type == mix_dict["merged"]["no_mixing"])
+            * (hist.get(f"mix_qtop_{i}", mask=mask) <= max_q_bot),
+        )
     return m_bot_CZ
 
 
@@ -338,11 +353,11 @@ def get_rc_mask(hist, min_Yc=0.1, max_fYc=0.95, first_chunk=False):
 
     if first_chunk and np.any(mask):
         end_first_block = np.where(np.diff(mask, prepend=False))[0][1]
-        mask[end_first_block + 1:] = False
+        mask[end_first_block + 1 :] = False
     return mask
 
 
-def get_pms_mask(hist, invert=False, ZAMS_method='Xc', fXc=0.99):
+def get_pms_mask(hist, invert=False, ZAMS_method="Xc", fXc=0.99):
     """
     Get the pre-main sequence mask for hist.
 
@@ -361,31 +376,32 @@ def get_pms_mask(hist, invert=False, ZAMS_method='Xc', fXc=0.99):
 
     """
 
-    if ZAMS_method == 'LH':
+    if ZAMS_method == "LH":
         _, logL = get_logTeffL(hist)
-        if 'log_LH' in hist.columns:
+        if "log_LH" in hist.columns:
             maskL = ((hist.data.log_LH - logL) < 0) & (hist.data.center_h1 > 0.6)
         else:
-            have_pp = 'pp' in hist.columns
-            have_cno = 'cno' in hist.columns
+            have_pp = "pp" in hist.columns
+            have_cno = "cno" in hist.columns
             if have_pp and have_cno:
-                log_LH = np.log10(10**hist.get('pp') + 10**hist.get('cno'))
+                log_LH = np.log10(10 ** hist.get("pp") + 10 ** hist.get("cno"))
                 maskL = ((log_LH - logL) < 0) & (hist.data.center_h1 > 0.6)
             else:
-                raise KeyError('Must have either log_LH or pp and cno as columns if using hydrogen luminosity as ZAMS start.')
+                raise KeyError(
+                    "Must have either log_LH or pp and cno as columns if using hydrogen luminosity as ZAMS start."
+                )
         starts_pms = maskL[0]
 
         mask = np.zeros_like(maskL)
         if starts_pms:
             end = np.where(np.diff(maskL))[0][0]
-            mask[:end + 1] = True
-    elif ZAMS_method == 'Xc':
+            mask[: end + 1] = True
+    elif ZAMS_method == "Xc":
         mask = hist.data.center_h1 >= hist.data.center_h1[0] * fXc
     elif callable(ZAMS_method):
         mask = ZAMS_method(hist)
     else:
-        raise ValueError(f'Unknown ZAMS_method: {ZAMS_method}.')
-
+        raise ValueError(f"Unknown ZAMS_method: {ZAMS_method}.")
 
     if invert:
         mask = ~mask
@@ -393,7 +409,7 @@ def get_pms_mask(hist, invert=False, ZAMS_method='Xc', fXc=0.99):
     return mask
 
 
-def get_ms_mask(hist, min_Xc=1e-3, ZAMS_method='Xc'):
+def get_ms_mask(hist, min_Xc=1e-3, ZAMS_method="Xc"):
     """
     Get the main sequence mask for hist.
 
@@ -430,10 +446,10 @@ def get_sgb_mask(hist, min_Xc=1e-3, fCZ=0.35):
     if np.any(ms_mask):
         min_mod = hist.data.model_number[ms_mask][-1]
     else:
-        if 'center_Rho' in hist.columns:
-            center_Rho = hist.get('center_Rho')
-        elif 'log_center_Rho' in hist.columns:
-            center_Rho = 10 ** hist.get('log_center_Rho')
+        if "center_Rho" in hist.columns:
+            center_Rho = hist.get("center_Rho")
+        elif "log_center_Rho" in hist.columns:
+            center_Rho = 10 ** hist.get("log_center_Rho")
         else:
             raise ValueError("Can not determine central density.")
         if np.log10(center_Rho[0]) >= 3.5:  # starts during or after SGB
@@ -612,9 +628,18 @@ def get_flashes_mask(hist, logT_lim=3.8):
 #     return mask
 
 
-mask_functions = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_bump_mask, get_tip_mask, get_flashes_mask,
-                  get_cheb_mask, get_rc_mask]#, get_agb_mask]
-mask_names = ['PMS', 'MS', 'SGB', 'RGB', 'RGBb', 'RGB tip', 'He flashes', 'CHeB', 'RC']#, 'post-CHeB']
+mask_functions = [
+    get_pms_mask,
+    get_ms_mask,
+    get_sgb_mask,
+    get_rgb_mask,
+    get_bump_mask,
+    get_tip_mask,
+    get_flashes_mask,
+    get_cheb_mask,
+    get_rc_mask,
+]  # , get_agb_mask]
+mask_names = ["PMS", "MS", "SGB", "RGB", "RGBb", "RGB tip", "He flashes", "CHeB", "RC"]  # , 'post-CHeB']
 
 
 def get_gridnum(hist):
@@ -642,14 +667,15 @@ def get_mask(hist, use_mask, mask_kwargs=None):
         array of bool:
 
     """
-    if hasattr(use_mask, '__len__'):
-        if len(use_mask) == len(hist.get('model_number')):
+    if hasattr(use_mask, "__len__"):
+        if len(use_mask) == len(hist.get("model_number")):
             mask = use_mask
         else:
             # Try to get numpy to raise the index error first
-            _ = hist.get('model_number')[use_mask]
+            _ = hist.get("model_number")[use_mask]
             raise IndexError(
-                f'Length of mask not the same as length of data ({len(use_mask)} vs {len(hist.get("model_number"))}')
+                f'Length of mask not the same as length of data ({len(use_mask)} vs {len(hist.get("model_number"))}'
+            )
     elif callable(use_mask):
         if mask_kwargs is None:
             mask_kwargs = {}
@@ -658,11 +684,11 @@ def get_mask(hist, use_mask, mask_kwargs=None):
         if use_mask:
             mask = get_pms_mask(hist, invert=True)
         else:
-            mask = np.ones_like(hist.get('model_number'), dtype=bool)
+            mask = np.ones_like(hist.get("model_number"), dtype=bool)
     return mask
 
 
-def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=False, verbose=True):
+def get_mean(hist, name, use_mask=None, domain="star_age", filter=None, get_std=False, verbose=True):
     """
     Calculate the average of a quantity defined by `name` over `domain`.
 
@@ -714,11 +740,11 @@ def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=
         filters = filter.split()
         mask = np.ones_like(ydat, dtype=bool)
         for filter in filters:
-            if filter.lower() in ['negative', '-', '-ve']:
+            if filter.lower() in ["negative", "-", "-ve"]:
                 mask = mask & (ydat >= 0)
-            elif filter.lower() in ['positive', '+', '+ve']:
+            elif filter.lower() in ["positive", "+", "+ve"]:
                 mask = mask & (ydat <= 0)
-            elif filter.lower() in ['finite', 'inf', 'nan']:
+            elif filter.lower() in ["finite", "inf", "nan"]:
                 mask = mask & (np.isfinite(ydat))
 
         xdat = xdat[mask]
@@ -731,8 +757,11 @@ def get_mean(hist, name, use_mask=None, domain='star_age', filter=None, get_std=
         std = np.nan
     else:
         mean = ig.trapezoid(ydat, xdat) / (xdat[-1] - xdat[0])
-        std = np.mean(np.diff(
-            np.quantile(ip.interp1d(xdat, ydat)(np.linspace(min(xdat), max(xdat), 201)), [0.15865, 0.50, 0.84135])))
+        std = np.mean(
+            np.diff(
+                np.quantile(ip.interp1d(xdat, ydat)(np.linspace(min(xdat), max(xdat), 201)), [0.15865, 0.50, 0.84135])
+            )
+        )
     if get_std:
         return mean, std
     else:
@@ -752,7 +781,7 @@ def get_weighted_quantile(x, w, q=(0.15865, 0.50, 0.84135)):
 
     """
     if not np.all(x.shape == w.shape):
-        raise ValueError('x and w must have the same shape.')
+        raise ValueError("x and w must have the same shape.")
 
     if len(x) == 0:
         return np.nan * np.ones_like(q)
@@ -784,8 +813,9 @@ def get_weighted_quantile(x, w, q=(0.15865, 0.50, 0.84135)):
 #         edges.append(logT)
 #     return logL, edges
 
-def get_instability_strip(Z, Y, logL_min=3, logL_max=4.5, kind='RRLyrae'):
-    if kind == 'RRLyrae':
+
+def get_instability_strip(Z, Y, logL_min=3, logL_max=4.5, kind="RRLyrae"):
+    if kind == "RRLyrae":
         # https://ui.adsabs.harvard.edu/abs/2015ApJ...808...50M/abstract
         logL_min = 1.5
         logL_max = 1.9
@@ -796,10 +826,10 @@ def get_instability_strip(Z, Y, logL_min=3, logL_max=4.5, kind='RRLyrae'):
 
         return logL, (logTb, logTr)
 
-    elif kind == 'Cepheid':
+    elif kind == "Cepheid":
         # https://arxiv.org/pdf/astro-ph/9801242.pdf
 
-        (Xref, Zref) = (0.7, 0.004)
+        Xref, Zref = (0.7, 0.004)
         Yref = 1 - Xref - Zref
         deltaY = Y - Yref
         deltaZ = Z - Zref
@@ -822,7 +852,7 @@ def get_evo_phase(hist, phase_funcs):
     Returns:
 
     """
-    evo_phase = np.zeros_like(hist.get('model_number'))
+    evo_phase = np.zeros_like(hist.get("model_number"))
     max_phase = 1
 
     # TODO: Be able to deal with runs that end early
@@ -838,11 +868,11 @@ def get_evo_phase(hist, phase_funcs):
                 phase_pass[phase_func] = False
         except (ValueError, IndexError):
             phase_pass[phase_func] = False
-            print(phase_func.__name__, 'failed.')
+            print(phase_func.__name__, "failed.")
     return evo_phase, max_phase, phase_pass
 
 
-def get_evo_stretch_func(hist, xaxis='star_age', phase_funcs=None):
+def get_evo_stretch_func(hist, xaxis="star_age", phase_funcs=None):
     if phase_funcs is None:
         phase_funcs = [get_pms_mask, get_ms_mask, get_sgb_mask, get_rgb_mask, get_flashes_mask, get_cheb_mask]
     evo_phase, max_phase, phase_pass = get_evo_phase(hist, phase_funcs)
@@ -854,7 +884,7 @@ def get_evo_stretch_func(hist, xaxis='star_age', phase_funcs=None):
     elif np.all(np.diff(xdata) > 0):  # monotonically increasing
         pass
     else:
-        raise ValueError(f'Quantity specified in `xaxis` ({xaxis}) must be monotonic.')
+        raise ValueError(f"Quantity specified in `xaxis` ({xaxis}) must be monotonic.")
 
     stretched = np.zeros_like(xdata) + evo_phase
     for phase in range(1, max_phase + 1):
@@ -882,24 +912,29 @@ def get_bottom_envelope(p, indeces_only=False):
     Returns:
 
     """
-    version = str(p.header['version_number'])
-    radius = get_radius(p, 'Rsol')
-    mass = p.get('mass')
-    temperature = p.get('temperature')
-    mix_type = p.get('mixing_type')
+    version = str(p.header["version_number"])
+    radius = get_radius(p, "Rsol")
+    mass = p.get("mass")
+    temperature = p.get("temperature")
+    mix_type = p.get("mixing_type")
 
-    if compare_version(version, '15140', '>='):
-        prefix = 'post'
+    if compare_version(version, "15140", ">="):
+        prefix = "post"
     else:
-        prefix = 'pre'
-    mix_type = np.array(list(map(mix_dict['merged'].get, map(mix_dict[f'{prefix}15140'].get, mix_type))))
-    mix_OS = mix_type == mix_dict['merged']['overshoot_mixing']  # OS
-    mix_CV = mix_type == mix_dict['merged']['convective_mixing']  # convective
-    temp_mask = (temperature[1:] > p.header['Teff'] * 2)
+        prefix = "pre"
+    mix_type = np.array(list(map(mix_dict["merged"].get, map(mix_dict[f"{prefix}15140"].get, mix_type))))
+    mix_OS = mix_type == mix_dict["merged"]["overshoot_mixing"]  # OS
+    mix_CV = mix_type == mix_dict["merged"]["convective_mixing"]  # convective
+    temp_mask = temperature[1:] > p.header["Teff"] * 2
     radiative = False
     try:
         bottom_of_CZ = np.where(mix_CV[:-1] & mix_OS[1:] & temp_mask)[0][0]
-        bottom_of_US = np.where(mix_OS[:-1] & (mix_type[1:] != mix_dict['merged']['convective_mixing']) & (mix_type[1:] != mix_dict['merged']['overshoot_mixing']) & temp_mask)[0][0]
+        bottom_of_US = np.where(
+            mix_OS[:-1]
+            & (mix_type[1:] != mix_dict["merged"]["convective_mixing"])
+            & (mix_type[1:] != mix_dict["merged"]["overshoot_mixing"])
+            & temp_mask
+        )[0][0]
     except IndexError:
         radiative = True
         bottom_of_CZ = 0
@@ -918,16 +953,16 @@ def get_bottom_envelope(p, indeces_only=False):
         else:
             r_bCZ = radius[bottom_of_CZ]
             m_bCZ = mass[bottom_of_CZ]
-    return p.header['model_number'], m_bCZ, r_bCZ, mass[bottom_of_US], radius[bottom_of_US]
+    return p.header["model_number"], m_bCZ, r_bCZ, mass[bottom_of_US], radius[bottom_of_US]
 
 
 def get_lamb2(p, l=1):
-    if 'lamb_S2' in p.columns:
+    if "lamb_S2" in p.columns:
         lamb2 = p.data.lamb_S2 * (l * (l + 1) / 2)
-    elif 'lamb_Sl1' in p.columns:
+    elif "lamb_Sl1" in p.columns:
         lamb2 = (p.data.lamb_Sl1 / (1e6 / (2 * np.pi))) ** 2 * (l * (l + 1) / 2)  # l part to convert from l=1 to l=l
     else:
-        radius = get_radius(p, unit='cm')
+        radius = get_radius(p, unit="cm")
         lamb2 = l * (l + 1) * (p.data.csound / radius) ** 2
     return lamb2
 
@@ -953,7 +988,7 @@ def calc_MH(hist, ZX_sol=0.0178, use_mask=None):
     return MH
 
 
-def calc_deltanu(gs, hist, prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz'):
+def calc_deltanu(gs, hist, prefix="profile", suffix=".data.GYRE.sgyre_l", freq_units="uHz"):
     """
     Calculate the large frequency separation Delta nu.
 
@@ -967,21 +1002,21 @@ def calc_deltanu(gs, hist, prefix='profile', suffix='.data.GYRE.sgyre_l', freq_u
     Returns:
         float: Large frequency separation \\Delta\\nu.
     """
-    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
+    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ""))
     i_hist = hist.get_profile_index(pnum)[0]
     nu_all = gs.get_frequencies(freq_units)
 
     mask = gs.data.l == 0
     mask = np.logical_and(mask, gs.data.n_pg > 0)
-    nu_max = hist.get('nu_max')[i_hist]
-    fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))
-    w = np.exp(-((nu_all[mask][:-1] - nu_max) / fsig) ** 2)
+    nu_max = hist.get("nu_max")[i_hist]
+    fsig = (0.66 * nu_max**0.88) / 2 / np.sqrt(2 * np.log(2.0))
+    w = np.exp(-(((nu_all[mask][:-1] - nu_max) / fsig) ** 2))
     delta_nus = np.diff(nu_all[mask])
     delta_nu = np.sum(w * delta_nus) / np.sum(w)
     return delta_nu
 
 
-def calc_deltaPg(gs, hist, l, prefix='profile', suffix='.data.GYRE.sgyre_l'):
+def calc_deltaPg(gs, hist, l, prefix="profile", suffix=".data.GYRE.sgyre_l"):
     """
     Calculate the period spacing Delta P weighted by the power spectrum envelope.
     Args:
@@ -994,25 +1029,35 @@ def calc_deltaPg(gs, hist, l, prefix='profile', suffix='.data.GYRE.sgyre_l'):
     Returns:
         float: Period spacing Delta P.
     """
-    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ''))
+    pnum = int(gs.path.split(prefix)[-1].replace(suffix, ""))
     i_hist = hist.get_profile_index(pnum)[0]
-    nu_max = hist.get('nu_max')[i_hist]
+    nu_max = hist.get("nu_max")[i_hist]
 
     if l == 0:
-        raise ValueError('Cannot use l=0 for period spacing.')
+        raise ValueError("Cannot use l=0 for period spacing.")
 
     mask = gs.data.l == l
-    nu = gs.get_frequencies('Hz')[mask]
-    dPi = -np.diff(nu ** -1)
+    nu = gs.get_frequencies("Hz")[mask]
+    dPi = -np.diff(nu**-1)
 
-    fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))
-    w = np.exp(-((nu[:-1] - nu_max) / fsig) ** 2)
+    fsig = (0.66 * nu_max**0.88) / 2 / np.sqrt(2 * np.log(2.0))
+    w = np.exp(-(((nu[:-1] - nu_max) / fsig) ** 2))
     dPi = np.sum(dPi * w / sum(w))
     return dPi
 
 
-def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_deltaP=True,
-                   prefix='profile', suffix='.data.GYRE.sgyre_l', get_poly=False, weight=True):
+def correct_seismo(
+    hist,
+    gsspnum,
+    mask,
+    xname="center_he4",
+    do_deltanu=True,
+    do_deltaP=True,
+    prefix="profile",
+    suffix=".data.GYRE.sgyre_l",
+    get_poly=False,
+    weight=True,
+):
     """
     Calculate corrected delta_nu and delta_Pg using GyreSummary instances in gsspnum. The correction is done by
     fitting a 2nd order polynomial to the ratio of delta_nu from the History and from the GyreSummary instances and
@@ -1075,7 +1120,7 @@ def correct_seismo(hist, gsspnum, mask, xname='center_he4', do_deltanu=True, do_
         mid = (x[1:] + x[:-1]) / 2
         w = np.zeros_like(x)
         w[1:-1] = np.diff(mid)
-        w[1:-1] = (x[2:] - x[:-2])
+        w[1:-1] = x[2:] - x[:-2]
         w[0] = 2 * (x[1] - x[0])
         w[-1] = 2 * (x[-1] - x[-2])
         w = np.abs(w)
@@ -1127,7 +1172,8 @@ def calc_ModDens(numax, deltanu, deltap):
     Returns:
         Mode density
     """
-    return deltanu / (numax ** 2 * 1e-6 * deltap)
+    return deltanu / (numax**2 * 1e-6 * deltap)
+
 
 def calc_abundance(hist, use_mask=None):
     """
@@ -1142,25 +1188,25 @@ def calc_abundance(hist, use_mask=None):
 
     """
     mask = get_mask(hist, use_mask)
-    cols = [col for col in hist.columns if col.startswith('surface')]
-    elems = [re.sub('[0-9]', '', iso.split('_')[1].capitalize()) for iso in cols]
+    cols = [col for col in hist.columns if col.startswith("surface")]
+    elems = [re.sub("[0-9]", "", iso.split("_")[1].capitalize()) for iso in cols]
     A = np.zeros((sum(mask), len(np.unique(elems))))
     j = 0
     e0 = elems[0]
     for i, col in enumerate(cols):
-        if col == 'surface_neut':
+        if col == "surface_neut":
             m = 1
         else:
-            e = re.sub('[0-9]', '', col.split('_')[1].capitalize())
+            e = re.sub("[0-9]", "", col.split("_")[1].capitalize())
             if e != e0:
                 j += 1
                 e0 = e
-            m = float(re.sub('[A-z]', '', col.split('_')[1]))
+            m = float(re.sub("[A-z]", "", col.split("_")[1]))
         A[:, j] += hist.get(col)[mask] / m
 
     _, idx = np.unique(elems, return_index=True)
     elems = np.array(elems)[np.sort(idx)]
 
     A = np.log10(A)
-    A = A - A[:, np.where(elems == 'H')[0][0]][:, np.newaxis] + 12
+    A = A - A[:, np.where(elems == "H")[0][0]][:, np.newaxis] + 12
     return A, elems

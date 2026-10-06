@@ -10,6 +10,6 @@ from . import plotting
 from . import inlists
 import importlib.metadata
 
-__all__ = ['functions', 'load_data', 'plotting', 'inlists']
+__all__ = ["functions", "load_data", "plotting", "inlists"]
 __version__ = importlib.metadata.version(__package__ or __name__)
 del importlib

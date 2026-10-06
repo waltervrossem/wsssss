@@ -22,12 +22,10 @@ class HandlerDashedLines(HandlerLineCollection):
     """
 
     # From https://matplotlib.org/stable/gallery/text_labels_and_annotations/legend_demo.html
-    def create_artists(self, legend, orig_handle,
-                       xdescent, ydescent, width, height, fontsize, trans):
+    def create_artists(self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans):
         # figure out how many lines there are
         numlines = len(orig_handle.get_segments())
-        xdata, xdata_marker = self.get_xdata(legend, xdescent, ydescent,
-                                             width, height, fontsize)
+        xdata, xdata_marker = self.get_xdata(legend, xdescent, ydescent, width, height, fontsize)
         leglines = []
         # divide the vertical space where the lines will go
         # into equal parts based on the number of lines
@@ -204,12 +202,14 @@ def get_figure(ax):
 
 
 def top_legend(ax, ncol=2, **kwargs):
-    return ax.legend(ncol=ncol, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, mode='expand', borderaxespad=0., **kwargs)
+    return ax.legend(
+        ncol=ncol, bbox_to_anchor=(0.0, 1.02, 1.0, 0.102), loc=3, mode="expand", borderaxespad=0.0, **kwargs
+    )
 
 
 def top_figure_legend(f, ncol, top=0.9, **kwargs):
     if f.get_constrained_layout():
-        return f.legend(loc='outside upper center', ncol=ncol, borderaxespad=0.2, **kwargs)
+        return f.legend(loc="outside upper center", ncol=ncol, borderaxespad=0.2, **kwargs)
 
     fig_size = f.bbox.corners()[3]
     f.subplots_adjust(top=top)
@@ -222,9 +222,14 @@ def top_figure_legend(f, ncol, top=0.9, **kwargs):
     width = right - left
     height = 1 - bot - 0.02
 
-    legend = f.legend(loc='upper center', ncol=ncol, mode='expand', borderaxespad=0.,
-                      bbox_to_anchor=(left, bot, width, height),
-                      **kwargs)
+    legend = f.legend(
+        loc="upper center",
+        ncol=ncol,
+        mode="expand",
+        borderaxespad=0.0,
+        bbox_to_anchor=(left, bot, width, height),
+        **kwargs,
+    )
     return legend
 
 
@@ -240,13 +245,18 @@ def side_figure_legend(f, ncol, right=0.75, **kwargs):
     width = 1 - left - 0.01
     height = top - bot
 
-    legend = f.legend(loc='upper center', ncol=ncol, mode='expand', borderaxespad=0.,
-                      bbox_to_anchor=(left, bot, width, height),
-                      **kwargs)
+    legend = f.legend(
+        loc="upper center",
+        ncol=ncol,
+        mode="expand",
+        borderaxespad=0.0,
+        bbox_to_anchor=(left, bot, width, height),
+        **kwargs,
+    )
     return legend
 
 
-def colored_line(f, ax, xdat, ydat, cdat, norm=None, cmap='viridis', lw=2, add_cbar=True, do_lims=False, **kwargs):
+def colored_line(f, ax, xdat, ydat, cdat, norm=None, cmap="viridis", lw=2, add_cbar=True, do_lims=False, **kwargs):
     points = np.asarray([xdat, ydat]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
     lc = LineCollection(segments, cmap=plt.get_cmap(cmap), zorder=5, lw=1, norm=norm, **kwargs)
@@ -280,7 +290,7 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None, linear=False):
     xfactor = 0.07 / 4 * yw / xw
 
     # at this scale doesn't matter which constants are used
-    const = 4 * np.pi * post15140.boltz_sigma / post15140.lsun * post15140.rsun ** 2
+    const = 4 * np.pi * post15140.boltz_sigma / post15140.lsun * post15140.rsun**2
     log_const = np.log10(const)
     logTs = np.linspace(0, 6, 2)
     if radii is None:
@@ -292,12 +302,12 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None, linear=False):
     for rad in radii:
         # Do number string formatting first so calculated and displayed radii are equal
         if max(radii) < 10:
-            nr_string = f'{rad:.1f}'
+            nr_string = f"{rad:.1f}"
         else:
             if rad < 1:
-                nr_string = f'{rad:.1f}'
+                nr_string = f"{rad:.1f}"
             else:
-                nr_string = f'{rad:.0f}'
+                nr_string = f"{rad:.0f}"
         rad = float(nr_string)
         if (rad in _radii) or (rad <= 0):
             continue
@@ -306,9 +316,9 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None, linear=False):
         logR = np.log10(rad)
         logLs = 2 * logR + 4 * logTs + log_const
         if linear:
-            ax.plot(10**logTs, 10**logLs, 'grey', linestyle='--', zorder=-10, lw=1)
+            ax.plot(10**logTs, 10**logLs, "grey", linestyle="--", zorder=-10, lw=1)
         else:
-            ax.plot(logTs, logLs, 'grey', linestyle='--', zorder=-10, lw=1)
+            ax.plot(logTs, logLs, "grey", linestyle="--", zorder=-10, lw=1)
 
         xleft = np.interp(ylim1[1], logLs, logTs)
         xright = np.interp(ylim1[0], logLs, logTs)
@@ -318,8 +328,8 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None, linear=False):
         yleft = np.interp(xleft, logTs, logLs)
         yright = np.interp(xright, logTs, logLs)
 
-        is_top = (xleft < xlim1[0])
-        is_bottom = (xright > xlim1[1])
+        is_top = xleft < xlim1[0]
+        is_bottom = xright > xlim1[1]
         textxs = []
 
         if is_top:
@@ -342,23 +352,36 @@ def hrd_const_rad(ax, fontsize=8, radii=None, angle=None, linear=False):
                 if linear:
                     ax.set_ylim(10**ylim1)
                     ax.set_xlim(10**xlim1)
-                    screen_dx, screen_dy = ax.transData.transform((10**logTs[0], 10**logLs[0])) - ax.transData.transform(
-                        (10**logTs[-1], 10**logLs[-1]))
+                    screen_dx, screen_dy = ax.transData.transform(
+                        (10 ** logTs[0], 10 ** logLs[0])
+                    ) - ax.transData.transform((10 ** logTs[-1], 10 ** logLs[-1]))
                 else:
                     ax.set_ylim(ylim1)
                     ax.set_xlim(xlim1)
                     screen_dx, screen_dy = ax.transData.transform((logTs[0], logLs[0])) - ax.transData.transform(
-                        (logTs[-1], logLs[-1]))
+                        (logTs[-1], logLs[-1])
+                    )
                 angle = (np.degrees(np.arctan2(screen_dy, screen_dx)) + 90) % 180 - 90
             texty = np.interp(textx, logTs, logLs)
             if linear:
                 textx = 10**textx
                 texty = 10**texty
-            text = ax.text(textx, texty, r"${}\;\mathrm{{R}}_{{\odot}}$".format(nr_string), color='k', zorder=-9,
-                           rotation=angle, size=fontsize, va='center', ha='center', clip_on=True,
-                           bbox=dict(facecolor='white', linewidth=0, pad=0))
+            text = ax.text(
+                textx,
+                texty,
+                r"${}\;\mathrm{{R}}_{{\odot}}$".format(nr_string),
+                color="k",
+                zorder=-9,
+                rotation=angle,
+                size=fontsize,
+                va="center",
+                ha="center",
+                clip_on=True,
+                bbox=dict(facecolor="white", linewidth=0, pad=0),
+            )
             text.set_path_effects(
-                [patheffects.Stroke(linewidth=3, foreground=ax.get_facecolor()), patheffects.Normal()])
+                [patheffects.Stroke(linewidth=3, foreground=ax.get_facecolor()), patheffects.Normal()]
+            )
     if linear:
         ax.set_ylim(10**ylim1)
         ax.set_xlim(10**xlim1)
@@ -371,30 +394,30 @@ def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
     if isinstance(xname, list) or isinstance(xname, tuple):
         x, xname = xname
         label = xname
-    elif xname.lower().replace('_', '') in ['radius', 'r', 'rsol', 'rsun']:
-        x = uf.get_radius(p, 'Rsol')
-        label = r'Radius $(R_\odot)$'
-    elif xname in ['radius_cm', 'r_cm']:
+    elif xname.lower().replace("_", "") in ["radius", "r", "rsol", "rsun"]:
+        x = uf.get_radius(p, "Rsol")
+        label = r"Radius $(R_\odot)$"
+    elif xname in ["radius_cm", "r_cm"]:
         x = uf.get_radius(p)
-        label = r'Radius (cm)'
-    elif xname in ('x', 'radius_dimless'):
+        label = r"Radius (cm)"
+    elif xname in ("x", "radius_dimless"):
         x = uf.get_radius(p)
         x = x / max(x)
-        label = r'Fractional radius $x$ $( r /\mathrm{R}_\star)$'
-    elif xname == 'logR':
-        x = uf.get_radius(p, 'Rsol')
-        label = r'Radius $(r/\mathrm{R}_\odot)$'
-    elif xname == 'mass':
+        label = r"Fractional radius $x$ $( r /\mathrm{R}_\star)$"
+    elif xname == "logR":
+        x = uf.get_radius(p, "Rsol")
+        label = r"Radius $(r/\mathrm{R}_\odot)$"
+    elif xname == "mass":
         x = p.data.mass
-        label = r'Mass coordinate $m/\mathrm{M}_\odot$'
-    elif xname in ['q', 'mass_dimless']:
+        label = r"Mass coordinate $m/\mathrm{M}_\odot$"
+    elif xname in ["q", "mass_dimless"]:
         x = p.data.mass
         x = x / x[0]
-        label = r'Fractional mass $q$ $( m /\mathrm{M}_\star)$'
-    elif xname in ['zone', 'zone_number']:
+        label = r"Fractional mass $q$ $( m /\mathrm{M}_\star)$"
+    elif xname in ["zone", "zone_number"]:
         x = np.arange(len(p.data)) + 1
-        label = 'Zone Number'
-    elif xname == 's':
+        label = "Zone Number"
+    elif xname == "s":
         if hist is None:
             raise ValueError("Need History for xname='s'.")
         i_hist = p.get_hist_index(hist)
@@ -402,10 +425,10 @@ def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
         r2 = hist.data.r_2[i_hist]
         r0 = np.sqrt(r1 * r2)
         x = np.log(p.data.radius / r0)
-        label = '$s$'
+        label = "$s$"
     else:
         x = p.get(xname)
-        label = xname.replace('_', ' ')
+        label = xname.replace("_", " ")
     if ax is not None:
         ax.set_xlabel(label)
 
@@ -415,12 +438,12 @@ def get_x_and_set_xlabel(p, xname, ax=None, func_on_xaxis=None, hist=None):
 
 
 def get_mix_dict(profile):
-    mesa_ver = str(profile.header.get('version_number'))
-    if uf.compare_version(mesa_ver, '15140', '>='):
-        prefix = 'post'
+    mesa_ver = str(profile.header.get("version_number"))
+    if uf.compare_version(mesa_ver, "15140", ">="):
+        prefix = "post"
     else:
-        prefix = 'pre'
-    mix_dict = uf.mix_dict[f'{prefix}15140']
+        prefix = "pre"
+    mix_dict = uf.mix_dict[f"{prefix}15140"]
     return mix_dict
 
 
@@ -433,7 +456,7 @@ def get_mixing(profile, min_width):
     """
     mix_dict = get_mix_dict(profile)
 
-    mixing = profile.get('mixing_type')
+    mixing = profile.get("mixing_type")
     regions = {}
     for i, name in mix_dict.items():
         # if i == 0:
@@ -453,6 +476,7 @@ def get_mixing(profile, min_width):
         regions[name] = [pair for pair in pairs if pair[1] - pair[0] >= min_width]
     return regions
 
+
 def get_default_mixing_kwargs():
     """
     Get the default coloring scheme for mixing.
@@ -461,60 +485,72 @@ def get_default_mixing_kwargs():
             drawn.
     """
     default_kwargs_mixing = {
-        uf.mix_dict['merged']['convective_mixing']: {'name': 'convective_mixing',
-                                                     'color': "Chartreuse",
-                                                     'hatch': "//",
-                                                     'line': 1,
-                                                     'show': True
-                                                     },
-        uf.mix_dict['merged']['overshoot_mixing']: {'name': 'overshoot_mixing',
-                                                    'color': "purple",
-                                                    'hatch': "x",
-                                                    'line': 1,
-                                                    'show': True
-                                                    },
-        uf.mix_dict['merged']['semiconvective_mixing']: {'name': 'semiconvective_mixing',
-                                                         'color': "red",
-                                                         'hatch': "\\\\",
-                                                         'line': 1,
-                                                         'show': True
-                                                         },
-        uf.mix_dict['merged']['thermohaline_mixing']: {'name': 'thermohaline_mixing',
-                                                       'color': "Gold",
-                                                       'hatch': "||",
-                                                       'line': 1,
-                                                       'show': False
-                                                       },
-        uf.mix_dict['merged']['rotation_mixing']: {'name': 'rotation_mixing',
-                                                   'color': "brown",
-                                                   'hatch': "*",
-                                                   'line': 1,
-                                                   'show': True
-                                                   },
-        uf.mix_dict['merged']['anonymous_mixing']: {'name': 'anonymous_mixing',
-                                                    'color': "tab:grey",
-                                                    'hatch': "+",
-                                                    'line': 1,
-                                                    'show': True
-                                                    },
-        uf.mix_dict['merged']['minimum_mixing']: {'name': 'minimum_mixing',
-                                                  'color': "cyan",
-                                                  'hatch': "-",
-                                                  'line': 1,
-                                                  'show': True
-                                                  },
-        uf.mix_dict['merged']['no_mixing']: {'name': 'no_mixing',
-                                             'color': "",
-                                             'hatch': "",
-                                             'line': 0,
-                                             'show': False
-                                             },
-
+        uf.mix_dict["merged"]["convective_mixing"]: {
+            "name": "convective_mixing",
+            "color": "Chartreuse",
+            "hatch": "//",
+            "line": 1,
+            "show": True,
+        },
+        uf.mix_dict["merged"]["overshoot_mixing"]: {
+            "name": "overshoot_mixing",
+            "color": "purple",
+            "hatch": "x",
+            "line": 1,
+            "show": True,
+        },
+        uf.mix_dict["merged"]["semiconvective_mixing"]: {
+            "name": "semiconvective_mixing",
+            "color": "red",
+            "hatch": "\\\\",
+            "line": 1,
+            "show": True,
+        },
+        uf.mix_dict["merged"]["thermohaline_mixing"]: {
+            "name": "thermohaline_mixing",
+            "color": "Gold",
+            "hatch": "||",
+            "line": 1,
+            "show": False,
+        },
+        uf.mix_dict["merged"]["rotation_mixing"]: {
+            "name": "rotation_mixing",
+            "color": "brown",
+            "hatch": "*",
+            "line": 1,
+            "show": True,
+        },
+        uf.mix_dict["merged"]["anonymous_mixing"]: {
+            "name": "anonymous_mixing",
+            "color": "tab:grey",
+            "hatch": "+",
+            "line": 1,
+            "show": True,
+        },
+        uf.mix_dict["merged"]["minimum_mixing"]: {
+            "name": "minimum_mixing",
+            "color": "cyan",
+            "hatch": "-",
+            "line": 1,
+            "show": True,
+        },
+        uf.mix_dict["merged"]["no_mixing"]: {"name": "no_mixing", "color": "", "hatch": "", "line": 0, "show": False},
     }
     return default_kwargs_mixing
 
-def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, add_legend=True, func_on_xaxis=None,
-               kwargs_mixing=None):
+
+def add_mixing(
+    ax,
+    profile,
+    xname="mass",
+    min_width=5,
+    ymin=0,
+    ymax=1,
+    alpha=1,
+    add_legend=True,
+    func_on_xaxis=None,
+    kwargs_mixing=None,
+):
     """
     kwargs_mixing (dict, optional): kwargs used to draw mixing regions, if `None`, defaults to `plotting.utils.get_default_mixing_kwargs()`.
     """
@@ -530,12 +566,12 @@ def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, 
         regions = all_regions[name]
         if len(regions) == 0:
             continue
-        mix_type = uf.mix_dict['merged'][name]
+        mix_type = uf.mix_dict["merged"][name]
         mix_info = kwargs_mixing[mix_type]
-        color = mix_info['color']
-        hatch = mix_info['hatch']
-        line = mix_info['line']
-        show = mix_info['show']
+        color = mix_info["color"]
+        hatch = mix_info["hatch"]
+        line = mix_info["line"]
+        show = mix_info["show"]
 
         if not show:
             continue
@@ -546,35 +582,68 @@ def add_mixing(ax, profile, xname='mass', min_width=5, ymin=0, ymax=1, alpha=1, 
             xend = x[end]
 
             if add_legend and name not in added_to_legend:
-                ax.axvspan(xstart, xend, ymin, ymax, hatch=hatch, edgecolor=color, linewidth=line,
-                           facecolor='none', label=name, zorder=-1, alpha=alpha)
+                ax.axvspan(
+                    xstart,
+                    xend,
+                    ymin,
+                    ymax,
+                    hatch=hatch,
+                    edgecolor=color,
+                    linewidth=line,
+                    facecolor="none",
+                    label=name,
+                    zorder=-1,
+                    alpha=alpha,
+                )
                 added_to_legend.append(name)
             else:
-                ax.axvspan(xstart, xend, ymin, ymax, hatch=hatch, edgecolor=color, linewidth=line,
-                           facecolor='none', zorder=-1, alpha=alpha)
+                ax.axvspan(
+                    xstart,
+                    xend,
+                    ymin,
+                    ymax,
+                    hatch=hatch,
+                    edgecolor=color,
+                    linewidth=line,
+                    facecolor="none",
+                    zorder=-1,
+                    alpha=alpha,
+                )
 
 
-def add_burning(ax, profile, xname='mass', ymin=0, ymax=1, num_levels=None, vmin=-2, vmax=8, add_cbar=True,
-                kind='net_nuclear_energy', norm=None, kipp_scaling=True, func_on_xaxis=None):
-    """
-    """
+def add_burning(
+    ax,
+    profile,
+    xname="mass",
+    ymin=0,
+    ymax=1,
+    num_levels=None,
+    vmin=-2,
+    vmax=8,
+    add_cbar=True,
+    kind="net_nuclear_energy",
+    norm=None,
+    kipp_scaling=True,
+    func_on_xaxis=None,
+):
+    """ """
     x = get_x_and_set_xlabel(profile, xname, func_on_xaxis=func_on_xaxis)
 
-    if kind == 'eps_nuc':
-        log_z = np.log10(profile.get('eps_nuc'))
-        cbar_label = r'$\log_{10} \; \epsilon_{\mathrm{nuc}}$'
-    elif kind == 'net_nuclear_energy':
-        log_z = profile.get('net_nuclear_energy')
+    if kind == "eps_nuc":
+        log_z = np.log10(profile.get("eps_nuc"))
+        cbar_label = r"$\log_{10} \; \epsilon_{\mathrm{nuc}}$"
+    elif kind == "net_nuclear_energy":
+        log_z = profile.get("net_nuclear_energy")
         if kipp_scaling:
             log_z = np.sign(log_z) * np.ceil(np.abs(log_z))
-        cbar_label = r'$\mathrm{sign}(\epsilon_\mathrm{net}) \; \log_{10} \; \max(1, \lceil|\epsilon_\mathrm{net}|\rceil)/(\mathrm{erg}/g/s)$'
+        cbar_label = r"$\mathrm{sign}(\epsilon_\mathrm{net}) \; \log_{10} \; \max(1, \lceil|\epsilon_\mathrm{net}|\rceil)/(\mathrm{erg}/g/s)$"
     else:
-        raise ValueError('`eps_nuc` or `net_nuclear_energy` must be a column in profile.')
+        raise ValueError("`eps_nuc` or `net_nuclear_energy` must be a column in profile.")
     # log_z[log_z < vmin] = vmin
     if num_levels is None:
         num_levels = int(vmax - vmin + 1)
 
-    if (kind == 'net_nuclear_energy') and (vmin < 0):
+    if (kind == "net_nuclear_energy") and (vmin < 0):
         levels = np.linspace(vmin - 0.5, vmax + 0.5, num_levels + 1)
         cmap = plt.cm.RdBu
         if norm is None:
@@ -616,55 +685,71 @@ def add_burning(ax, profile, xname='mass', ymin=0, ymax=1, num_levels=None, vmin
     return cm.ScalarMappable(cmap=cmap, norm=norm), cbar_label
 
 
-def add_hrd_instabilities(ax, classic=True, sdB=True, ):
+def add_hrd_instabilities(
+    ax,
+    classic=True,
+    sdB=True,
+):
     xlims = ax.get_xlim()
     ylims = ax.get_ylim()
 
     if classic:
-        ax.plot((3.95, 3.9, 3.8), (1, 1.8, 4.5), 'k--')
-        ax.plot((3.85, 3.8, 3.7), (0.8, 1.6, 4.5), 'k--')
+        ax.plot((3.95, 3.9, 3.8), (1, 1.8, 4.5), "k--")
+        ax.plot((3.85, 3.8, 3.7), (0.8, 1.6, 4.5), "k--")
     if sdB:
         sdBVr_logTeff = (4.55, 4.45)
         sdBVr_logL = (1, 1.8)
-        patch_sdBVr = mpl.patches.Rectangle((sdBVr_logTeff[0], sdBVr_logL[0]),
-                                            width=np.diff(sdBVr_logTeff), height=np.diff(sdBVr_logL),
-                                            fill=False, edgecolor='b', hatch='\\')
+        patch_sdBVr = mpl.patches.Rectangle(
+            (sdBVr_logTeff[0], sdBVr_logL[0]),
+            width=np.diff(sdBVr_logTeff),
+            height=np.diff(sdBVr_logL),
+            fill=False,
+            edgecolor="b",
+            hatch="\\",
+        )
         ax.add_patch(patch_sdBVr)
 
         sdBVs_logTeff = (4.5, 4.35)
         sdBVs_logL = (1.4, 1.8)
-        patch_sdBVr = mpl.patches.Rectangle((sdBVs_logTeff[0], sdBVs_logL[0]),
-                                            width=np.diff(sdBVs_logTeff), height=np.diff(sdBVs_logL),
-                                            fill=False, edgecolor='b', hatch='/')
+        patch_sdBVr = mpl.patches.Rectangle(
+            (sdBVs_logTeff[0], sdBVs_logL[0]),
+            width=np.diff(sdBVs_logTeff),
+            height=np.diff(sdBVs_logL),
+            fill=False,
+            edgecolor="b",
+            hatch="/",
+        )
         ax.add_patch(patch_sdBVr)
 
     ax.set_xlim(xlims)
     ax.set_ylim(ylims)
 
 
-def calc_inertia_marker_size(gs, l, freq_units='uHz'):
-    mask = gs.get('l') == 0
-    E_l0 = gs.get('E_norm')[mask]
+def calc_inertia_marker_size(gs, l, freq_units="uHz"):
+    mask = gs.get("l") == 0
+    E_l0 = gs.get("E_norm")[mask]
     nu_all = gs.get_frequencies(freq_units)
     nu_l0 = nu_all[mask]
     # interpolate over log10 inertia for better behaviour
     try:
-        log_f_El0 = interp1d(nu_l0, np.log10(E_l0), kind='cubic', bounds_error=True)
+        log_f_El0 = interp1d(nu_l0, np.log10(E_l0), kind="cubic", bounds_error=True)
     except ValueError:
-        log_f_El0 = interp1d(nu_l0, np.log10(E_l0), kind='linear', bounds_error=True)
-    mask = gs.get('l') == l
+        log_f_El0 = interp1d(nu_l0, np.log10(E_l0), kind="linear", bounds_error=True)
+    mask = gs.get("l") == l
     nu = gs.get_frequencies(freq_units)[mask]
     # x = np.log10(gs.get('E_norm')[mask]) - log_f_El0(nu_all[mask])
     # ms = 2.5 * 10 ** (2 * (1 - x))
     xmin = min(E_l0)
-    x = np.log10(gs.get('E_norm')[mask] / xmin)
-    ms = 25 - 2 * x ** 3
+    x = np.log10(gs.get("E_norm")[mask] / xmin)
+    ms = 25 - 2 * x**3
     ms = np.minimum(25, ms)
     ms = np.maximum(1, ms)
     return ms
 
 
-def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=None, background_width=3, ignore_nolabel=False):
+def line_legend(
+    ax, edge_space=0.05, num_line_label=4, fontsize=7, background=None, background_width=3, ignore_nolabel=False
+):
     xmin, xmax = ax.get_xlim()
     x_range = xmax - xmin
     line_label_x = np.linspace(xmin + edge_space * x_range, xmax - edge_space * x_range, num=num_line_label)
@@ -677,7 +762,7 @@ def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=No
         ydata = line.get_ydata()
 
         if ignore_nolabel:
-            if label.startswith('_child'):
+            if label.startswith("_child"):
                 continue
 
         for x in line_label_x:
@@ -691,15 +776,25 @@ def line_legend(ax, edge_space=0.05, num_line_label=4, fontsize=7, background=No
                 y = np.interp(x, (x_left, x_right), (y_left, y_right))
 
                 screen_dx, screen_dy = ax.transData.transform((x_left, y_left)) - ax.transData.transform(
-                    (x_right, y_right))
+                    (x_right, y_right)
+                )
                 rotation = (np.degrees(np.arctan2(screen_dy, screen_dx)) + 90) % 180 - 90
 
-                text = ax.text(x, y, label, rotation=rotation, color=line.get_color(), ha='center', va='center',
-                               clip_on=True, size=fontsize, bbox={'alpha': 0})
+                text = ax.text(
+                    x,
+                    y,
+                    label,
+                    rotation=rotation,
+                    color=line.get_color(),
+                    ha="center",
+                    va="center",
+                    clip_on=True,
+                    size=fontsize,
+                    bbox={"alpha": 0},
+                )
                 text.set_path_effects(
-                    [patheffects.Stroke(linewidth=background_width, foreground=background),
-                     patheffects.Normal()])
-
+                    [patheffects.Stroke(linewidth=background_width, foreground=background), patheffects.Normal()]
+                )
 
 
 def decimate_RDP(pts, epsilon, return_index=False):
@@ -713,7 +808,7 @@ def decimate_RDP(pts, epsilon, return_index=False):
     Returns:
         np.array: Decimated version of pts.
     """
-    good = np.isfinite(pts[:,1]) & (pts[:,1] >= 0) & (pts[:,1] <= 1)
+    good = np.isfinite(pts[:, 1]) & (pts[:, 1] >= 0) & (pts[:, 1] <= 1)
     good_loc = np.where(good)[0]
     last_i = good_loc[-1]
     # First and last non-nan point
@@ -741,7 +836,7 @@ def decimate_RDP(pts, epsilon, return_index=False):
             pt0, pt1 = pts[i_start], pts[i_end]
 
         # Perpendicular distance
-        delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1:i_end]) / np.linalg.norm(pt1 - pt0))
+        delta = np.abs(np.cross(pt1 - pt0, pt0 - pts[i_start + 1 : i_end]) / np.linalg.norm(pt1 - pt0))
         try:
             i_dmax = np.nanargmax(delta)
             dmax = delta[i_dmax]
@@ -749,12 +844,12 @@ def decimate_RDP(pts, epsilon, return_index=False):
             if np.all(np.isnan(delta)):
                 dmax = 0
             else:
-                print('Bad delta in RDP decimation')
-                print('i_start, i_end, pt0, pt1')
+                print("Bad delta in RDP decimation")
+                print("i_start, i_end, pt0, pt1")
                 print(i_start, i_end, pt0, pt1)
-                print('np.linalg.norm(pt1 - pt0)')
+                print("np.linalg.norm(pt1 - pt0)")
                 print(np.linalg.norm(pt1 - pt0))
-                print('delta')
+                print("delta")
                 print(delta)
                 raise
 

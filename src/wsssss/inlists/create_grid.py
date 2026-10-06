@@ -13,17 +13,39 @@ import numpy as np
 from .inlists import defaults, evaluate_inlist, variable_to_string
 from ..functions import get_mesa_version, compare_version
 
-non_mesa_key_start = '!PY_KEY_'
-kap_user_params = ['user_num_kap_Xs', 'user_kap_Xs', 'user_num_kap_Zs', 'user_kap_Zs',
-                   'user_num_kap_Xs_for_this_Z',
-                   'user_num_kap_CO_Xs', 'user_kap_CO_Xs', 'user_num_kap_CO_Zs', 'user_kap_CO_Zs',
-                   'user_num_kap_CO_Xs_for_this_Z',
-                   'user_num_kap_lowT_Xs', 'user_kap_lowT_Xs', 'user_num_kap_lowT_Zs', 'user_kap_lowT_Zs',
-                   'user_num_kap_lowT_Xs_for_this_Z']
+non_mesa_key_start = "!PY_KEY_"
+kap_user_params = [
+    "user_num_kap_Xs",
+    "user_kap_Xs",
+    "user_num_kap_Zs",
+    "user_kap_Zs",
+    "user_num_kap_Xs_for_this_Z",
+    "user_num_kap_CO_Xs",
+    "user_kap_CO_Xs",
+    "user_num_kap_CO_Zs",
+    "user_kap_CO_Zs",
+    "user_num_kap_CO_Xs_for_this_Z",
+    "user_num_kap_lowT_Xs",
+    "user_kap_lowT_Xs",
+    "user_num_kap_lowT_Zs",
+    "user_kap_lowT_Zs",
+    "user_num_kap_lowT_Xs_for_this_Z",
+]
+
+
 class MesaGrid:
-    def __init__(self, mesa_dir='', inlist_filename='inlist', inlists_index=5, starjob_filename='inlist_project',
-                 controls_filename='inlist_project', eos_filename='inlist_project', kap_filename='inlist_project',
-                 pgstar_filename='inlist_project', add_base_workdir=False):
+    def __init__(
+        self,
+        mesa_dir="",
+        inlist_filename="inlist",
+        inlists_index=5,
+        starjob_filename="inlist_project",
+        controls_filename="inlist_project",
+        eos_filename="inlist_project",
+        kap_filename="inlist_project",
+        pgstar_filename="inlist_project",
+        add_base_workdir=False,
+    ):
         """
         `MesaGrid` class which contains all inlist settings for a grid. When the `create_grid` method is called,
         a copy of the script which called it is copied into the grid directory.
@@ -62,64 +84,76 @@ class MesaGrid:
 
         if inlist_filename in [starjob_filename, controls_filename, eos_filename, kap_filename, pgstar_filename]:
             raise ValueError(
-                '`inlist_filename` cannot be the same as `starjob_filename`, `controls_filename`, `eos_filename`, `kap_filename`, or `pgstar_filename`.')
+                "`inlist_filename` cannot be the same as `starjob_filename`, `controls_filename`, `eos_filename`, `kap_filename`, or `pgstar_filename`."
+            )
 
-        if mesa_dir == '':
-            self.mesa_dir = os.environ['MESA_DIR']
+        if mesa_dir == "":
+            self.mesa_dir = os.environ["MESA_DIR"]
             self.version = get_mesa_version(self.mesa_dir)
         else:
             self.version = get_mesa_version(mesa_dir)
             self.mesa_dir = mesa_dir
 
-        if compare_version(self.version, '15140', '>='):
-            self.namelists = ('star_job', 'eos', 'kap', 'controls', 'pgstar')
+        if compare_version(self.version, "15140", ">="):
+            self.namelists = ("star_job", "eos", "kap", "controls", "pgstar")
             self.separate_eoskap = True
         else:
-            self.namelists = ('star_job', 'controls', 'pgstar')
+            self.namelists = ("star_job", "controls", "pgstar")
             self.separate_eoskap = False
 
-        if compare_version(self.version, 'r23.05.1', '>='):
+        if compare_version(self.version, "r23.05.1", ">="):
             self.extra_inlist_as_list = True
         else:
             self.extra_inlist_as_list = False
 
         # Setup namelist objects
-        self.star_job = {f'{non_mesa_key_start}filename': starjob_filename,
-                         f'{non_mesa_key_start}type': 'star_job',
-                         f'{non_mesa_key_start}group_unpack': []}
-        self.controls = {f'{non_mesa_key_start}filename': controls_filename,
-                         f'{non_mesa_key_start}type': 'controls',
-                         f'{non_mesa_key_start}group_unpack': []}
+        self.star_job = {
+            f"{non_mesa_key_start}filename": starjob_filename,
+            f"{non_mesa_key_start}type": "star_job",
+            f"{non_mesa_key_start}group_unpack": [],
+        }
+        self.controls = {
+            f"{non_mesa_key_start}filename": controls_filename,
+            f"{non_mesa_key_start}type": "controls",
+            f"{non_mesa_key_start}group_unpack": [],
+        }
         # self.astero = {f'{non_mesa_key_start}filename': astero_filename,
         #                  f'{non_mesa_key_start}type': 'astero',
         #                  f'{non_mesa_key_start}group_unpack': []}
         if self.separate_eoskap:
-            self.eos = {f'{non_mesa_key_start}filename': eos_filename,
-                        f'{non_mesa_key_start}type': 'eos',
-                        f'{non_mesa_key_start}group_unpack': []}
-            self.kap = {f'{non_mesa_key_start}filename': kap_filename,
-                        f'{non_mesa_key_start}type': 'kap',
-                        f'{non_mesa_key_start}group_unpack': []}
-        self.pgstar = {f'{non_mesa_key_start}filename': pgstar_filename,
-                       f'{non_mesa_key_start}type': 'pgstar', }
-        self.inlist = {f'{non_mesa_key_start}filename': inlist_filename,
-                       f'{non_mesa_key_start}type': 'master',
-                       f'{non_mesa_key_start}group_unpack': []}
+            self.eos = {
+                f"{non_mesa_key_start}filename": eos_filename,
+                f"{non_mesa_key_start}type": "eos",
+                f"{non_mesa_key_start}group_unpack": [],
+            }
+            self.kap = {
+                f"{non_mesa_key_start}filename": kap_filename,
+                f"{non_mesa_key_start}type": "kap",
+                f"{non_mesa_key_start}group_unpack": [],
+            }
+        self.pgstar = {
+            f"{non_mesa_key_start}filename": pgstar_filename,
+            f"{non_mesa_key_start}type": "pgstar",
+        }
+        self.inlist = {
+            f"{non_mesa_key_start}filename": inlist_filename,
+            f"{non_mesa_key_start}type": "master",
+            f"{non_mesa_key_start}group_unpack": [],
+        }
 
         self.inlists_index = inlists_index
         for namelist in self.namelists:
-            namelist_filename = self.__dict__[namelist][f'{non_mesa_key_start}filename']
+            namelist_filename = self.__dict__[namelist][f"{non_mesa_key_start}filename"]
             i = self.inlists_index
             if self.extra_inlist_as_list:
-                read_extra_inlist_key = f'read_extra_{namelist}_inlist({i})'
-                read_extra_inlist_name_key = f'extra_{namelist}_inlist_name({i})'
+                read_extra_inlist_key = f"read_extra_{namelist}_inlist({i})"
+                read_extra_inlist_name_key = f"extra_{namelist}_inlist_name({i})"
             else:
-                read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
-                read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
+                read_extra_inlist_key = f"read_extra_{namelist}_inlist{i}"
+                read_extra_inlist_name_key = f"extra_{namelist}_inlist{i}_name"
 
             # Create entry and default to True.
-            self.inlist[namelist] = {read_extra_inlist_key: True,
-                                     read_extra_inlist_name_key: namelist_filename}
+            self.inlist[namelist] = {read_extra_inlist_key: True, read_extra_inlist_name_key: namelist_filename}
 
         self.extra_files = []
         self.extra_dirs = []
@@ -128,27 +162,37 @@ class MesaGrid:
         self.name_funcion = None
         self.unpacked = False
 
-        self.inlist_option_files_to_validate = [('star_job', 'history_columns_file'),
-                                                ('star_job', 'profile_columns_file')]
+        self.inlist_option_files_to_validate = [
+            ("star_job", "history_columns_file"),
+            ("star_job", "profile_columns_file"),
+        ]
 
         if add_base_workdir:
-            for fname in ['mk', 'clean', 'rn', 're']:
-                self.extra_files.append(os.path.join(f'{self.mesa_dir}/star/work', fname))
-            for dname in ['make', 'src']:
-                self.extra_dirs.append(os.path.join(f'{self.mesa_dir}/star/work', dname))
+            for fname in ["mk", "clean", "rn", "re"]:
+                self.extra_files.append(os.path.join(f"{self.mesa_dir}/star/work", fname))
+            for dname in ["make", "src"]:
+                self.extra_dirs.append(os.path.join(f"{self.mesa_dir}/star/work", dname))
 
         no_expand = {namelist: [] for namelist in self.namelists}
-        no_expand['kap'] = ['user_kap_Xs', 'user_kap_Zs', 'user_num_kap_Xs_for_this_Z', 'user_kap_CO_Xs',
-                             'user_kap_CO_Zs', 'user_num_kap_CO_Xs_for_this_Z', 'user_kap_lowT_Xs', 'user_kap_lowT_Zs',
-                             'user_num_kap_lowT_Xs_for_this_Z']
-        no_expand['kap'] = [_.lower() for _ in no_expand['kap']]
+        no_expand["kap"] = [
+            "user_kap_Xs",
+            "user_kap_Zs",
+            "user_num_kap_Xs_for_this_Z",
+            "user_kap_CO_Xs",
+            "user_kap_CO_Zs",
+            "user_num_kap_CO_Xs_for_this_Z",
+            "user_kap_lowT_Xs",
+            "user_kap_lowT_Zs",
+            "user_num_kap_lowT_Xs_for_this_Z",
+        ]
+        no_expand["kap"] = [_.lower() for _ in no_expand["kap"]]
         self.no_expand = no_expand
-        self.expand_non_mesa_keys = {namelist:[] for namelist in self.namelists}
+        self.expand_non_mesa_keys = {namelist: [] for namelist in self.namelists}
 
     def __repr__(self):
-        s = f'MESA Grid for version {self.version}.'
+        s = f"MESA Grid for version {self.version}."
         if self.unpacked:
-            s += f' {len(self.unpacked)} runs.'
+            s += f" {len(self.unpacked)} runs."
         return s
 
     def add_file(self, path):
@@ -169,7 +213,7 @@ class MesaGrid:
         if os.path.isfile(path):
             self.extra_files.append(path)
         else:
-            raise FileNotFoundError(f'{path} is not a file.')
+            raise FileNotFoundError(f"{path} is not a file.")
 
     def add_dir(self, path):
         """
@@ -188,7 +232,7 @@ class MesaGrid:
         if os.path.isdir(path):
             self.extra_dirs.append(path)
         else:
-            raise NotADirectoryError(f'{path} is not a directory.')
+            raise NotADirectoryError(f"{path} is not a directory.")
 
     def add_inlist_option_file_check(self, namelist, option):
         """
@@ -209,7 +253,6 @@ class MesaGrid:
         if namelist not in self.namelists:
             raise ValueError(f'`namelist` {namelist} must be one of {", ".join(self.namelists)}.')
         self.inlist_option_files_to_validate.append((namelist, option))
-
 
     def add_no_expand_key(self, namelist, key):
         """
@@ -254,7 +297,7 @@ class MesaGrid:
         Examples:
             Change an option in `star_job` depending on ``initial_mass`` in ``controls``. This could also be accomplished using the
             ``f'{non_mesa_key_start}group_unpack'`` key.
-            
+
             >>> import numpy as np
             >>> from wsssss.inlists import create_grid as cg
             >>> grid = cg.MesaGrid()
@@ -353,7 +396,7 @@ class MesaGrid:
 
         self._copy_extra_files_and_dirs(grid_path)
 
-        curdir = os.path.abspath('.')
+        curdir = os.path.abspath(".")
         abs_grid_path = os.path.abspath(grid_path)
         for i, dirname in enumerate(self.dirnames):
             os.chdir(os.path.join(abs_grid_path, dirname))
@@ -366,13 +409,12 @@ class MesaGrid:
         # Copy file which called create_grid into grid_path
         if len(inspect.stack()) > 1:
             calling_file = inspect.stack()[1].filename
-            if os.path.isfile(calling_file) and not calling_file.endswith('IPython/core/interactiveshell.py'):
+            if os.path.isfile(calling_file) and not calling_file.endswith("IPython/core/interactiveshell.py"):
                 shutil.copy2(calling_file, grid_path)
             else:
                 print(f"Cannot copy calling file {calling_file} to grid directory {grid_path}.")
         else:
             pass
-
 
     def validate_inlists(self, mesa_dir=None):
         """
@@ -393,31 +435,36 @@ class MesaGrid:
             read_extra_names = []
             for i in range(1, 6):
                 if self.extra_inlist_as_list:
-                    read_extra_inlist_key = f'read_extra_{namelist}_inlist({i})'
-                    read_extra_inlist_name_key = f'extra_{namelist}_inlist_name({i})'
+                    read_extra_inlist_key = f"read_extra_{namelist}_inlist({i})"
+                    read_extra_inlist_name_key = f"extra_{namelist}_inlist_name({i})"
                 else:
-                    read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
-                    read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
+                    read_extra_inlist_key = f"read_extra_{namelist}_inlist{i}"
+                    read_extra_inlist_name_key = f"extra_{namelist}_inlist{i}_name"
 
                 if read_extra_inlist_key not in self.inlist[namelist].keys():
                     continue
 
                 if self.inlist[namelist][read_extra_inlist_key]:
                     read_extra_names.append(self.inlist[namelist][read_extra_inlist_name_key])
-                    if self.inlist[f'{non_mesa_key_start}filename'] == self.inlist[namelist][
-                        read_extra_inlist_name_key]:
+                    if (
+                        self.inlist[f"{non_mesa_key_start}filename"]
+                        == self.inlist[namelist][read_extra_inlist_name_key]
+                    ):
                         raise ValueError(
-                            f'Main inlist filename {self.inlist[f"{non_mesa_key_start}filename"]} cannot be the same as an extra inlist filename {self.inlist[namelist][read_extra_inlist_name_key]}.')
+                            f'Main inlist filename {self.inlist[f"{non_mesa_key_start}filename"]} cannot be the same as an extra inlist filename {self.inlist[namelist][read_extra_inlist_name_key]}.'
+                        )
 
             if len(read_extra_names) != len(np.unique(read_extra_names)):
-                raise ValueError(f'Extra {namelist} inlist names must be unique.')
+                raise ValueError(f"Extra {namelist} inlist names must be unique.")
 
         # Get available MESA options from mesa_dir
         if mesa_dir is None:
             mesa_dir = self.mesa_dir
         available_options = {}
         for namelist in self.namelists:
-            available_options[namelist] = self._get_available_options(f'{mesa_dir}/{defaults[namelist]}')  # TODO: replace with inlists.get_mesa_defaults
+            available_options[namelist] = self._get_available_options(
+                f"{mesa_dir}/{defaults[namelist]}"
+            )  # TODO: replace with inlists.get_mesa_defaults
 
         # Find which options are not in MESA options.
         failed_options = {}
@@ -426,12 +473,12 @@ class MesaGrid:
             failed_options[namelist] = []
             for key in self.__dict__[namelist].keys():
                 if not key.startswith(non_mesa_key_start):
-                    if key.endswith(')'):
-                        compare_key = key.split('(')[0]  # Cut off array index part
+                    if key.endswith(")"):
+                        compare_key = key.split("(")[0]  # Cut off array index part
                     else:
                         compare_key = key
                     if compare_key.lower() not in available_options[namelist]:
-                        if namelist == 'kap':  # These options are commented out in kap.defaults
+                        if namelist == "kap":  # These options are commented out in kap.defaults
                             if compare_key.lower() in [_.lower() for _ in kap_user_params]:
                                 continue
                         failed_options[namelist].append(key)
@@ -442,7 +489,7 @@ class MesaGrid:
             for namelist in self.namelists:
                 if len(failed_options[namelist]) > 0:
                     s.append(f'Option(s) not in available {namelist} keys: {", ".join(failed_options[namelist])}.')
-            s = ' '.join(s)
+            s = " ".join(s)
             raise KeyError(s)
 
     def _validate_files(self, grid_path):
@@ -457,18 +504,18 @@ class MesaGrid:
 
         for i, dirname in enumerate(self.dirnames):
             run_dir = os.path.join(grid_path, dirname)
-            inlist = evaluate_inlist(os.path.join(run_dir, self.inlist[f'{non_mesa_key_start}filename']))
-            for (kind, key) in self.inlist_option_files_to_validate:
+            inlist = evaluate_inlist(os.path.join(run_dir, self.inlist[f"{non_mesa_key_start}filename"]))
+            for kind, key in self.inlist_option_files_to_validate:
                 if kind in inlist.keys():
                     if key in inlist[kind].keys():
                         fname = inlist[kind][key]
                         if not os.path.isfile(os.path.join(run_dir, fname)):
                             file_not_found.append(fname)
 
-        s = ''
+        s = ""
         if file_not_found:
-            s += f'Missing {len(file_not_found)} files: ' + ' '.join(file_not_found)
-            s += '\n'
+            s += f"Missing {len(file_not_found)} files: " + " ".join(file_not_found)
+            s += "\n"
 
         if s:
             raise FileNotFoundError(s)
@@ -482,13 +529,13 @@ class MesaGrid:
         Returns:
 
         """
-        with open(path, 'r') as handle:
+        with open(path, "r") as handle:
             lines = handle.readlines()
         lines = [_.strip() for _ in lines]
-        lines = [_ for _ in lines if not _.startswith('!') and _]
-        lines = [_.split('=')[0].strip() for _ in lines]
+        lines = [_ for _ in lines if not _.startswith("!") and _]
+        lines = [_.split("=")[0].strip() for _ in lines]
         lines = [_.lower() for _ in lines]
-        lines = [_.split('(')[0] for _ in lines]
+        lines = [_.split("(")[0] for _ in lines]
         return lines
 
     def check_copy(self):
@@ -509,13 +556,13 @@ class MesaGrid:
 
         # Check for name collisions
 
-        s = ''
+        s = ""
         if file_not_found:
-            s += f'Missing {len(file_not_found)} files: ' + ' '.join(file_not_found)
-            s += '\n'
+            s += f"Missing {len(file_not_found)} files: " + " ".join(file_not_found)
+            s += "\n"
 
         if dir_not_found:
-            s += f'Missing {len(dir_not_found)} directories: ' + ' '.join(dir_not_found)
+            s += f"Missing {len(dir_not_found)} directories: " + " ".join(dir_not_found)
 
         if s:
             raise FileNotFoundError(s)
@@ -526,12 +573,12 @@ class MesaGrid:
 
         """
         generators = []
-        for namelist in ['inlist', *self.namelists]:
+        for namelist in ["inlist", *self.namelists]:
             generators.append(self._make_inlist_generator(self.__dict__[namelist]))
 
         all_unpacked = []
         for i, unpacked in enumerate(itertools.product(*generators)):
-            unpacked = dict(zip(['inlist', *self.namelists], list(unpacked)))
+            unpacked = dict(zip(["inlist", *self.namelists], list(unpacked)))
             if self.inlist_finalize_function is not None:
                 finalized_unpacked = self.inlist_finalize_function(copy.deepcopy(unpacked))
             else:
@@ -544,7 +591,7 @@ class MesaGrid:
         if self.name_funcion is None:
             num_digits = max(4, np.ceil(np.log10(num_unpacked)).astype(int))
             for i in range(num_unpacked):
-                dirname = f'{i:0{num_digits}}'
+                dirname = f"{i:0{num_digits}}"
                 self.dirnames.append(dirname)
         else:
             for i in range(num_unpacked):
@@ -554,7 +601,9 @@ class MesaGrid:
                     dirname = self.name_funcion(i, self.unpacked[i])
                 if dirname in self.dirnames:
                     i_already_exists = self.dirnames.index(dirname)
-                    raise ValueError(f'`dirname` {dirname} for inlist {i} has already been generated for inlist {i_already_exists}.')
+                    raise ValueError(
+                        f"`dirname` {dirname} for inlist {i} has already been generated for inlist {i_already_exists}."
+                    )
                 self.dirnames.append(dirname)
         self.dirnames = tuple(self.dirnames)
 
@@ -571,10 +620,10 @@ class MesaGrid:
 
         """
         inlist_dict = copy.deepcopy(inlist_dict)
-        if inlist_dict[f'{non_mesa_key_start}type'] == 'master':
+        if inlist_dict[f"{non_mesa_key_start}type"] == "master":
             yield inlist_dict
             return
-        if inlist_dict[f'{non_mesa_key_start}type'] == 'pgstar':
+        if inlist_dict[f"{non_mesa_key_start}type"] == "pgstar":
             yield inlist_dict
             return
 
@@ -582,18 +631,20 @@ class MesaGrid:
         lengths = list()  # Length of lists which need to be unpacked
         items = list()  # Lists which need to be unpacked
         for key, item in inlist_dict.items():
-            if key.lower() in self.no_expand[inlist_dict[f'{non_mesa_key_start}type']]:
+            if key.lower() in self.no_expand[inlist_dict[f"{non_mesa_key_start}type"]]:
                 continue
 
             if key.startswith(non_mesa_key_start):
-                if key == f'{non_mesa_key_start}group_unpack':
-                    groups = inlist_dict[f'{non_mesa_key_start}group_unpack']
+                if key == f"{non_mesa_key_start}group_unpack":
+                    groups = inlist_dict[f"{non_mesa_key_start}group_unpack"]
                     for i, group in enumerate(groups):
-                        contains_list.append(f'{non_mesa_key_start}__group__{i}')
+                        contains_list.append(f"{non_mesa_key_start}__group__{i}")
                         lengths.append(len(group))
                         items.append(group)
                         continue
-                elif key in self.expand_non_mesa_keys[inlist_dict[f'{non_mesa_key_start}type']]:  # Continue as if it is a normal key and expand it
+                elif (
+                    key in self.expand_non_mesa_keys[inlist_dict[f"{non_mesa_key_start}type"]]
+                ):  # Continue as if it is a normal key and expand it
                     pass
                 else:
                     continue
@@ -609,8 +660,8 @@ class MesaGrid:
         if len(lengths) == 0:
             out_inlist = inlist_dict.copy()
             for namelist in self.namelists:
-                if f'{non_mesa_key_start}group_unpack' in out_inlist.keys():
-                    out_inlist.pop(f'{non_mesa_key_start}group_unpack')
+                if f"{non_mesa_key_start}group_unpack" in out_inlist.keys():
+                    out_inlist.pop(f"{non_mesa_key_start}group_unpack")
             yield out_inlist
             return
 
@@ -619,14 +670,14 @@ class MesaGrid:
             tot_permutations *= n
 
         base_inlist = copy.deepcopy(inlist_dict)
-        if f'{non_mesa_key_start}group_unpack' in base_inlist.keys():
-            base_inlist.pop(f'{non_mesa_key_start}group_unpack')
+        if f"{non_mesa_key_start}group_unpack" in base_inlist.keys():
+            base_inlist.pop(f"{non_mesa_key_start}group_unpack")
 
         permutations = itertools.product(*items)
         for i, permutation in enumerate(permutations):
             new_inlist = base_inlist.copy()
             for j, value in enumerate(permutation):
-                if contains_list[j].startswith(f'{non_mesa_key_start}__group__'):
+                if contains_list[j].startswith(f"{non_mesa_key_start}__group__"):
                     new_inlist.update(value)
                 else:
                     new_inlist[contains_list[j]] = value
@@ -643,7 +694,7 @@ class MesaGrid:
         """
 
         if os.path.isfile(grid_path):
-            raise FileExistsError(f'Expected `grid_path` {grid_path} is a file.')
+            raise FileExistsError(f"Expected `grid_path` {grid_path} is a file.")
 
         if os.path.exists(grid_path) and os.path.isdir(grid_path) and rm_dir:  # Remove existing grid.
             shutil.rmtree(grid_path)
@@ -651,7 +702,6 @@ class MesaGrid:
         os.makedirs(grid_path, exist_ok=True)
         for dirname in self.dirnames:
             os.makedirs(os.path.join(grid_path, dirname), exist_ok=True)
-
 
     def _write_inlists(self, grid_path):
         """
@@ -667,17 +717,17 @@ class MesaGrid:
 
             # Must remove pre-existing inlist files first
             for namelist in unpacked.keys():
-                file_path = os.path.join(dirpath, unpacked[namelist][f'{non_mesa_key_start}filename'])
+                file_path = os.path.join(dirpath, unpacked[namelist][f"{non_mesa_key_start}filename"])
                 if os.path.exists(file_path):
                     os.remove(file_path)
 
             for namelist in unpacked.keys():
-                file_path = os.path.join(dirpath, unpacked[namelist][f'{non_mesa_key_start}filename'])
+                file_path = os.path.join(dirpath, unpacked[namelist][f"{non_mesa_key_start}filename"])
                 if not os.path.exists(file_path):
-                    prepend = '!Created using wsssss.inlists.create_grid module.\n'
+                    prepend = "!Created using wsssss.inlists.create_grid module.\n"
                 else:
-                    prepend = ''
-                with open(file_path, 'a') as handle:
+                    prepend = ""
+                with open(file_path, "a") as handle:
                     handle.write(prepend + self._generate_inlist_string(unpacked[namelist]))
 
     def _generate_inlist_string(self, inlist_dict):
@@ -690,47 +740,46 @@ class MesaGrid:
         Returns:
             inlist_str (str): A string representation of ``inlist_dict`` readable by MESA.
         """
-        inlist_string = ''
-        inlist_type = inlist_dict[f'{non_mesa_key_start}type']
+        inlist_string = ""
+        inlist_type = inlist_dict[f"{non_mesa_key_start}type"]
 
-
-        if inlist_type == 'master':
+        if inlist_type == "master":
             for key in inlist_dict.keys():
                 if key.startswith(non_mesa_key_start):
                     continue
-                elif key.startswith('#'):
+                elif key.startswith("#"):
                     continue
                 key_dat = inlist_dict[key]
-                sub_str = f'\n&{key}\n'
+                sub_str = f"\n&{key}\n"
 
                 for sub_key, sub_value in key_dat.items():
                     if sub_key.startswith(non_mesa_key_start):
                         continue
                     parsed_sub_value = variable_to_string(sub_value)
-                    sub_str += f'    {sub_key} = {parsed_sub_value}\n'
+                    sub_str += f"    {sub_key} = {parsed_sub_value}\n"
 
-                sub_str += rf'/ ! end of {key} namelist'
-                sub_str += '\n'
+                sub_str += rf"/ ! end of {key} namelist"
+                sub_str += "\n"
 
                 inlist_string += sub_str
         else:
-            sub_str = f'\n&{inlist_type}\n'
+            sub_str = f"\n&{inlist_type}\n"
             for key, value in inlist_dict.items():
                 if key.startswith(non_mesa_key_start):
-                    if key == 'note':
-                        sub_str = f'! {value}\n' + sub_str
+                    if key == "note":
+                        sub_str = f"! {value}\n" + sub_str
                         continue
                     else:
                         continue
-                elif key.startswith('#'):
+                elif key.startswith("#"):
                     continue
                 if key.lower() in self.no_expand[inlist_type]:
-                    parsed_value = ', '.join([variable_to_string(val) for val in value])
+                    parsed_value = ", ".join([variable_to_string(val) for val in value])
                 else:
                     parsed_value = variable_to_string(value)
-                sub_str += f'    {key} = {parsed_value}\n'
+                sub_str += f"    {key} = {parsed_value}\n"
 
-            sub_str += f'/ ! end of {inlist_type} namelist\n'
+            sub_str += f"/ ! end of {inlist_type} namelist\n"
 
             inlist_string += sub_str
 
@@ -758,7 +807,7 @@ class MesaGrid:
                 if not option in self.__dict__[namelist]:
                     continue
                 fpath = self.__dict__[namelist][option]
-                if fpath == '':
+                if fpath == "":
                     pass
                 else:
                     fname = os.path.basename(fpath)
@@ -774,19 +823,20 @@ class MesaGrid:
                     if i == self.inlists_index:  # Skip files generated by this class
                         continue
                     if self.extra_inlist_as_list:
-                        read_extra_inlist_key = f'read_extra_{namelist}_inlist({i})'
-                        read_extra_inlist_name_key = f'extra_{namelist}_inlist_name({i})'
+                        read_extra_inlist_key = f"read_extra_{namelist}_inlist({i})"
+                        read_extra_inlist_name_key = f"extra_{namelist}_inlist_name({i})"
                     else:
-                        read_extra_inlist_key = f'read_extra_{namelist}_inlist{i}'
-                        read_extra_inlist_name_key = f'extra_{namelist}_inlist{i}_name'
+                        read_extra_inlist_key = f"read_extra_{namelist}_inlist{i}"
+                        read_extra_inlist_name_key = f"extra_{namelist}_inlist{i}_name"
 
                     if read_extra_inlist_key in self.inlist[namelist].keys():
                         if self.inlist[namelist][read_extra_inlist_key]:
                             fname = os.path.basename(self.inlist[namelist][read_extra_inlist_name_key])
                             if fname not in [os.path.basename(p) for p in self.extra_files]:
-                                shutil.copy2(os.path.abspath(self.inlist[namelist][read_extra_inlist_name_key]),
-                                         os.path.join(dirpath, fname))
-
+                                shutil.copy2(
+                                    os.path.abspath(self.inlist[namelist][read_extra_inlist_name_key]),
+                                    os.path.join(dirpath, fname),
+                                )
 
     def summary(self):
         """

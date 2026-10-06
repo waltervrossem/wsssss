@@ -6,85 +6,92 @@ import re
 from wsssss.functions import compare_version
 
 try:
-    mesa_dir = os.environ['MESA_DIR']
+    mesa_dir = os.environ["MESA_DIR"]
 except KeyError:
-    print('Need a MESA_DIR environment variable to create constants file.')
+    print("Need a MESA_DIR environment variable to create constants file.")
     raise
 
-const_file = f'{mesa_dir}/const/public/const_def.f90'
+const_file = f"{mesa_dir}/const/public/const_def.f90"
 
-with open(f'{mesa_dir}/data/version_number', 'r') as handle:
+with open(f"{mesa_dir}/data/version_number", "r") as handle:
     version = handle.read().strip()
 
 if not os.path.isfile(const_file):
     raise FileNotFoundError(const_file)
 else:
-    with open(const_file, 'r') as handle:
+    with open(const_file, "r") as handle:
         const_file_str = handle.read()
 
-lines = const_file_str.replace('\n         !', ' !').split('\n')
+lines = const_file_str.replace("\n         !", " !").split("\n")
 # lines = const_file_str.split('\n')
-for i, line in enumerate(lines): # Try to join multiline comments
+for i, line in enumerate(lines):  # Try to join multiline comments
     if i == 0:
         continue
-    if line.strip().startswith('!') and '!' in lines[i-1]:
-        index_comment = line.index('!')
-        prev_index_comment = lines[i-1].index('!')
-        if '::' in lines[i-1] and index_comment == prev_index_comment:
-            lines[i-1] += ' ' + line.strip()[1:]
-            lines[i] = ''
-lines = [_.strip() for _ in lines if '::' in _]
-lines = [_ for _ in lines if 'character' not in _]
-lines = [_ for _ in lines if 'logical' not in _]
-lines = [_ for _ in lines if 'intent' not in _]
-lines = [_ for _ in lines if 'selected_' not in _]
-lines = [_ for _ in lines if 'iounit' not in _]
-lines = [_.split('::')[1].strip() for _ in lines]
-lines = [_.replace('_dp ', ' ') for _ in lines]
-lines = [_.replace('! =', ' =').replace('!', '#').replace(';', '#') for _ in lines]
+    if line.strip().startswith("!") and "!" in lines[i - 1]:
+        index_comment = line.index("!")
+        prev_index_comment = lines[i - 1].index("!")
+        if "::" in lines[i - 1] and index_comment == prev_index_comment:
+            lines[i - 1] += " " + line.strip()[1:]
+            lines[i] = ""
+lines = [_.strip() for _ in lines if "::" in _]
+lines = [_ for _ in lines if "character" not in _]
+lines = [_ for _ in lines if "logical" not in _]
+lines = [_ for _ in lines if "intent" not in _]
+lines = [_ for _ in lines if "selected_" not in _]
+lines = [_ for _ in lines if "iounit" not in _]
+lines = [_.split("::")[1].strip() for _ in lines]
+lines = [_.replace("_dp ", " ") for _ in lines]
+lines = [_.replace("! =", " =").replace("!", "#").replace(";", "#") for _ in lines]
 
 for i, line in enumerate(lines):
     new_line = line
-    if line.count('=') > 1:  # Fix multiple = in line.
-        parts = line.split('=')
+    if line.count("=") > 1:  # Fix multiple = in line.
+        parts = line.split("=")
         new_line = f'{parts[0]}={parts[1]}# {"=".join(parts[2:])}'
 
     # Needed for 11701 constants
-    if line == 'sige  = electron cross section for Thomson scattering':
-        new_line = 'sige = 6.6524587158d-025 # Thomson scattering electron cross section'
-    elif line == 'crad  = boltz_sigma*4/clight, 7.5657673816464059d-15 # radiation density constant, a (erg cm^-3 K^-4)# Prad  = crad * T^4 / 3':
-        new_line = 'crad  = boltz_sigma*4/clight # radiation density constant, a (erg cm^-3 K^-4)# Prad  = crad * T^4 / 3'
-    if line.count('=') == 0:
-        parts = line.split(' ')
-        new_line = f'{parts[0]} = {parts[2]} # ' + ' '.join(parts[3:])
+    if line == "sige  = electron cross section for Thomson scattering":
+        new_line = "sige = 6.6524587158d-025 # Thomson scattering electron cross section"
+    elif (
+        line
+        == "crad  = boltz_sigma*4/clight, 7.5657673816464059d-15 # radiation density constant, a (erg cm^-3 K^-4)# Prad  = crad * T^4 / 3"
+    ):
+        new_line = (
+            "crad  = boltz_sigma*4/clight # radiation density constant, a (erg cm^-3 K^-4)# Prad  = crad * T^4 / 3"
+        )
+    if line.count("=") == 0:
+        parts = line.split(" ")
+        new_line = f"{parts[0]} = {parts[2]} # " + " ".join(parts[3:])
 
-    parts = new_line.split('#', 1)
+    parts = new_line.split("#", 1)
     new_line = f'{parts[0].lower().strip()} # {" ".join(parts[1:]).strip()}'
-    if new_line.endswith('#'):
+    if new_line.endswith("#"):
         new_line = new_line[:-1]
 
     lines[i] = new_line
 
-re_dbl_fort = re.compile(r'(\d)[dD]([-+]?\d)')
+re_dbl_fort = re.compile(r"(\d)[dD]([-+]?\d)")
 for i, line in enumerate(lines):
-    num = line.split('=')[1].split('#')[0].strip()
-    new_num = re_dbl_fort.sub(r'\1E\2', num)
+    num = line.split("=")[1].split("#")[0].strip()
+    new_num = re_dbl_fort.sub(r"\1E\2", num)
     lines[i] = line.replace(num, new_num)
 
 for i, line in enumerate(lines):
-    if '#' in line:
-        pre_com, comment = line.split('#', 1)
+    if "#" in line:
+        pre_com, comment = line.split("#", 1)
         pre_com = pre_com.strip()
         comment = comment.strip().replace('"', "'")
-        comment = comment.replace('= ', '')
-        if comment == '':
+        comment = comment.replace("= ", "")
+        if comment == "":
             comment = pre_com
-        elif comment.startswith('('):  # Move stuff in parenthesis to end of comment
-            end_paren = comment.index(')', )
-            comment = comment[end_paren+1:] + ' ' + comment[:end_paren+1]
+        elif comment.startswith("("):  # Move stuff in parenthesis to end of comment
+            end_paren = comment.index(
+                ")",
+            )
+            comment = comment[end_paren + 1 :] + " " + comment[: end_paren + 1]
             comment = comment.strip()
 
-        if comment.startswith('-'):
+        if comment.startswith("-"):
             comment = comment[1:]
             comment = comment.strip()
 
@@ -97,14 +104,14 @@ try:
 except ValueError:
     pass
 
-s = '#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\n\n'
+s = "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\n\n"
 s += '"""\nNumerical constants used by MESA in ``$MESA_DIR/const/public/const_def.f90``. This file is generated by ``wsssss/dev/create_const_files.py``.\n"""\n\n'
 s += f'version = \'{version}\'\n"""MESA version used to generate this file."""\n\n'
-s += '\n'.join(lines)
-s += '\n'
-if compare_version(version, '15140', '<'):
-    fname = 'pre15140.py'
+s += "\n".join(lines)
+s += "\n"
+if compare_version(version, "15140", "<"):
+    fname = "pre15140.py"
 else:
-    fname = 'post15140.py'
-with open(f'../src/wsssss/constants/{fname}', 'w') as handle:
+    fname = "post15140.py"
+with open(f"../src/wsssss/constants/{fname}", "w") as handle:
     handle.write(s)

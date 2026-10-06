@@ -14,27 +14,28 @@ from scipy.integrate import trapezoid
 
 from wsssss import load_data as ld
 
-np.seterr(all='ignore')
+np.seterr(all="ignore")
 
-if '__file__' not in globals().keys():  # Otherwise doc generation breaks.
+if "__file__" not in globals().keys():  # Otherwise doc generation breaks.
     import wsssss
-    __file__ = os.path.join(os.path.dirname(wsssss.__file__), '_bin/gyre_driver/gyre_driver.py')
 
-_version = '0.5.0'
+    __file__ = os.path.join(os.path.dirname(wsssss.__file__), "_bin/gyre_driver/gyre_driver.py")
+
+_version = "0.5.0"
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
 pi = 3.1415926535897932384626433832795028841971693993751
-Msun = 1.9892E33
-Rsun = 6.9598E10
-Lsun = 3.8418E33
-Teff_sun = 5777E0
-G = 6.67428E-8
-sigma_b = 5.670400E-5
+Msun = 1.9892e33
+Rsun = 6.9598e10
+Lsun = 3.8418e33
+Teff_sun = 5777e0
+G = 6.67428e-8
+sigma_b = 5.670400e-5
 
 # From old GYRE_driver
-Dnu_sun = 137.
-numax_sun = 3100.
+Dnu_sun = 137.0
+numax_sun = 3100.0
 nmode = 20
 
 
@@ -42,24 +43,24 @@ nmode = 20
 def get_nu_max_dnu_dp(args, fpath, l):
     """Calculate nu_max, Delta_nu, and Delta_P for a model."""
 
-    if args.filetype == 'MESA':
+    if args.filetype == "MESA":
         gp = ld.GyreProfile(fpath)
         header = gp.header
         columns = gp.columns
         data = gp.data
 
-        M_star = header['star_mass'] / Msun
-        R_star = header['star_radius']
-        L_star = header['star_luminosity']
-        Teff_star = (L_star / (4 * pi * R_star ** 2 * sigma_b)) ** 0.25
+        M_star = header["star_mass"] / Msun
+        R_star = header["star_radius"]
+        L_star = header["star_luminosity"]
+        Teff_star = (L_star / (4 * pi * R_star**2 * sigma_b)) ** 0.25
         R_star = R_star / Rsun
 
-        r = data['radius']
+        r = data["radius"]
 
-        N = np.sqrt(data['brunt_N2'])
+        N = np.sqrt(data["brunt_N2"])
 
-    elif args.filetype == 'FGONG':
-        raise NotImplementedError('FGONG files not implemented.')
+    elif args.filetype == "FGONG":
+        raise NotImplementedError("FGONG files not implemented.")
         # header, data = fgong.load_fgong(fpath, return_comment=False)
         #
         # M_star = header[0] / Msun
@@ -73,13 +74,13 @@ def get_nu_max_dnu_dp(args, fpath, l):
         #
         # N = np.sqrt((G * m / r**3) * gamma1)
 
-    elif args.filetype == 'LOSC':
-        with open(fpath, 'r') as handle:
+    elif args.filetype == "LOSC":
+        with open(fpath, "r") as handle:
             lines = handle.readlines()
 
         markers = []
         for i, line in enumerate(lines):
-            if line.startswith('%'):
+            if line.startswith("%"):
                 markers.append(i)
 
         start_data = markers[-2] + 1
@@ -97,10 +98,11 @@ def get_nu_max_dnu_dp(args, fpath, l):
         num_mesh_points = int(lines[zone_start + 1])
         skip_rows = zone_start + 2
         print(fpath)
-        r, m_div_r3, P, rho, gamma1, A_div_r = np.loadtxt(str(fpath), skiprows=skip_rows, usecols=[1, 2, 3, 4, 5, 6],
-                                                          comments='%').T
+        r, m_div_r3, P, rho, gamma1, A_div_r = np.loadtxt(
+            str(fpath), skiprows=skip_rows, usecols=[1, 2, 3, 4, 5, 6], comments="%"
+        ).T
         if len(r) != num_mesh_points:
-            raise ValueError(f'Loading of {fpath} failed, not enough meshpoints loaded.')
+            raise ValueError(f"Loading of {fpath} failed, not enough meshpoints loaded.")
 
         m_h = 1.67353276e-24
         k_B = 1.38064852e-16
@@ -111,26 +113,26 @@ def get_nu_max_dnu_dp(args, fpath, l):
         N = N_div_r * r
 
     else:
-        raise ValueError('Invalid filetype.')
+        raise ValueError("Invalid filetype.")
 
     N_div_r = N / r
     N_div_r[np.isnan(N_div_r)] = 0
     N_div_r[N_div_r < 0] = 0
 
-    nu_max = numax_sun * M_star / (R_star ** 2 * np.sqrt(Teff_star / Teff_sun))
-    Dnu = Dnu_sun * np.sqrt(M_star / R_star ** 3)
+    nu_max = numax_sun * M_star / (R_star**2 * np.sqrt(Teff_star / Teff_sun))
+    Dnu = Dnu_sun * np.sqrt(M_star / R_star**3)
 
     DP = np.abs(trapezoid(N_div_r, r))
-    DP = 2 * pi ** 2 * (1 / DP) / np.sqrt(l * (l + 1))
+    DP = 2 * pi**2 * (1 / DP) / np.sqrt(l * (l + 1))
 
     if args.verbose:
-        print(f'M_star          = {M_star}')
-        print(f'R_star          = {R_star}')
-        print(f'Teff            = {Teff_star}')
-        print(f'nu_max          = {nu_max}')
-        print(f'Dnu             = {Dnu}')
+        print(f"M_star          = {M_star}")
+        print(f"R_star          = {R_star}")
+        print(f"Teff            = {Teff_star}")
+        print(f"nu_max          = {nu_max}")
+        print(f"Dnu             = {Dnu}")
         if l > 0:
-            print(f'DP              = {DP}')
+            print(f"DP              = {DP}")
         print()
 
     return nu_max, Dnu, DP
@@ -140,12 +142,12 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
     """Create the gyre inlist."""
 
     reduced_name = model_name.name
-    gyre_adin = args.gyre_adin_template + reduced_name + suffix + f'{l}'
+    gyre_adin = args.gyre_adin_template + reduced_name + suffix + f"{l}"
     summary_file = summary_path(model_name, l, suffix, args)
-    if args.out_dir == '':
+    if args.out_dir == "":
         mode_name_base = model_name
     else:
-        mode_name_base = pathlib.Path(args.out_dir) / f'{reduced_name}'
+        mode_name_base = pathlib.Path(args.out_dir) / f"{reduced_name}"
 
     if type(n_freq) in [int, np.int64]:
         single_scan = True
@@ -153,137 +155,138 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         single_scan = False
 
     if args.verbose:
-        print(f'gyre_adin       = {gyre_adin}')
-        print(f'l               = {l}')
-        print(f'summary_file    = {summary_file}')
-        print(f'grid_type       = {grid_type}')
-        print(f'file_type       = {file_type}')
+        print(f"gyre_adin       = {gyre_adin}")
+        print(f"l               = {l}")
+        print(f"summary_file    = {summary_file}")
+        print(f"grid_type       = {grid_type}")
+        print(f"file_type       = {file_type}")
         if single_scan:
-            print(f'freq_min        = {freq_min}')
-            print(f'freq_max        = {freq_max}')
-            print(f'n_freq          = {n_freq}')
+            print(f"freq_min        = {freq_min}")
+            print(f"freq_max        = {freq_max}")
+            print(f"n_freq          = {n_freq}")
         else:
-            print(f'freq_min        = {repr(freq_min.tolist())}')
-            print(f'freq_max        = {repr(freq_max.tolist())}')
-            print(f'n_freq          = {repr(n_freq.tolist())}')
+            print(f"freq_min        = {repr(freq_min.tolist())}")
+            print(f"freq_max        = {repr(freq_max.tolist())}")
+            print(f"n_freq          = {repr(n_freq.tolist())}")
         print()
 
-    if args.base_in == '':
-        if args.gyre == 'G5':
-            base_in = _this_dir / 'INPUT_GYRE_5.2_ad.in'
+    if args.base_in == "":
+        if args.gyre == "G5":
+            base_in = _this_dir / "INPUT_GYRE_5.2_ad.in"
             base_in_exists = base_in.exists()
-        elif args.gyre == 'G4':
-            base_in = _this_dir / 'INPUT_GYRE_4.4_ad.in'
+        elif args.gyre == "G4":
+            base_in = _this_dir / "INPUT_GYRE_4.4_ad.in"
             base_in_exists = base_in.exists()
-        elif args.gyre == 'G6':
-            base_in = _this_dir / 'INPUT_GYRE_6_ad.in'
+        elif args.gyre == "G6":
+            base_in = _this_dir / "INPUT_GYRE_6_ad.in"
             base_in_exists = base_in.exists()
-        elif args.gyre == 'G7':
-            base_in = _this_dir / 'INPUT_GYRE_7_ad.in'
+        elif args.gyre == "G7":
+            base_in = _this_dir / "INPUT_GYRE_7_ad.in"
             base_in_exists = base_in.exists()
-        elif args.gyre == 'G8':  # Can use the same base inlist
-            base_in = _this_dir / 'INPUT_GYRE_8_ad.in'
+        elif args.gyre == "G8":  # Can use the same base inlist
+            base_in = _this_dir / "INPUT_GYRE_8_ad.in"
             base_in_exists = base_in.exists()
-        elif args.gyre == 'G9':  # Can use the same base inlist
-            base_in = _this_dir / 'INPUT_GYRE_8_ad.in'
+        elif args.gyre == "G9":  # Can use the same base inlist
+            base_in = _this_dir / "INPUT_GYRE_8_ad.in"
             base_in_exists = base_in.exists()
         else:
-            raise FileNotFoundError(f'No default base inlist associated with gyre {args.gyre}.')
+            raise FileNotFoundError(f"No default base inlist associated with gyre {args.gyre}.")
     else:
         base_in = args.base_in
         base_in_exists = base_in.exists()
     if not base_in_exists:
-        raise FileNotFoundError(f'Cannot find a base inlist for gyre. {base_in}')
+        raise FileNotFoundError(f"Cannot find a base inlist for gyre. {base_in}")
 
     shutil.copy2(base_in, gyre_adin)
 
     if save_modes:
-        if file_type == 'LOSC':
-            mode_item_list = 'l,n_pg,n_p,freq,E_norm,x,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K'
-        elif file_type == 'FGONG':
-            mode_item_list = 'l,n_pg,n_p,freq,E_norm,x,m,p,rho,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K'
-        elif file_type == 'MESA':
-            mode_item_list = 'M_r,l,n_pg,n_p,freq,E_norm,x,m,p,rho,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K'
+        if file_type == "LOSC":
+            mode_item_list = "l,n_pg,n_p,freq,E_norm,x,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K"
+        elif file_type == "FGONG":
+            mode_item_list = "l,n_pg,n_p,freq,E_norm,x,m,p,rho,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K"
+        elif file_type == "MESA":
+            mode_item_list = "M_r,l,n_pg,n_p,freq,E_norm,x,m,p,rho,Gamma_1,prop_type,xi_r,xi_h,dE_dx,K"
         else:
-            raise ValueError('Invalid filetype.')
-        if args.gyre >= 'G5':
+            raise ValueError("Invalid filetype.")
+        if args.gyre >= "G5":
             # Gyre 5 uses capital P for pressure and the normalized rotation kernel changed to unnormalized.
-            mode_item_list = mode_item_list.replace(',p,', ',P,').replace(',K', ',dbeta_dx')
+            mode_item_list = mode_item_list.replace(",p,", ",P,").replace(",K", ",dbeta_dx")
 
-        mode_output = (f"   mode_template = '{mode_name_base}_l%l_%J_np%p_ng%g.mgyre'\n"
-                       f"   mode_file_format = 'TXT'\n"
-                       f"   mode_item_list = '{mode_item_list}'"
-                       f"/")
-        if args.gyre >= 'G7':
-            mode_output = mode_output.replace('mode_', 'detail_').replace('%J', '%ID')
+        mode_output = (
+            f"   mode_template = '{mode_name_base}_l%l_%J_np%p_ng%g.mgyre'\n"
+            f"   mode_file_format = 'TXT'\n"
+            f"   mode_item_list = '{mode_item_list}'"
+            f"/"
+        )
+        if args.gyre >= "G7":
+            mode_output = mode_output.replace("mode_", "detail_").replace("%J", "%ID")
     else:
-        mode_output = '/'
+        mode_output = "/"
 
-    freq_units = ("freq_min_units = 'UHZ'\n"
-                  "   freq_max_units = 'UHZ'")
-    ad_ = 'ad_'
-    nad_output = ('&nad_output\n'
-                  '/')
-    if args.gyre == 'G4':
+    freq_units = "freq_min_units = 'UHZ'\n" "   freq_max_units = 'UHZ'"
+    ad_ = "ad_"
+    nad_output = "&nad_output\n" "/"
+    if args.gyre == "G4":
         freq_units = "freq_units = 'UHZ'"
-        ad_ = ''
-        nad_output = ''
+        ad_ = ""
+        nad_output = ""
     if args.rotation:
-        rot_str ="   grid_frame ='COROT_O'\n"
-    else: rot_str = ""
+        rot_str = "   grid_frame ='COROT_O'\n"
+    else:
+        rot_str = ""
     if single_scan:
-        scan_str = (f"&scan\n"
-                    f"   grid_type = '{grid_type}'\n"
-                    f"   {freq_units}\n"
-                    f"   freq_min =   {freq_min}\n"
-                    f"   freq_max =   {freq_max}\n"
-                    f"   n_freq =     {n_freq}\n"
-                    f"{rot_str}"
-                    f"/")
+        scan_str = (
+            f"&scan\n"
+            f"   grid_type = '{grid_type}'\n"
+            f"   {freq_units}\n"
+            f"   freq_min =   {freq_min}\n"
+            f"   freq_max =   {freq_max}\n"
+            f"   n_freq =     {n_freq}\n"
+            f"{rot_str}"
+            f"/"
+        )
     else:
         num_scan = len(n_freq)
-        scan_str = ''
+        scan_str = ""
         for i in range(num_scan):
             freq_min_i = freq_min[i]
             freq_max_i = freq_max[i]
             n_freq_i = n_freq[i]
-            scan_str += (f"&scan\n"
-                         f"   grid_type = '{grid_type}'\n"
-                         f"   {freq_units}\n"
-                         f"   freq_min =   {freq_min_i}\n"
-                         f"   freq_max =   {freq_max_i}\n"
-                         f"   n_freq =     {n_freq_i}\n"
-                         f"{rot_str}"
-                         f"/\n")
+            scan_str += (
+                f"&scan\n"
+                f"   grid_type = '{grid_type}'\n"
+                f"   {freq_units}\n"
+                f"   freq_min =   {freq_min_i}\n"
+                f"   freq_max =   {freq_max_i}\n"
+                f"   n_freq =     {n_freq_i}\n"
+                f"{rot_str}"
+                f"/\n"
+            )
 
-    s = (f"\n"
-         f"! Generated by py_gyre_driver {_version}.\n\n"
-         f"&model\n"
-         f"   model_type = 'EVOL'\n"
-         f"   file = '{model_name}'\n"
-         f"   file_format = '{file_type}'\n"
-         f"/\n"
-         f"&{ad_}output\n"
-         f"   summary_file = '{summary_file}'\n"
-         f"   summary_file_format = 'TXT'\n"
-         f"   summary_item_list = '{args.summary_item_list}'\n"
-         f"   freq_units = 'UHZ'\n"
-         f"{mode_output}\n"
-         f"{nad_output}\n"
-         f"{scan_str}\n")
+    s = (
+        f"\n"
+        f"! Generated by py_gyre_driver {_version}.\n\n"
+        f"&model\n"
+        f"   model_type = 'EVOL'\n"
+        f"   file = '{model_name}'\n"
+        f"   file_format = '{file_type}'\n"
+        f"/\n"
+        f"&{ad_}output\n"
+        f"   summary_file = '{summary_file}'\n"
+        f"   summary_file_format = 'TXT'\n"
+        f"   summary_item_list = '{args.summary_item_list}'\n"
+        f"   freq_units = 'UHZ'\n"
+        f"{mode_output}\n"
+        f"{nad_output}\n"
+        f"{scan_str}\n"
+    )
     if args.rotation:
-        for m in range(-l, l+1):
-            s += (f"&mode\n"
-                  f"   l = {l}\n"
-                  f"   m = {m}\n"
-                  f"/\n")
+        for m in range(-l, l + 1):
+            s += f"&mode\n" f"   l = {l}\n" f"   m = {m}\n" f"/\n"
     else:
-        s += (f"&mode\n"
-              f"   l = {l}\n"
-              f"/\n")
+        s += f"&mode\n" f"   l = {l}\n" f"/\n"
 
-
-    with open(gyre_adin, 'a') as handle:
+    with open(gyre_adin, "a") as handle:
         handle.write(s)
 
     return gyre_adin
@@ -296,37 +299,42 @@ def run_gyre(model_name, l, part_suffix, gyre_adin, args):
 
     gyre_exec = get_gyre(args, True)[0]
     if args.no_output:
-        cmd_end = ' > /dev/null 2>& 1'
+        cmd_end = " > /dev/null 2>& 1"
         pipe = None
     else:
-        cmd_end = ''
+        cmd_end = ""
         pipe = subprocess.PIPE
 
     if args.verbose:
         print(os.getcwd())
-        print(f'Calling {gyre_exec} {gyre_adin}\n')
+        print(f"Calling {gyre_exec} {gyre_adin}\n")
 
     if os.path.exists(summary_file):
         os.remove(summary_file)
 
     if not args.skip_calc or (args.skip_calc and l == 0):
-        if args.source != '':
-            output = subprocess.run(f'source {args.source}; {gyre_exec} {gyre_adin} {cmd_end}',
-                                    shell=True, executable="/bin/bash", stderr=pipe)
+        if args.source != "":
+            output = subprocess.run(
+                f"source {args.source}; {gyre_exec} {gyre_adin} {cmd_end}",
+                shell=True,
+                executable="/bin/bash",
+                stderr=pipe,
+            )
         else:
-            output = subprocess.run(f'{gyre_exec} {gyre_adin} {cmd_end}',
-                                    shell=True, executable="/bin/bash", stderr=pipe)
+            output = subprocess.run(
+                f"{gyre_exec} {gyre_adin} {cmd_end}", shell=True, executable="/bin/bash", stderr=pipe
+            )
 
         if not args.no_output:
-            if not output.stderr == b'':
+            if not output.stderr == b"":
                 if "ASSERT 'k == k_chk' failed at line 303" in output.stderr.decode():
                     raise ValueError(f"Gyre 4.4 does not support the version of MESA used to generate {model_name}")
 
-                raise ChildProcessError(f'The following command encountered an error:\n.'
-                                        f'{output.args}\n\n'
-                                        f'{output.stderr.decode()}\n')
+                raise ChildProcessError(
+                    f"The following command encountered an error:\n." f"{output.args}\n\n" f"{output.stderr.decode()}\n"
+                )
     else:
-        output = f'skipped {gyre_exec} {gyre_adin}'
+        output = f"skipped {gyre_exec} {gyre_adin}"
 
     return output
 
@@ -336,47 +344,50 @@ def get_gyre(args, check, print_warning=False):
     version = args.gyre
     environ = os.environ
 
-    if f'GYRE_DIR_{version}' in environ:
-        path = pathlib.Path(environ[f'GYRE_DIR_{version}'])
+    if f"GYRE_DIR_{version}" in environ:
+        path = pathlib.Path(environ[f"GYRE_DIR_{version}"])
     else:
-        path = pathlib.Path(environ['GYRE_DIR'])
+        path = pathlib.Path(environ["GYRE_DIR"])
 
         if check:  # Check in $GYRE_DIR/src/common/gyre_version.fpp what version of gyre is found.
-            version_file = path / 'src' / 'common' / 'gyre_version.fpp'
+            version_file = path / "src" / "common" / "gyre_version.fpp"
             if not version_file.exists():  # Different file name for 7.2 and after
-                version_file = path / 'src' / 'common' / 'version_m.fypp'
+                version_file = path / "src" / "common" / "version_m.fypp"
 
-            with open(version_file, 'r') as handle:
+            with open(version_file, "r") as handle:
                 lines = handle.readlines()
 
-            version_str = ''
+            version_str = ""
             for line in lines:
-                if 'VERSION = ' in line.upper():
+                if "VERSION = " in line.upper():
                     line = line.upper()
-                    version_str = line.split('VERSION =')[1].strip().replace("'", '').replace('(', '').replace(')', '')
+                    version_str = line.split("VERSION =")[1].strip().replace("'", "").replace("(", "").replace(")", "")
                     break
 
-            if version_str == '':
-                raise ValueError(f'Could not find gyre version of $GYRE_DIR in file\n'
-                                 f'{version_file}')
+            if version_str == "":
+                raise ValueError(f"Could not find gyre version of $GYRE_DIR in file\n" f"{version_file}")
 
             if not version[1] == version_str[0]:
                 if args.lenient:
                     if print_warning:
-                        print('###################################################################')
-                        print(f'Could not find the required gyre version `{version}` in $GYRE_DIR.\n'
-                              f'Using gyre version {version_str} instead.')
-                        print('###################################################################')
+                        print("###################################################################")
+                        print(
+                            f"Could not find the required gyre version `{version}` in $GYRE_DIR.\n"
+                            f"Using gyre version {version_str} instead."
+                        )
+                        print("###################################################################")
                         print()
-                    version = f'G{version_str[0]}'
+                    version = f"G{version_str[0]}"
                 else:
-                    raise ValueError(f'Could not find the required gyre version `{version}` in $GYRE_DIR.\n'
-                                     f'Found gyre version {version_str} in `{path}`.')
+                    raise ValueError(
+                        f"Could not find the required gyre version `{version}` in $GYRE_DIR.\n"
+                        f"Found gyre version {version_str} in `{path}`."
+                    )
 
-    if version <= 'G4':
-        path = path / 'bin' / 'gyre_ad'
+    if version <= "G4":
+        path = path / "bin" / "gyre_ad"
     else:
-        path = path / 'bin' / 'gyre'
+        path = path / "bin" / "gyre"
 
     return path, version
 
@@ -388,13 +399,13 @@ def merge_summary_parts(model_name, l, num_scan, args, keep_files=False):
     summary_files = []
     set_header = False
     for i in range(num_scan):
-        partial = f'.part{i + 1}of{num_scan}'
-        summary_file = summary_path(model_name, l, partial+args.summary_suffix, args)
+        partial = f".part{i + 1}of{num_scan}"
+        summary_file = summary_path(model_name, l, partial + args.summary_suffix, args)
         if not summary_file.exists():  # Skip summary files which found no modes.
             continue
 
         summary_files.append(summary_file)
-        with open(summary_file, 'r') as handle:
+        with open(summary_file, "r") as handle:
             lines = handle.readlines()
 
         if not set_header:
@@ -405,7 +416,7 @@ def merge_summary_parts(model_name, l, num_scan, args, keep_files=False):
 
     new_summary_file = summary_path(model_name, l, args.summary_suffix, args)
 
-    with open(new_summary_file, 'w') as handle:
+    with open(new_summary_file, "w") as handle:
         handle.writelines(all_lines)
 
     if not keep_files:
@@ -425,7 +436,7 @@ def merge_summary_l(model_name, args, keep_files=False):
             continue
 
         summary_files.append(summary_file)
-        with open(summary_file, 'r') as handle:
+        with open(summary_file, "r") as handle:
             lines = handle.readlines()
 
         if not set_header:
@@ -434,9 +445,9 @@ def merge_summary_l(model_name, args, keep_files=False):
         else:
             all_lines += lines[6:]
 
-    new_summary_file = summary_path(model_name, '', args.summary_suffix, args)
+    new_summary_file = summary_path(model_name, "", args.summary_suffix, args)
     # new_summary_file = pathlib.Path(str(new_summary_file).replace('.sgyre_l', args.summary_suffix))
-    with open(new_summary_file, 'w') as handle:
+    with open(new_summary_file, "w") as handle:
         handle.writelines(all_lines)
 
     if not keep_files:
@@ -447,10 +458,10 @@ def merge_summary_l(model_name, args, keep_files=False):
 def summary_path(model_name, l, suffix, args):
     reduced_name = model_name.name
 
-    if args.out_dir == '':
-        summary_file = pathlib.Path(f'{model_name}{suffix}{l}')
+    if args.out_dir == "":
+        summary_file = pathlib.Path(f"{model_name}{suffix}{l}")
     else:
-        summary_file = pathlib.Path(args.out_dir) / f'{reduced_name}{suffix}{l}'
+        summary_file = pathlib.Path(args.out_dir) / f"{reduced_name}{suffix}{l}"
 
     return summary_file
 
@@ -462,7 +473,7 @@ def calc_scan(model_name, l, args):
     n_sig_hi = args.n_sig_hi
 
     fmid = nu_max
-    fsig = (0.66 * nu_max ** 0.88) / 2 / np.sqrt(2 * np.log(2.))  # Mosser 2012a
+    fsig = (0.66 * nu_max**0.88) / 2 / np.sqrt(2 * np.log(2.0))  # Mosser 2012a
 
     fmin0 = max(1e-4, fmid - n_sig_lo * fsig)
     fmax0 = fmid + n_sig_hi * fsig
@@ -477,7 +488,7 @@ def calc_scan(model_name, l, args):
     else:
         l0_summary_file = summary_path(model_name, 0, args.summary_suffix, args)
         gs = ld.GyreSummary(l0_summary_file)
-        freqs_l0 = gs.get('Re(freq)')[gs.get('l') == 0]
+        freqs_l0 = gs.get("Re(freq)")[gs.get("l") == 0]
 
         n_freqDP = np.ceil((fmax0 - fmin0) / (1e6 / (1e6 / fmin0 - DP) - fmin0)).astype(int)
 
@@ -515,7 +526,7 @@ def calc_scan(model_name, l, args):
 
 
 def split_scan(fmin, fmax, n_freq, grid_type, args):
-    if grid_type == 'LINEAR':
+    if grid_type == "LINEAR":
 
         fmin_new = []
         fmax_new = []
@@ -540,7 +551,7 @@ def split_scan(fmin, fmax, n_freq, grid_type, args):
         n_freq = np.array(n_freq_new, dtype=int)
 
     else:
-        raise NotImplementedError(f'Only `grid_type = LINEAR` is implemented.')
+        raise NotImplementedError(f"Only `grid_type = LINEAR` is implemented.")
 
     num_scan = len(n_freq)
 
@@ -552,13 +563,13 @@ def do_gyre_sim(fpath, args):
     try:
         for l in args.ll:
             if l == 0:
-                grid_type = 'LINEAR'
+                grid_type = "LINEAR"
             else:
-                grid_type = 'INVERSE'
+                grid_type = "INVERSE"
 
             fmin, fmax, n_freq, num_scan, nu_max = calc_scan(fpath, l, args)
             if (l > 0) and (nu_max < args.min_numax):
-                print(f'Skipping {fpath} l={l} as numax {nu_max} below min-numax {args.min_numax}.')
+                print(f"Skipping {fpath} l={l} as numax {nu_max} below min-numax {args.min_numax}.")
                 continue
 
             # Split each frequency scan into a different gyre run. Usually is a bit faster.
@@ -572,22 +583,25 @@ def do_gyre_sim(fpath, args):
                     fmax_i = fmax[i]
                     n_freq_i = n_freq[i]
 
-                    part_suffix = f'.part{i + 1}of{num_scan}' + args.summary_suffix
+                    part_suffix = f".part{i + 1}of{num_scan}" + args.summary_suffix
 
-                    gyre_adin = write_gyre_adin(fpath, l, args.filetype, part_suffix, args.save_modes,
-                                    grid_type, fmin_i, fmax_i, n_freq_i, args)
+                    gyre_adin = write_gyre_adin(
+                        fpath, l, args.filetype, part_suffix, args.save_modes, grid_type, fmin_i, fmax_i, n_freq_i, args
+                    )
                     run_gyre(fpath, l, part_suffix, gyre_adin, args)
 
             else:
-                gyre_adin = write_gyre_adin(fpath, l, args.filetype, args.summary_suffix, args.save_modes, grid_type, fmin, fmax, n_freq, args)
-                run_gyre(fpath, l, '', gyre_adin, args)
+                gyre_adin = write_gyre_adin(
+                    fpath, l, args.filetype, args.summary_suffix, args.save_modes, grid_type, fmin, fmax, n_freq, args
+                )
+                run_gyre(fpath, l, "", gyre_adin, args)
 
             if args.parts and num_scan > 1:
                 merge_summary_parts(fpath, l, num_scan, args)
         if not args.no_merge:
             merge_summary_l(fpath, args)
     except KeyboardInterrupt:
-        print('Stopping GYRE')
+        print("Stopping GYRE")
         if num_scan > 1 and args.parts:
             merge_summary_parts(fpath, l, num_scan, args, keep_files=True)  # Merge the summaries for the interrupted l.
         merge_summary_l(fpath, args, keep_files=True)
@@ -611,7 +625,7 @@ def sort_files(files):
 
 
 def check_args(args):
-    if args.gyre >= 'G6':
+    if args.gyre >= "G6":
         parts_set = False
         if args.parts:
             parts_set = True
@@ -625,9 +639,9 @@ def check_args(args):
             args.parts = False
             args.batch = None
 
-    if args.ll.startswith('mode'):
+    if args.ll.startswith("mode"):
         args.save_modes = True
-        args.ll = args.ll.replace('mode', '')
+        args.ll = args.ll.replace("mode", "")
 
     args.ll = [int(l) for l in args.ll]
     args.ll.sort()
@@ -641,12 +655,15 @@ def check_args(args):
         args.files = [pathlib.Path(args.files.strip())]
 
     if args.skip_existing:
-        existing_out_files = list(pathlib.Path(args.out_dir).glob('*.sgyre_l'))
+        existing_out_files = list(pathlib.Path(args.out_dir).glob("*.sgyre_l"))
         existing_out_files = [_.absolute() for _ in existing_out_files]
-        do_files = [model_name for model_name in args.files if
-                    summary_path(model_name, '', args.summary_suffix, args).absolute() not in existing_out_files]
+        do_files = [
+            model_name
+            for model_name in args.files
+            if summary_path(model_name, "", args.summary_suffix, args).absolute() not in existing_out_files
+        ]
         if args.verbose:
-            print(f'num_prof_skipped= {len(args.files) - len(do_files)}')
+            print(f"num_prof_skipped= {len(args.files) - len(do_files)}")
         args.files = do_files
 
     # Sort files by length, then by filename.
@@ -654,20 +671,20 @@ def check_args(args):
         args.files = sort_files(args.files)
 
     # Create output directory
-    if args.out_dir != '':
+    if args.out_dir != "":
         args.out_dir = pathlib.Path(args.out_dir)
         args.out_dir.mkdir(exist_ok=True)
 
     # Create and/or clean input directory
-    if args.in_dir != '':
-        gyre_adin_template = args.in_dir + '/gyre_ad.in_'
+    if args.in_dir != "":
+        gyre_adin_template = args.in_dir + "/gyre_ad.in_"
     else:
-        args.in_dir = 'gyre_ad.in'
-        gyre_adin_template = 'gyre_ad.in/gyre_ad.in_'
+        args.in_dir = "gyre_ad.in"
+        gyre_adin_template = "gyre_ad.in/gyre_ad.in_"
     args.in_dir = pathlib.Path(args.in_dir)
     args.in_dir.mkdir(exist_ok=True, parents=True)
 
-    if args.base_in != '':
+    if args.base_in != "":
         args.base_in = pathlib.Path(args.base_in)
 
     # If --lenient, switch to the version of gyre found.
@@ -686,62 +703,120 @@ def get_parser():
     and range of frequency.
     """)
 
-    parser.add_argument('ll', type=str,
-                        help='Degrees of modes to scan. eg. `012` or `mode0`. '
-                             'Including `mode` overrides `--save-modes`.')
-    parser.add_argument('filetype', type=str, choices=['FGONG', 'MESA', 'LOSC'], default='MESA',
-                        help='Filetype of profiles that gyre will read.')
-    parser.add_argument('files', type=str, nargs='*',
-                        help='Paths to profile files for gyre to use.')
-    parser.add_argument('--gyre', type=str, choices=['G4', 'G5', 'G6', 'G7', 'G8', 'G9'], default='G9',
-                        help='Which version of gyre to use.')
-    parser.add_argument('--pmode', action='store_const', const=True, default=False,
-                        help='If set, scan for modes around the expected frequencies.')
-    parser.add_argument('--save-modes', action='store_const', const=True, default=False,
-                        help='Save mode profiles.')
-    parser.add_argument('--verbose', '-v', action='store_const', const=True, default=False,
-                        help='Print info about gyre runs.')
-    parser.add_argument('--parts', '-p', action='store_const', const=True, default=False,
-                        help='Run each frequency scan window individually. This is probably a bit faster.')
-    parser.add_argument('--source', type=str, default='',
-                        help='Source this file before running gyre.')
-    parser.add_argument('--lenient', action='store_const', const=True, default=False,
-                        help='If set, will not stop `gyre_driver` if the version of gyre given to `--gyre` is different'
-                             ' than the version found in `$GYRE_DIR`.')
-    parser.add_argument('--out-dir', type=str, default='gyre_out',
-                        help='Directory in which to save output.')
-    parser.add_argument('--in-dir', type=str, default='gyre_in',
-                        help='Directory in which to save inlist files.')
-    parser.add_argument('--base-in', type=str, default='',
-                        help='Path to the base inlist to use.')
-    parser.add_argument('--nosort', action='store_const', const=True, default=False,
-                        help="Don't sort input files by profile number.")
-    parser.add_argument('--no-merge', '-m', action='store_const', const=True, default=False,
-                        help="Don't merge the final summary files into a single file.")
-    parser.add_argument('--batch', type=int, default=None,
-                        help='Split scans into batches of up to N frequencies in order to'
-                             ' get around memory issues with broken prune_modes in 5.2.')
-    parser.add_argument('--skip-calc', action='store_const', const=True, default=False,
-                        help='Do everything except run gyre for l >= 1. Useful to only generate inlists.')
-    parser.add_argument('--skip-existing', action='store_const', const=True, default=False,
-                        help='Skip running gyre for existing runs. Only works if summary files are merged.')
-    parser.add_argument('--min-numax', type=float, default=0,
-                        help='Models with numax in uHz lower than this will only calculate l=0 modes.')
-    parser.add_argument('--version', action='version', version=f'gyre_driver {_version}')
-    parser.add_argument('--summary-item-list', type=str, default='l,n_pg,n_p,n_g,freq,E_norm,M_star,R_star,L_star,E',
-                        help='Summary item list for gyre.')
-    parser.add_argument('--n-sig-lo', type=float, default=2,
-                        help="Number of power envelope sigma to look for modes below numax.")
-    parser.add_argument('--n-sig-hi', type=float, default=2,
-                        help="Number of power envelope sigma to look for modes above numax.")
-    parser.add_argument('--f-nfreq', type=int, default=1,
-                        help='Factor to increase number of scan frequencies.')
-    parser.add_argument('--summary-suffix', type=str, default='.sgyre_l',
-                        help='Merged summary file suffix.')
-    parser.add_argument('--no-output', action='store_const', const=True, default=False,
-                        help='If set, pipe all terminal output to /dev/null.')
-    parser.add_argument('--rotation', action='store_const', const=True, default=False,
-                        help='Also search for rotationally split modes.')
+    parser.add_argument(
+        "ll",
+        type=str,
+        help="Degrees of modes to scan. eg. `012` or `mode0`. " "Including `mode` overrides `--save-modes`.",
+    )
+    parser.add_argument(
+        "filetype",
+        type=str,
+        choices=["FGONG", "MESA", "LOSC"],
+        default="MESA",
+        help="Filetype of profiles that gyre will read.",
+    )
+    parser.add_argument("files", type=str, nargs="*", help="Paths to profile files for gyre to use.")
+    parser.add_argument(
+        "--gyre",
+        type=str,
+        choices=["G4", "G5", "G6", "G7", "G8", "G9"],
+        default="G9",
+        help="Which version of gyre to use.",
+    )
+    parser.add_argument(
+        "--pmode",
+        action="store_const",
+        const=True,
+        default=False,
+        help="If set, scan for modes around the expected frequencies.",
+    )
+    parser.add_argument("--save-modes", action="store_const", const=True, default=False, help="Save mode profiles.")
+    parser.add_argument(
+        "--verbose", "-v", action="store_const", const=True, default=False, help="Print info about gyre runs."
+    )
+    parser.add_argument(
+        "--parts",
+        "-p",
+        action="store_const",
+        const=True,
+        default=False,
+        help="Run each frequency scan window individually. This is probably a bit faster.",
+    )
+    parser.add_argument("--source", type=str, default="", help="Source this file before running gyre.")
+    parser.add_argument(
+        "--lenient",
+        action="store_const",
+        const=True,
+        default=False,
+        help="If set, will not stop `gyre_driver` if the version of gyre given to `--gyre` is different"
+        " than the version found in `$GYRE_DIR`.",
+    )
+    parser.add_argument("--out-dir", type=str, default="gyre_out", help="Directory in which to save output.")
+    parser.add_argument("--in-dir", type=str, default="gyre_in", help="Directory in which to save inlist files.")
+    parser.add_argument("--base-in", type=str, default="", help="Path to the base inlist to use.")
+    parser.add_argument(
+        "--nosort", action="store_const", const=True, default=False, help="Don't sort input files by profile number."
+    )
+    parser.add_argument(
+        "--no-merge",
+        "-m",
+        action="store_const",
+        const=True,
+        default=False,
+        help="Don't merge the final summary files into a single file.",
+    )
+    parser.add_argument(
+        "--batch",
+        type=int,
+        default=None,
+        help="Split scans into batches of up to N frequencies in order to"
+        " get around memory issues with broken prune_modes in 5.2.",
+    )
+    parser.add_argument(
+        "--skip-calc",
+        action="store_const",
+        const=True,
+        default=False,
+        help="Do everything except run gyre for l >= 1. Useful to only generate inlists.",
+    )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_const",
+        const=True,
+        default=False,
+        help="Skip running gyre for existing runs. Only works if summary files are merged.",
+    )
+    parser.add_argument(
+        "--min-numax",
+        type=float,
+        default=0,
+        help="Models with numax in uHz lower than this will only calculate l=0 modes.",
+    )
+    parser.add_argument("--version", action="version", version=f"gyre_driver {_version}")
+    parser.add_argument(
+        "--summary-item-list",
+        type=str,
+        default="l,n_pg,n_p,n_g,freq,E_norm,M_star,R_star,L_star,E",
+        help="Summary item list for gyre.",
+    )
+    parser.add_argument(
+        "--n-sig-lo", type=float, default=2, help="Number of power envelope sigma to look for modes below numax."
+    )
+    parser.add_argument(
+        "--n-sig-hi", type=float, default=2, help="Number of power envelope sigma to look for modes above numax."
+    )
+    parser.add_argument("--f-nfreq", type=int, default=1, help="Factor to increase number of scan frequencies.")
+    parser.add_argument("--summary-suffix", type=str, default=".sgyre_l", help="Merged summary file suffix.")
+    parser.add_argument(
+        "--no-output",
+        action="store_const",
+        const=True,
+        default=False,
+        help="If set, pipe all terminal output to /dev/null.",
+    )
+    parser.add_argument(
+        "--rotation", action="store_const", const=True, default=False, help="Also search for rotationally split modes."
+    )
     return parser
 
 
@@ -756,44 +831,44 @@ def run(args=None):
     if not args.nosort and len(args.files) > 1:
         args.files = sort_files(args.files)
 
-    if args.filetype == 'LOSC':
-        print('Warning! LOSC does not supply an effective temperature, will use an estimate instead.')
+    if args.filetype == "LOSC":
+        print("Warning! LOSC does not supply an effective temperature, will use an estimate instead.")
 
     if args.verbose:
         print()
-        print('Parsed inputs:')
-        print(f'll              = {args.ll}')
-        print(f'filetype        = {args.filetype}')
+        print("Parsed inputs:")
+        print(f"ll              = {args.ll}")
+        print(f"filetype        = {args.filetype}")
         print(f'files           = {" ".join([str(_) for _ in args.files])}')
-        print(f'--gyre          = {args.gyre}')
-        print(f'--pmode         = {args.pmode}')
-        print(f'--save-modes    = {args.save_modes}')
-        print(f'--verbose       = {args.verbose}')
-        print(f'--parts         = {args.parts}')
-        print(f'--source        = {args.source}')
-        print(f'--lenient       = {args.lenient}')
-        print(f'--out-dir       = {args.out_dir}')
-        print(f'--in-dir        = {args.in_dir}')
-        print(f'--base-in       = {args.base_in}')
-        print(f'--nosort        = {args.nosort}')
-        print(f'--no-merge      = {args.no_merge}')
-        print(f'--batch         = {args.batch}')
-        print(f'--skip-calc     = {args.skip_calc}')
-        print(f'--skip-existing = {args.skip_existing}')
-        print(f'--n-sig-lo      = {args.n_sig_lo}')
-        print(f'--n-sig-hi      = {args.n_sig_hi}')
-        print(f'--f-nfreq       = {args.f_nfreq}')
-        print(f'--summary-suffix= {args.summary_suffix}')
-        print(f'--rotation      = {args.rotation}')
+        print(f"--gyre          = {args.gyre}")
+        print(f"--pmode         = {args.pmode}")
+        print(f"--save-modes    = {args.save_modes}")
+        print(f"--verbose       = {args.verbose}")
+        print(f"--parts         = {args.parts}")
+        print(f"--source        = {args.source}")
+        print(f"--lenient       = {args.lenient}")
+        print(f"--out-dir       = {args.out_dir}")
+        print(f"--in-dir        = {args.in_dir}")
+        print(f"--base-in       = {args.base_in}")
+        print(f"--nosort        = {args.nosort}")
+        print(f"--no-merge      = {args.no_merge}")
+        print(f"--batch         = {args.batch}")
+        print(f"--skip-calc     = {args.skip_calc}")
+        print(f"--skip-existing = {args.skip_existing}")
+        print(f"--n-sig-lo      = {args.n_sig_lo}")
+        print(f"--n-sig-hi      = {args.n_sig_hi}")
+        print(f"--f-nfreq       = {args.f_nfreq}")
+        print(f"--summary-suffix= {args.summary_suffix}")
+        print(f"--rotation      = {args.rotation}")
         print()
 
     # Load environment variables from --source and keep a copy of the old ones.
     environ_original = os.environ.copy()
-    if args.source != '':
+    if args.source != "":
         env_out = subprocess.check_output(f"source {args.source}; env -0", shell=True, executable="/bin/bash")
-        environ_used = dict(line.decode().partition('=')[::2] for line in env_out.split(b'\0'))
-        if '' in environ_used:
-            environ_used.pop('')
+        environ_used = dict(line.decode().partition("=")[::2] for line in env_out.split(b"\0"))
+        if "" in environ_used:
+            environ_used.pop("")
         os.environ.clear()
         os.environ.update(environ_used)
     environ_used = os.environ.copy()
@@ -801,14 +876,14 @@ def run(args=None):
     args = check_args(args)
 
     if args.verbose:
-        print('Processed inputs:')
-        print(f'll              = {args.ll}')
+        print("Processed inputs:")
+        print(f"ll              = {args.ll}")
         print(f'files           = {" ".join([str(_) for _ in args.files])}')
-        print(f'--save-modes    = {args.save_modes}')
-        print(f'--gyre          = {args.gyre}')
-        print(f'--out-dir       = {args.out_dir}')
-        print(f'--in-dir        = {args.in_dir}')
-        print(f'--base-in       = {args.base_in}')
+        print(f"--save-modes    = {args.save_modes}")
+        print(f"--gyre          = {args.gyre}")
+        print(f"--out-dir       = {args.out_dir}")
+        print(f"--in-dir        = {args.in_dir}")
+        print(f"--base-in       = {args.base_in}")
         print()
 
     for file in args.files:
@@ -820,10 +895,12 @@ def run(args=None):
         print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
 
     if args.original_gyre != args.gyre:
-        print('###################################################################')
-        print(f'Could not find the required gyre version `{args.original_gyre}` in $GYRE_DIR.\n'
-              f'Used gyre version `{args.gyre}` instead.')
-        print('###################################################################')
+        print("###################################################################")
+        print(
+            f"Could not find the required gyre version `{args.original_gyre}` in $GYRE_DIR.\n"
+            f"Used gyre version `{args.gyre}` instead."
+        )
+        print("###################################################################")
         print()
 
     # Reset to the old environment variables.
@@ -831,5 +908,6 @@ def run(args=None):
     os.environ.update(environ_original)
     return 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     run()
