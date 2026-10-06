@@ -913,6 +913,9 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
     """
     dirpath = os.path.abspath(os.path.join(hist.LOGS, '..', gyre_data_dir))
 
+    if not os.path.isdir(dirpath):
+        raise FileNotFoundError(f'Directory {dirpath} not found.')
+
     use_mask = uf.get_mask(hist, use_mask)
 
     min_mod, max_mod = hist.get('model_number')[use_mask][[0, -1]]
