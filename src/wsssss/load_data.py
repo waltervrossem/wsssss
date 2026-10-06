@@ -74,6 +74,7 @@ class _Data:
             self.nanclip = None
         self.keep_columns = keep_columns
         self.save_dill = save_dill
+
         if self.path.endswith('.dill'):
             self.dill_path = self.path
             self.path = self.path[:-5]  # Best guess for original file name
@@ -105,16 +106,20 @@ class _Data:
                             print('.dill file is older than loaded file! Reloading.')
                         self.save_dill = True
                         raise ValueError()
+
                     tmp = dill.load(handle)
+
                     self.header = tmp.header
                     self.columns = tmp.columns
                     self.data = tmp.data
                     self._first_row = tmp._first_row
 
                     self.loaded = True
+
                 except Exception:
                     if self.verbose:
                         print("Failed to load dill from: \n{}".format(self.dill_path))
+
                     if not self.dill_only:
                         header, columns, first_row = self._read_data_file_header_columns()
                         self.header = header
@@ -316,6 +321,7 @@ class _Data:
                     data[col][data[col] == self.nanval] = np.nan
 
         self.data = data
+
         if isinstance(self, History):
             data = self._scrub_hist()
 
@@ -401,6 +407,7 @@ class _Mesa(_Data):
                 self.index_path = os.path.abspath(index_name)
             else:
                 self.index_path = os.path.join(self.LOGS, index_name)
+
             try:
                 index = np.genfromtxt(self.index_path, skip_header=1, dtype=int)
 
@@ -455,11 +462,13 @@ class History(_Mesa):
     def __getitem__(self, mask):
         new_self = copy.copy(self)
         new_self.data = self._discard_rows_rec_array(self.data, mask)
+
         if hasattr(self, 'index'):
             if self.index is not None:
                 mnum0, mnum1 = new_self.data.model_number[[0, -1]]
                 idx_mask = (self.index[:, 0] >= mnum0) & (self.index[:, 0] <= mnum1)
                 new_self.index = self.index[idx_mask]
+
         return new_self
 
     def __repr__(self):
@@ -521,8 +530,8 @@ class History(_Mesa):
             hist_ind = np.where(self.get('model_number') == pmod)[0][0]
         else:
             hist_ind = []
-        return pnum, pmod, hist_ind
 
+        return pnum, pmod, hist_ind
 
     def get_profile_index(self, profile_nums):
         """
@@ -545,11 +554,14 @@ class History(_Mesa):
                 profile_nums = [profile_nums]
         else:
             profile_nums = [profile_nums]
+
         if isinstance(profile_nums[0], Profile):
             profile_nums = [p.profile_num for p in profile_nums]
+
         idxs = np.where(np.isin(self.index[:, 2], profile_nums))
         model_nums = self.index[:, 0][idxs]
         data_idx = np.where(np.isin(self.data['model_number'], model_nums))[0]
+
         return data_idx
 
     def _scrub_hist(self):
@@ -598,6 +610,7 @@ class Profile(_Mesa):
                 self.profile_num = None
         else:
             self.profile_num = None
+
         if load_GyreProfile:
             self.GyreProfile = GyreProfile(f'{self.path}{suffix_GyreProfile}')
         else:
@@ -657,6 +670,7 @@ class _Gyre(_Data):
             np.rec.array: Frequencies in unit specified by Re_freq_unit.
         """
         unit_dict = {'uHz': 1e6, 'mHz': 1e3, 'Hz': 1e0}
+
         if 'freq_units' in self.header.keys():
             header_freq_units = self.header['freq_units'].lower().replace('hz', 'Hz')
             if header_freq_units != Re_freq_unit:
@@ -683,6 +697,7 @@ class _Gyre(_Data):
                 freq = self.header[freq_name]
             else:
                 raise ValueError('Frequency column/header not recognized.')
+
         return freq * dimless_to_Hz
 
 
@@ -757,6 +772,7 @@ class GyreMode(_Gyre):
         """
         M_star = self.header['M_star']
         R_star = self.header['R_star']
+
         if int(self.gyre_version) < 6:
             G = pre15140.standard_cgrav
         else:
@@ -785,6 +801,7 @@ class GyreProfile:
 
         self.header = {'num_zones': num_zones, 'star_mass': mass, 'star_radius': radius, 'star_luminosity': luminosity,
                        'version': version}
+
         if self.version == 100:
             self.columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
                             'brunt_N2', 'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T',
@@ -792,6 +809,7 @@ class GyreProfile:
                             'nuclear_energy_generation_partial_rho', 'rotation']
 
             self.formats = [int] + 18 * [float]
+
         elif self.version == 101:
             self.columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
                             'brunt_N2', 'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T',
@@ -799,12 +817,15 @@ class GyreProfile:
                             'nuclear_energy_generation_partial_rho', 'rotation']
 
             self.formats = [int] + 18 * [float]
+
         elif self.version == 120:
             self.columns = ['zone', 'radius', 'mass', 'luminosity', 'pressure', 'temperature', 'density', 'grad_T',
                             'brunt_N2', 'gamma1', 'grad_ad', 'nu_T', 'opacity', 'opacity_partial_T',
                             'opacity_partial_rho', 'nuclear_energy_generation', 'nuclear_energy_generation_partial_T',
                             'nuclear_energy_generation_partial_rho', 'gravothermal_energy_generation', 'rotation']
+
             self.formats = [int] + 19 * [float]
+
         else:
             raise NotImplementedError('Only file format versions 100, 101, and 120 are implemented.')
 
@@ -862,6 +883,7 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
     """
     if hist.index is None:
         return []
+
     pnums = hist.index[:, 2]
 
     if mask is not None:
@@ -871,7 +893,6 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
 
     profs = []
     for i in pnums:
-
         try:
             if suffix.endswith('.GYRE'):
                 prof = GyreProfile(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)))
@@ -882,6 +903,7 @@ def load_profs(hist, prefix='profile', suffix='.data', save_dill=False, mask=Non
         except FileNotFoundError:
             print(os.path.join(hist.LOGS, '{}{}{}'.format(prefix, i, suffix)) +
                   ' not found in {}'.format(hist.index_path))
+
     return profs
 
 
@@ -923,14 +945,17 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
     pnums = []
     for fname in os.listdir(dirpath):
         fname = os.path.split(fname)[-1]
+
         if fname.startswith(gyre_summary_prefix) and fname.endswith(gyre_summary_suffix):
             try:
                 pnum = int(fname[len(gyre_summary_prefix):-len(gyre_summary_suffix)])
             except ValueError:
                 continue
+
             if pnum in hist.index[:, 2]:  # Only load gss which are in the index
                 if min_mod <= hist.index[:, 0][hist.index[:, 2] == pnum] <= max_mod:
                     pnums.append(pnum)
+
     pnums.sort()
 
     gss = []
@@ -942,6 +967,7 @@ def load_gss(hist, gyre_data_dir='gyre_out', gyre_summary_prefix='profile', gyre
 
     if return_pnums:
         return list(zip(gss, np.array(pnums)))
+
     return gss
 
 
@@ -963,7 +989,6 @@ def load_modes_from_profile(prof, gyre_data_dir='gyre_out', mode_prefix='', mode
         verbose (bool, optional): Print extra information.
         nanval (float, optional): Set all values equal to this to NaN.
         nanclip (2 floats, optional): Set all values outside this range to NaN.
-
 
     Returns:
         list of GyreMode:
@@ -1006,6 +1031,7 @@ def load_gs_from_profile(prof, gyre_data_dir='gyre_out', gyre_summary_prefix='',
         verbose (bool, optional): Print extra information.
         nanval (float, optional): Set all values equal to this to NaN.
         nanclip (2 floats, optional): Set all values outside this range to NaN.
+
     Returns:
         GyreSummary:
     """
