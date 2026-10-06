@@ -949,8 +949,8 @@ def calc_MH(hist, ZX_sol=0.0178, use_mask=None):
     surf_X = hist.data.surface_h1[mask] + hist.data.surface_h2[mask]
     surf_Y = hist.data.surface_he3[mask] + hist.data.surface_he4[mask]
     surf_Z = 1 - surf_X - surf_Y
-    FeH = np.log10((surf_Z / surf_X) / ZX_sol)
-    return FeH
+    MH = np.log10((surf_Z / surf_X) / ZX_sol)
+    return MH
 
 
 def calc_deltanu(gs, hist, prefix='profile', suffix='.data.GYRE.sgyre_l', freq_units='uHz'):
