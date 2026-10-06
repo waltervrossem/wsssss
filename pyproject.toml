@@ -29,6 +29,13 @@ dependencies = [
     "joblib"
 ]
 
+[dependency-groups]
+dev = [
+    "pytest-env",
+    "pre-commit",
+    "black",
+]
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -39,11 +46,6 @@ classifiers = [
 license = "MIT"
 license-files = ["LICENSE"]
 
-[project.optional-dependencies]
-dev = [
-    "pytest-env",
-]
-
 [tool.pytest_env]
 
 MESA_DIR = {value = "{MESA_DIR}", transform = true, skip_if_set = true}
@@ -53,6 +55,9 @@ PATH = {value = "{MESASDK_ROOT}/bin:{PATH}", transform = true}
 PGPLOT_DIR = {value = "{MESASDK_ROOT}/lib/pgplot", transform = true}
 VALGRIND_LIB = {value = "{MESASDK_ROOT}/lib/valgrind", transform = true}
 MESASDK_VERSION = {value = "{MESASDK_VERSION}", transform = true}
+
+[tool.black]
+line-length = 120
 
 [project.scripts]
 gyre-driver = "wsssss._bin.gyre_driver:gyre_driver.run"
