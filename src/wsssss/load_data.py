@@ -22,6 +22,7 @@ import shutil
 
 import dill
 import numpy as np
+from numpy.lib import recfunctions
 
 from . import functions as uf
 from .constants import post15140
@@ -1146,7 +1147,7 @@ def naive_merge_hists(base_hist, histories_to_merge):
         raise ValueError('No histories to merge')
 
     new_hist = copy.copy(base_hist)
-    new_hist.data = np.lib.recfunctions.stack_arrays([h.data for h in histories_to_merge], asrecarray=True, usemask=False)
+    new_hist.data = recfunctions.stack_arrays([h.data for h in histories_to_merge], asrecarray=True, usemask=False)
     return new_hist
 
 
