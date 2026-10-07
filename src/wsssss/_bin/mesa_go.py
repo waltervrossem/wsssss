@@ -451,13 +451,21 @@ def start_mesa(args, run_name, logger):
     return run_name, out
 
 
-def queue_start_mesa(queue, logger):
+def queue_start_mesa(queue, logger, failed):
+    """Pool initializer: consume queue items and run MESA."""
     while True:
         item = queue.get(block=True)
+
         if item is None:
             break
 
-        start_mesa(*item, logger=logger)
+        try:
+            start_mesa(*item, logger=logger)
+        except Exception:
+            logger.exception(f"Worker failed on run: {item[1]}")
+            with failed.get_lock():
+                failed.value = 1
+
 
 
 def run_cmd(cmd, capture_output=False, split=False, to_file="", file_mode="w", **kwargs):
@@ -490,8 +498,16 @@ def run_cmd(cmd, capture_output=False, split=False, to_file="", file_mode="w", *
                 shell=True,
                 **kwargs,
             )
-        return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
-    return subprocess.run(cmd, **kwargs)
+
+        return subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            **_shell_kwargs(kwargs),
+        )
+
+    return subprocess.run(cmd, **_shell_kwargs(kwargs))
+
 
 def get_slurm_task_info(task_share):
     """Return (n_tasks, task_id) for SLURM array jobs."""
@@ -565,9 +581,15 @@ def main(args, logger):
             print(subdir)
         print("")
 
-    _queue_start_mesa = functools.partial(queue_start_mesa, logger=logger)
-
     queue = mp.Queue()
+    failed = mp.Value("b", 0)
+
+    _queue_start_mesa = functools.partial(
+        queue_start_mesa,
+        logger=logger,
+        failed=failed,
+    )
+
     pool = mp.Pool(args.num_mesa, _queue_start_mesa, (queue,))
     for item in arguments[task_id::n_tasks]:
         queue.put(item)
@@ -603,11 +625,7 @@ def run():
 
     logger = mp.get_logger()
 
-    if args.debug:
-        args.verbose = True
-        logger.setLevel("DEBUG")
-    else:
-        logger.setLevel("INFO")
+    logger.setLevel("INFO")
 
     main(args, logger)
     return 0
