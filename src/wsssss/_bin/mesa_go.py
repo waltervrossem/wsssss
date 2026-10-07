@@ -358,19 +358,6 @@ def start_mesa(args, run_name, logger):
         photos = os.listdir("photos")
     else:
         photos = []
-    if args.restart and len(photos) > 0:
-        if args.restart_settings is None:
-            photos_int = [photo.replace("x", "0") for photo in photos]
-            photos_order = np.argsort(np.array([int(photo) for photo in photos_int if photo.isdigit()]))
-            photos = np.array(photos)[photos_order].tolist()
-            photo = photos[-1]
-        else:
-            photo = args.restart_settings[run_name]
-        if photo == "full_restart":
-            cmd = pre_cmd_str + args.cmd_main + "  2>&1"
-            if args.verbose:
-                logger.info(f"{pid}: {run_name} {cmd}")
-            out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
 
     photo, run_new = choose_restart_photo(args, photos, run_name)
 
@@ -379,15 +366,7 @@ def start_mesa(args, run_name, logger):
             cmd = pre_cmd_str + f"./re {shlex.quote(photo)}" + " 2>&1"
             file_mode = "a"
         else:
-            cmd = pre_cmd_str + f"./re {photo} >> {log_file} 2>&1"
-        if args.verbose:
-            logger.info(f"{pid}: {run_name} {cmd}")
-        out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
-    else:
-        cmd = pre_cmd_str + args.cmd_main + "  2>&1"
-        if args.verbose:
-            logger.info(f"{pid}: {run_name} {cmd}")
-        out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
+            photo = None
             run_new = True
 
     if run_new:
