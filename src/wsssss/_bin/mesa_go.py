@@ -583,7 +583,7 @@ def get_slurm_task_info(task_share):
 
 
 def main(args, logger):
-    # TODO: include walltime?
+    """Run the MESA grid."""
 
     if args.verbose:
         print("Parsed inputs:")
@@ -620,14 +620,41 @@ def main(args, logger):
     )
 
     pool = mp.Pool(args.num_mesa, _queue_start_mesa, (queue,))
-    for item in arguments[task_id::n_tasks]:
-        queue.put(item)
-    for i in range(args.num_mesa):
-        queue.put(None)
-    queue.close()
-    queue.join_thread()
-    pool.close()
-    pool.join()
+
+    try:
+        for item in arguments[task_id::n_tasks]:
+            queue.put(item)
+
+        for _ in range(args.num_mesa):
+            queue.put(None)
+
+        queue.close()
+        queue.join_thread()
+
+        pool.close()
+        pool.join()
+
+    except KeyboardInterrupt:
+        queue.cancel_join_thread()
+        pool.terminate()
+        pool.join()
+        raise
+
+    finally:
+        try:
+            queue.close()
+            queue.join_thread()
+        except Exception:
+            pass
+
+        try:
+            pool.close()
+            pool.join()
+        except Exception:
+            pass
+
+    if failed.value:
+        raise RuntimeError("One or more MESA runs failed in mesa-go.")
 
     if args.cmd_post != "":
         run_cmd(args.cmd_post, logger, shell=True)
