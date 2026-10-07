@@ -686,14 +686,22 @@ def run():
 
     logger.setLevel("INFO")
 
-    main(args, logger)
+    try:
+        main(args, logger)
+        ierr = 0
+    except KeyboardInterrupt:
+        logger.warning("Interrupted.")
+        ierr = 130
+    except Exception:
+        logger.exception("Fatal error.")
+        ierr = 1
 
     t_end = time.time()
     if args.verbose:
         t_taken = t_end - t_start
         print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
 
-    return 0
+    return ierr
 
 
 if __name__ == "__main__":
