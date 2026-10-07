@@ -218,6 +218,9 @@ def process_args(args):
     if not os.path.isdir(args.grid_dir):
         raise FileNotFoundError(f"grid_dir does not exist: {args.grid_dir}")
 
+    if args.base_work_dir and not os.path.isdir(args.base_work_dir):
+        raise FileNotFoundError(f"base_work_dir does not exist: {args.base_work_dir}")
+
     if args.source != "":
         args.source = expand_path(args.source)
         if not os.path.isfile(args.source):
@@ -287,6 +290,41 @@ def get_subdirs(args):
     return sub_dirs
 
 def choose_restart_photo(args, photos, run_name):
+
+def copy_base_work_dir(args, run_dir, logger):
+    """
+    Copy missing files from the base work directory into the run directory.
+    Existing files in the run directory are not overwritten.
+    """
+    if not args.base_work_dir:
+        return
+
+    base_dir = args.base_work_dir
+
+    if os.path.abspath(base_dir) == os.path.abspath(run_dir):
+        return
+
+    pid = os.getpid()
+    logger.info(f"{pid}: Copying missing files from base work dir: {base_dir}")
+
+    for root, dirs, files in os.walk(base_dir):
+        rel_root = os.path.relpath(root, base_dir)
+        target_root = os.path.join(run_dir, rel_root)
+
+        os.makedirs(target_root, exist_ok=True)
+
+        for directory in dirs:
+            target_dir = os.path.join(target_root, directory)
+            os.makedirs(target_dir, exist_ok=True)
+
+        for filename in files:
+            source_path = os.path.join(root, filename)
+            target_path = os.path.join(target_root, filename)
+
+            if not os.path.exists(target_path):
+                shutil.copy2(source_path, target_path)
+
+
     """
     Return (photo, run_new).
 
@@ -371,6 +409,8 @@ def start_mesa(args, run_name, logger):
 
     if args.cmd_pre_each != "":
         run_cmd(args.cmd_pre_each, shell=True)
+
+    copy_base_work_dir(args, run_dir, logger)
 
     if not os.path.exists("star"):
         run_cmd("./clean && ./mk", shell=True)
