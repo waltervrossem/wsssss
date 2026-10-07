@@ -369,11 +369,15 @@ def photo_exists(photo):
     """Check whether a restart photo exists."""
     return os.path.exists(os.path.join("photos", photo)) or os.path.exists(photo)
 
+
 def start_mesa(args, run_name, logger):
+    """Run MESA in a single grid subdirectory."""
     pid = os.getpid()
     logger.info(f"{pid}: Starting {run_name}")
 
-    os.chdir(os.path.join(args.grid_dir, run_name))
+    run_dir = os.path.join(args.grid_dir, run_name)
+    os.chdir(run_dir)
+
     if args.verbose:
         logger.info(f"{pid}: Current directory: {os.getcwd()}")
 
@@ -407,7 +411,7 @@ def start_mesa(args, run_name, logger):
     pre_cmd_str = f"export OMP_NUM_THREADS={args.OMP_NUM_THREADS}; "
 
     if args.source != "":
-        pre_cmd_str = f". {args.source}; " + pre_cmd_str
+        pre_cmd_str = f". {shlex.quote(args.source)}; " + pre_cmd_str
 
     if args.cmd_pre_each != "":
         run_cmd(args.cmd_pre_each, logger, shell=True)
