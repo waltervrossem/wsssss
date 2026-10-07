@@ -265,6 +265,27 @@ def process_args(args):
 
 
 def choose_restart_photo(args, photos, run_name):
+def get_subdirs(args):
+    """Return subdirectories to run."""
+    if args.sub_dirs:
+        sub_dirs = list(args.sub_dirs)
+
+        for name in sub_dirs:
+            path = os.path.join(args.grid_dir, name)
+            if not os.path.isdir(path):
+                raise FileNotFoundError(f"sub-dir does not exist: {path}")
+
+        return sub_dirs
+
+    sub_dirs = []
+
+    for item in os.listdir(args.grid_dir):
+        item_path = os.path.join(args.grid_dir, item)
+        if os.path.isdir(item_path) and item.isdigit():
+            sub_dirs.append(item)
+
+    sub_dirs.sort()
+    return sub_dirs
     """
     Return (photo, run_new).
 
@@ -366,6 +387,7 @@ def start_mesa(args, run_name, logger):
             cmd = pre_cmd_str + f"./re {shlex.quote(photo)}" + " 2>&1"
             file_mode = "a"
         else:
+            logger.info(f"{pid}: Restart photo {photo} not found for {run_name}; starting new run.")
             photo = None
             run_new = True
 
@@ -432,17 +454,6 @@ def run_cmd(cmd, capture_output=False, split=False, to_file="", file_mode="w", *
     return subprocess.run(cmd, **kwargs)
 
 
-def get_subdirs(args):
-    if args.sub_dirs != "":
-        sub_dirs = args.sub_dirs
-    else:
-        sub_dirs = []
-        for item in os.listdir(args.grid_dir):
-            item_path = os.path.join(args.grid_dir, item)
-            if os.path.isdir(item_path) and item.isdigit():
-                sub_dirs.append(item)
-        sub_dirs.sort()
-    return sub_dirs
 
 
 def main(args, logger):
