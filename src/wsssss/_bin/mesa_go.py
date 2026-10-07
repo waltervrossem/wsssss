@@ -264,7 +264,6 @@ def process_args(args):
     return args
 
 
-def choose_restart_photo(args, photos, run_name):
 def get_subdirs(args):
     """Return subdirectories to run."""
     if args.sub_dirs:
@@ -286,6 +285,8 @@ def get_subdirs(args):
 
     sub_dirs.sort()
     return sub_dirs
+
+def choose_restart_photo(args, photos, run_name):
     """
     Return (photo, run_new).
 
