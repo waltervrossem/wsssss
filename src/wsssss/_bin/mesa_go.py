@@ -339,6 +339,7 @@ def choose_restart_photo(args, photos, run_name, logger, pid):
     # User supplied restart file.
     if args.restart_settings is not None:
         if run_name not in args.restart_settings:
+            logger.info(f"{pid}: No restart setting for {run_name}; starting new run.")
             return None, True
 
         photo = args.restart_settings[run_name]
@@ -355,6 +356,7 @@ def choose_restart_photo(args, photos, run_name, logger, pid):
             numeric_photos.append((int(cleaned), photo))
 
     if not numeric_photos:
+        logger.info(f"{pid}: No numeric photos found in {run_name}; starting new run.")
         return None, True
 
     numeric_photos.sort(key=lambda item: item[0])
@@ -413,14 +415,14 @@ def start_mesa(args, run_name, logger):
     copy_base_work_dir(args, run_dir, logger)
 
     if not os.path.exists("star"):
-        run_cmd("./clean && ./mk", shell=True)
+        run_cmd("./clean && ./mk", logger, shell=True)
 
     if os.path.exists("photos"):
         photos = os.listdir("photos")
     else:
         photos = []
 
-    photo, run_new = choose_restart_photo(args, photos, run_name)
+    photo, run_new = choose_restart_photo(args, photos, run_name, logger, pid)
 
     if not run_new:
         if photo_exists(photo):
@@ -435,8 +437,12 @@ def start_mesa(args, run_name, logger):
         cmd = pre_cmd_str + args.cmd_main + " 2>&1"
         file_mode = "w"
 
+    if args.verbose:
+        logger.info(f"{pid}: {run_name} {cmd}")
+
     out = run_cmd(
         cmd,
+        logger,
         split=False,
         shell=True,
         to_file=log_file,
@@ -444,7 +450,7 @@ def start_mesa(args, run_name, logger):
     )
 
     if args.cmd_post_each != "":
-        run_cmd(args.cmd_post_each, shell=True)
+        run_cmd(args.cmd_post_each, logger, shell=True)
 
     logger.info(f"{pid}: Finished {run_name}")
 
@@ -467,32 +473,54 @@ def queue_start_mesa(queue, logger, failed):
                 failed.value = 1
 
 
-
-def run_cmd(cmd, capture_output=False, split=False, to_file="", file_mode="w", **kwargs):
+def run_cmd(cmd, logger, capture_output=False, split=False, to_file="", file_mode="w", **kwargs):
     pid = os.getpid()
-    if file_mode not in ["a", "-a", "w"]:
-        raise ValueError("`file_mode` must be one of `a`, `-a`, or `w`.")
+
+    if file_mode not in ["a", "w"]:
+        raise ValueError("`file_mode` must be one of `a` or `w`.")
 
     if capture_output and to_file != "":
-        logger.warning(
-            f"{pid}: Cannot simultaneously capture output and write to file if `split=True`, setting to False."
-        )
+        logger.warning(f"{pid}: Cannot simultaneously capture output and write to file; disabling split mode.")
         split = False
 
     if split:
         cmd = cmd.split()
 
+    if isinstance(cmd, str):
+        logger.info(f"{pid}: {cmd}")
+    else:
+        logger.info(f"{pid}: {shlex.join(cmd)}")
+
+    if "shell" in kwargs:
+        shell_mode = kwargs.pop("shell")
+    else:
+        shell_mode = isinstance(cmd, str)
+
     if to_file != "" and not capture_output:
         with open(to_file, file_mode) as f:
-            return subprocess.run(cmd, stdout=f, stdin=f, **kwargs)
+            return subprocess.run(
+                cmd,
+                stdout=f,
+                shell=shell_mode,
+                **kwargs,
+            )
+
     if capture_output:
         if to_file != "":
-            if file_mode == "a":
-                file_mode = "-a"
-            elif file_mode == "w":
-                file_mode = ""
+            if isinstance(cmd, str):
+                cmd_str = cmd.strip()
+            else:
+                cmd_str = shlex.join(cmd)
+
+            # Avoid double 2>&1 redirection.
+            if cmd_str.endswith("2>&1"):
+                cmd_str = cmd_str[:-4].strip()
+
+            tee_flag = "-a" if file_mode == "a" else ""
+            shell_cmd = f"{cmd_str} 2>&1 | tee {tee_flag} {shlex.quote(to_file)}"
+
             return subprocess.run(
-                cmd + f"| tee {file_mode} {to_file}",
+                shell_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 shell=True,
@@ -503,10 +531,11 @@ def run_cmd(cmd, capture_output=False, split=False, to_file="", file_mode="w", *
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            **_shell_kwargs(kwargs),
+            shell=shell_mode,
+            **kwargs,
         )
 
-    return subprocess.run(cmd, **_shell_kwargs(kwargs))
+    return subprocess.run(cmd, shell=shell_mode, **kwargs)
 
 
 def get_slurm_task_info(task_share):
@@ -565,7 +594,7 @@ def main(args, logger):
     check_cores(args)
 
     if args.cmd_pre != "":
-        run_cmd(args.cmd_pre, shell=True)
+        run_cmd(args.cmd_pre, logger, shell=True)
 
     sub_dirs = get_subdirs(args)
 
@@ -601,7 +630,7 @@ def main(args, logger):
     pool.join()
 
     if args.cmd_post != "":
-        run_cmd(args.cmd_post, shell=True)
+        run_cmd(args.cmd_post, logger, shell=True)
 
 
 def run():
@@ -611,7 +640,6 @@ def run():
         setproctitle.setproctitle("MESAgo")
     except ModuleNotFoundError:
         print("Module setproctitle not found, will not set process name.")
-        pass
 
     signal.signal(signal.SIGTERM, signal.default_int_handler)
     signal.signal(signal.SIGINT, signal.default_int_handler)
@@ -628,6 +656,12 @@ def run():
     logger.setLevel("INFO")
 
     main(args, logger)
+
+    t_end = time.time()
+    if args.verbose:
+        t_taken = t_end - t_start
+        print(f"Total time taken: {int(t_taken // 3600)}h{int(t_taken // 60) % 60}m{t_taken % 60 :.2f}s\n")
+
     return 0
 
 
