@@ -311,12 +311,6 @@ def start_mesa(args, run_name, logger):
     if not os.path.exists("star"):
         run_cmd("./clean && ./mk", shell=True)
 
-    if args.debug:
-        out = run_cmd(f"{os.path.dirname(os.path.abspath(__file__))}/testing_star.py {run_name}")
-        if args.cmd_post_each != "":
-            run_cmd(args.cmd_post_each)
-        return run_name, out
-
     if os.path.exists("photos"):
         photos = os.listdir("photos")
     else:
