@@ -13,7 +13,6 @@ import subprocess
 import sys
 import time
 from argparse import ArgumentParser
-import numpy as np
 
 
 def get_parser():
@@ -216,27 +215,52 @@ def process_args(args):
     args.base_work_dir = expand_path(args.base_work_dir)
     args.grid_dir = expand_path(args.grid_dir)
 
+    if not os.path.isdir(args.grid_dir):
+        raise FileNotFoundError(f"grid_dir does not exist: {args.grid_dir}")
+
     if args.source != "":
         args.source = expand_path(args.source)
+        if not os.path.isfile(args.source):
+            raise FileNotFoundError(f"source file does not exist: {args.source}")
 
     if args.log_path != "":
-        if not (("WORK_DIR" in args.log_path) or ("RUN_NAME" in args.log_path)):  #
+        if not (("WORK_DIR" in args.log_path) or ("RUN_NAME" in args.log_path)):
             raise ValueError("log-path must contain one or both of WORK_DIR or RUN_NAME in its path.")
 
     if args.skip_if_file_exists != "":
-        if not (("WORK_DIR" in args.log_path) or ("RUN_NAME" in args.log_path)):  #
-            raise ValueError("skip-if-file-exists must contain one or both of WORK_DIR or RUN_NAME in its path.")
+        if args.skip_if_file_exists != "MESAGO_LOG_FILE":
+            if not (("WORK_DIR" in args.skip_if_file_exists) or ("RUN_NAME" in args.skip_if_file_exists)):
+                raise ValueError(
+                    "skip-if-file-exists must contain one or both of WORK_DIR "
+                    "or RUN_NAME in its path, unless it is MESAGO_LOG_FILE."
+                )
 
     args.restart_settings = None
     if isinstance(args.restart, str):
-        with open(args.restart, "r") as handle:
-            lines = handle.readlines()
+        args.restart = expand_path(args.restart)
+
+        if not os.path.isfile(args.restart):
+            raise FileNotFoundError(f"restart file does not exist: {args.restart}")
+
         restart_settings = {}
-        for line in lines:
-            dirname, photo = line.split()
-            restart_settings[dirname] = photo
+
+        with open(args.restart, "r") as handle:
+            for lineno, line in enumerate(handle, start=1):
+                line = line.strip()
+
+                if not line or line.startswith("#"):
+                    continue
+
+                parts = line.split("#", maxsplit=1)[0].strip().split()
+                if len(parts) != 2:
+                    raise ValueError(f"Bad restart file line {lineno}: {line!r}. Expected '<dirname> <photo>'.")
+
+                dirname, photo = parts
+                restart_settings[dirname] = photo
+
         args.restart_settings = restart_settings
         args.restart = True
+
     return args
 
 
