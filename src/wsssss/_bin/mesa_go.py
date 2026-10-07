@@ -6,6 +6,8 @@ import functools
 import itertools
 import multiprocessing as mp
 import os
+import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -125,6 +127,26 @@ def get_parser():
     return parser
 
 
+def expand_path(path):
+    """Expand user, environment variables, and return an absolute path."""
+    if path == "":
+        return os.path.abspath(os.getcwd())
+    return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
+
+
+def resolve_path_template(template, grid_dir, run_dir, run_name):
+    """Resolve WORK_DIR/RUN_NAME templates."""
+    if template == "":
+        return ""
+
+    path = template.replace("WORK_DIR", run_dir).replace("RUN_NAME", run_name)
+
+    if not os.path.isabs(path):
+        path = os.path.join(grid_dir, path)
+
+    return os.path.abspath(path)
+
+
 def check_cores(args):
     """Check and process args."""
     nproc = os.cpu_count()
@@ -136,11 +158,7 @@ def check_cores(args):
 
 
 def process_args(args):
-    """"""
-
-    def expand_path(path):
-        return os.path.abspath(os.path.expandvars(path))
-
+    """Process and validate parsed arguments."""
     args.base_work_dir = expand_path(args.base_work_dir)
     args.grid_dir = expand_path(args.grid_dir)
 
@@ -176,22 +194,22 @@ def start_mesa(args, run_name, logger):
     if args.verbose:
         logger.info(f"{pid}: Current directory: {os.getcwd()}")
 
-    if args.log_path == "":
+    log_file = resolve_path_template(args.log_path, args.grid_dir, run_dir, run_name)
+
+    if log_file == "":
         log_file = os.path.join(args.grid_dir, "out_" + run_name)
-    else:
-        log_file = (
-            os.path.join(args.grid_dir, args.log_path).replace("WORK_DIR", run_name).replace("RUN_NAME", run_name)
-        )
+
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
     if args.skip_if_file_exists:
         if args.skip_if_file_exists == "MESAGO_LOG_FILE":
             skip_check_fpath = log_file
         else:
-            skip_check_fpath = (
-                os.path.join(args.grid_dir, args.skip_if_file_exists)
-                .replace("WORK_DIR", run_name)
-                .replace("RUN_NAME", run_name)
+            skip_check_fpath = resolve_path_template(
+                args.skip_if_file_exists,
+                args.grid_dir,
+                run_dir,
+                run_name,
             )
 
         if os.path.exists(skip_check_fpath):
