@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # TODO: check environment for $MESA_DIR and get constants from there, if this version and a history/profile have a
