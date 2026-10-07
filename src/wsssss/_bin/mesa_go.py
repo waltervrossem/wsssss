@@ -264,6 +264,49 @@ def process_args(args):
     return args
 
 
+def choose_restart_photo(args, photos, run_name):
+    """
+    Return (photo, run_new).
+
+    photo is None if a new run should be started.
+    """
+    if not args.restart:
+        return None, True
+
+    if len(photos) == 0:
+        return None, True
+
+    # User supplied restart file.
+    if args.restart_settings is not None:
+        if run_name not in args.restart_settings:
+            return None, True
+
+        photo = args.restart_settings[run_name]
+        if photo == 'full_restart':
+            return None, True
+        return photo, False
+
+    # Auto-select latest numeric photo.
+    numeric_photos = []
+
+    for photo in photos:
+        cleaned = photo.replace("x", "0")
+        if cleaned.isdigit():
+            numeric_photos.append((int(cleaned), photo))
+
+    if not numeric_photos:
+        return None, True
+
+    numeric_photos.sort(key=lambda item: item[0])
+    photo = numeric_photos[-1][1]
+
+    return photo, False
+
+
+def photo_exists(photo):
+    """Check whether a restart photo exists."""
+    return os.path.exists(os.path.join("photos", photo)) or os.path.exists(photo)
+
 def start_mesa(args, run_name, logger):
     pid = os.getpid()
     logger.info(f"{pid}: Starting {run_name}")
@@ -328,6 +371,13 @@ def start_mesa(args, run_name, logger):
             if args.verbose:
                 logger.info(f"{pid}: {run_name} {cmd}")
             out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
+
+    photo, run_new = choose_restart_photo(args, photos, run_name)
+
+    if not run_new:
+        if photo_exists(photo):
+            cmd = pre_cmd_str + f"./re {shlex.quote(photo)}" + " 2>&1"
+            file_mode = "a"
         else:
             cmd = pre_cmd_str + f"./re {photo} >> {log_file} 2>&1"
         if args.verbose:
@@ -338,6 +388,19 @@ def start_mesa(args, run_name, logger):
         if args.verbose:
             logger.info(f"{pid}: {run_name} {cmd}")
         out = run_cmd(cmd, split=False, shell=True, to_file=log_file)
+            run_new = True
+
+    if run_new:
+        cmd = pre_cmd_str + args.cmd_main + " 2>&1"
+        file_mode = "w"
+
+    out = run_cmd(
+        cmd,
+        split=False,
+        shell=True,
+        to_file=log_file,
+        file_mode=file_mode,
+    )
 
     if args.cmd_post_each != "":
         run_cmd(args.cmd_post_each, shell=True)
