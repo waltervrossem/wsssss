@@ -289,7 +289,6 @@ def get_subdirs(args):
     sub_dirs.sort()
     return sub_dirs
 
-def choose_restart_photo(args, photos, run_name):
 
 def copy_base_work_dir(args, run_dir, logger):
     """
@@ -325,6 +324,7 @@ def copy_base_work_dir(args, run_dir, logger):
                 shutil.copy2(source_path, target_path)
 
 
+def choose_restart_photo(args, photos, run_name, logger, pid):
     """
     Return (photo, run_new).
 
@@ -342,7 +342,7 @@ def copy_base_work_dir(args, run_dir, logger):
             return None, True
 
         photo = args.restart_settings[run_name]
-        if photo == 'full_restart':
+        if photo == "full_restart":
             return None, True
         return photo, False
 
@@ -396,19 +396,19 @@ def start_mesa(args, run_name, logger):
             logger.info(f"{pid}: Skipping {run_name}, skip file found {skip_check_fpath}.")
             return run_name, "Skip file found."
 
-    with open(
-        log_file, "w"
-    ) as handle:  # Create file so other processes can find it before someting actually writes to it
+    # Create file so other processes can find it before something actually writes to it.
+    with open(log_file, "w") as handle:
         handle.write("")
         handle.flush()
         os.fsync(handle)
 
     pre_cmd_str = f"export OMP_NUM_THREADS={args.OMP_NUM_THREADS}; "
+
     if args.source != "":
         pre_cmd_str = f". {args.source}; " + pre_cmd_str
 
     if args.cmd_pre_each != "":
-        run_cmd(args.cmd_pre_each, shell=True)
+        run_cmd(args.cmd_pre_each, logger, shell=True)
 
     copy_base_work_dir(args, run_dir, logger)
 
