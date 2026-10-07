@@ -173,16 +173,16 @@ def get_parser():
 def expand_path(path):
     """Expand user, environment variables, and return an absolute path."""
     if path == "":
-        return os.path.abspath(os.getcwd())
+        return ""
     return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
 
 
-def resolve_path_template(template, grid_dir, run_dir, run_name):
+def resolve_path_template(template, grid_dir, run_name):
     """Resolve WORK_DIR/RUN_NAME templates."""
     if template == "":
         return ""
 
-    path = template.replace("WORK_DIR", run_dir).replace("RUN_NAME", run_name)
+    path = template.replace("WORK_DIR", os.path.join(grid_dir, run_name)).replace("RUN_NAME", run_name)
 
     if not os.path.isabs(path):
         path = os.path.join(grid_dir, path)
@@ -337,7 +337,7 @@ def start_mesa(args, run_name, logger):
     if args.verbose:
         logger.info(f"{pid}: Current directory: {os.getcwd()}")
 
-    log_file = resolve_path_template(args.log_path, args.grid_dir, run_dir, run_name)
+    log_file = resolve_path_template(args.log_path, args.grid_dir, run_name)
 
     if log_file == "":
         log_file = os.path.join(args.grid_dir, "out_" + run_name)
@@ -351,7 +351,6 @@ def start_mesa(args, run_name, logger):
             skip_check_fpath = resolve_path_template(
                 args.skip_if_file_exists,
                 args.grid_dir,
-                run_dir,
                 run_name,
             )
 
