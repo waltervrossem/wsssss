@@ -493,7 +493,48 @@ def run_cmd(cmd, capture_output=False, split=False, to_file="", file_mode="w", *
         return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
     return subprocess.run(cmd, **kwargs)
 
+def get_slurm_task_info(task_share):
+    """Return (n_tasks, task_id) for SLURM array jobs."""
+    if not task_share:
+        return 1, 0
 
+    try:
+        task_id = int(os.environ["SLURM_ARRAY_TASK_ID"])
+    except KeyError as exc:
+        raise ValueError(f"--task-share requires SLURM array environment variable: {exc}") from exc
+
+    # Prefer a task list if SLURM provides one. This is more robust for
+    # non-contiguous array indices.
+    task_list = os.environ.get("SLURM_ARRAY_TASK_LIST")
+
+    if task_list:
+        try:
+            ids = sorted(int(x.strip()) for x in task_list.split(",") if x.strip())
+        except ValueError as exc:
+            raise ValueError(f"Could not parse SLURM_ARRAY_TASK_LIST: {task_list!r}") from exc
+
+        if task_id not in ids:
+            raise ValueError(f"SLURM_ARRAY_TASK_ID {task_id} not in SLURM_ARRAY_TASK_LIST: {ids}")
+
+        n_tasks = len(ids)
+        task_index = ids.index(task_id)
+        return n_tasks, task_index
+
+    try:
+        n_tasks = int(os.environ["SLURM_ARRAY_TASK_COUNT"])
+        task_id_min = int(os.environ["SLURM_ARRAY_TASK_MIN"])
+    except KeyError as exc:
+        raise ValueError(f"--task-share requires SLURM array environment variable: {exc}") from exc
+
+    if n_tasks < 1:
+        raise ValueError(f"Invalid SLURM_ARRAY_TASK_COUNT: {n_tasks}")
+
+    task_index = task_id - task_id_min
+
+    if task_index < 0:
+        raise ValueError(f"SLURM_ARRAY_TASK_ID {task_id} is smaller than " f"SLURM_ARRAY_TASK_MIN {task_id_min}.")
+
+    return n_tasks, task_index
 
 
 def main(args, logger):
@@ -513,22 +554,12 @@ def main(args, logger):
     sub_dirs = get_subdirs(args)
 
     arguments = list(zip(itertools.repeat(args), sub_dirs))
-    if args.task_share:
-        try:
-            n_tasks = int(os.environ["SLURM_ARRAY_TASK_COUNT"])
-            task_id = int(os.environ["SLURM_ARRAY_TASK_ID"])
-            task_id_min = int(os.environ["SLURM_ARRAY_TASK_MIN"])
-            task_id = task_id - task_id_min
-        except KeyError:  # Not running with a task array
-            n_tasks = 1
-            task_id = 0
-        print(f"n_tasks={n_tasks}")
-        print(f"task_id={task_id}")
-    else:
-        n_tasks = 1
-        task_id = 0
+
+    n_tasks, task_id = get_slurm_task_info(args.task_share)
 
     if args.verbose:
+        print(f"n_tasks={n_tasks}")
+        print(f"task_id={task_id}")
         print("Sub-directories:")
         for subdir in sub_dirs[task_id::n_tasks]:
             print(subdir)
