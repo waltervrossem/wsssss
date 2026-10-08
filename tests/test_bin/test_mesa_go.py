@@ -375,7 +375,7 @@ class TestMesaGoUnit(unittest.TestCase):
     def test_process_args_restart_file(self):
         restart_file = os.path.join(self.grid_dir, "grid_restart")
         with open(restart_file, "w") as handle:
-            handle.write("0000 x008\n# comment\n\n0001 full_restart\n")
+            handle.write("0000 x008\n# comment\n\n0001 full_restart #inline comment # with multiple #\n")
 
         args = self.make_args([self.grid_dir, "--restart", restart_file])
         processed = mesa_go.process_args(args)
