@@ -52,13 +52,13 @@ license-files = ["LICENSE"]
 
 [tool.pytest_env]
 
-MESA_DIR = {value = "{MESA_DIR}", transform = true, skip_if_set = true}
-MESASDK_ROOT = {value = "{MESASDK_ROOT}", transform = true, skip_if_set = true}
-GYRE_DIR = {value = "{GYRE_DIR}", transform = true, skip_if_set = true}
+MESA_DIR = {value = "{PWD}/tests/data/dummy_software/MESA-24.08.1", transform = true, skip_if_set = true}
+MESASDK_ROOT = {value = "dummy_MESASDK_ROOT", transform = true, skip_if_set = true}
+GYRE_DIR = {value = "{PWD}/tests/data/dummy_software/gyre-9.1.1", transform = true, skip_if_set = true}
 PATH = {value = "{MESASDK_ROOT}/bin:{PATH}", transform = true}
 PGPLOT_DIR = {value = "{MESASDK_ROOT}/lib/pgplot", transform = true}
 VALGRIND_LIB = {value = "{MESASDK_ROOT}/lib/valgrind", transform = true}
-MESASDK_VERSION = {value = "{MESASDK_VERSION}", transform = true}
+MESASDK_VERSION = {value = "dummyx86_64-linux-24.7.1", transform = true}
 
 [tool.black]
 line-length = 120
