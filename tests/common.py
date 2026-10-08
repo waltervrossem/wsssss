@@ -28,7 +28,6 @@ def check_required_environment(required, raise_on_missing=True):
 
 
 def check_if_running_in_CI():
-    on_github_ci = bool(os.environ.get("GITHUB_ACTIONS", False))
-    on_gitlab_ci = bool(os.environ.get("GITLAB_CI", False))
-
-    return on_github_ci or on_gitlab_ci
+    for key in ["GITHUB_ACTIONS", "GITLAB_CI"]:
+        if key in os.environ:
+            return True
