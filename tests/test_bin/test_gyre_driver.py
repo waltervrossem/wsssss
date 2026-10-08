@@ -21,7 +21,7 @@ def assert_allclose_recarray(arr1, arr2):
 
 
 @unittest.skipIf(os.name == "nt", "Skipping on Windows")
-@unittest.skipIf(check_if_running_in_CI(), "Can't run MESA in CI.")
+@unittest.skipIf(check_if_running_in_CI(), "Can't run GYRE in CI.")
 class TestGyreDriver(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
