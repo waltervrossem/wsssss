@@ -13,11 +13,10 @@ from unittest import mock
 from wsssss._bin import mesa_go
 from wsssss.inlists import create_grid as cg
 
+from ..common import check_required_environment, check_if_running_in_CI
+
 must_have_environ = ["MESA_DIR", "MESASDK_ROOT"]
-missing_environ = []
-for env in must_have_environ:
-    if env not in os.environ:
-        missing_environ.append(env)
+missing_environ = check_required_environment(must_have_environ, False)
 
 MESASDK_initialized = False
 if "MESASDK_VERSION" in os.environ:
@@ -28,6 +27,8 @@ mesa_dir = os.environ.get("MESA_DIR", "")
 
 @unittest.skipIf(os.name == "nt", "Skipping on Windows")
 @unittest.skipIf(mesa_dir == "", "Environment variable MESA_DIR not set.")
+@unittest.skipIf(not MESASDK_initialized, "MESASDK not initialized.")
+@unittest.skipIf(check_if_running_in_CI(), "Can't run MESA in CI.")
 class TestMesaGO(unittest.TestCase):
     @classmethod
     def setUpClass(self):

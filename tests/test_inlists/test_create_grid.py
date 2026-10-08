@@ -11,10 +11,10 @@ import shutil
 from wsssss.inlists import create_grid as cg
 from wsssss.inlists import inlists as inl
 
+from ..common import check_required_environment
+
 must_have_environ = ["MESA_DIR"]
-for env in must_have_environ:
-    if env not in os.environ:
-        raise EnvironmentError(f"{env} not set.")
+check_required_environment(must_have_environ)
 
 
 class TestCreateGrid(unittest.TestCase):
@@ -26,12 +26,7 @@ class TestCreateGrid(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        os.remove(
-            os.path.join(
-                os.path.dirname(__file__),
-                "../data/grid/test_create_grid.py",
-            )
-        )
+        shutil.rmtree(cls.grid_dir)
 
     def setUp(self):
         grid = cg.MesaGrid()

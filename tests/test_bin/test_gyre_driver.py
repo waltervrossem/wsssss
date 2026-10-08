@@ -7,13 +7,12 @@ import unittest
 import numpy as np
 from wsssss import load_data as ld
 from wsssss._bin.gyre_driver import gyre_driver
-
-test_data = os.path.join(os.path.dirname(__file__), "..", "data", "gyre")
+from ..common import check_required_environment, check_if_running_in_CI
 
 must_have_environ = ["GYRE_DIR"]
-for env in must_have_environ:
-    if env not in os.environ:
-        raise EnvironmentError(f"{env} not set.")
+missing_environ = check_required_environment(must_have_environ)
+
+test_data = os.path.join(os.path.dirname(__file__), "..", "data", "gyre")
 
 
 def assert_allclose_recarray(arr1, arr2):
@@ -22,6 +21,7 @@ def assert_allclose_recarray(arr1, arr2):
 
 
 @unittest.skipIf(os.name == "nt", "Skipping on Windows")
+@unittest.skipIf(check_if_running_in_CI(), "Can't run MESA in CI.")
 class TestGyreDriver(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
