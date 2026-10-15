@@ -43,7 +43,7 @@ def get_parser():
         "-d",
         nargs="*",
         type=str,
-        default="",
+        default=[],
         help="The names of the sub directories if they are not named 0000 0001 etc.",
     )
     _parser.add_argument(
@@ -241,17 +241,22 @@ def run():
     args.exclude = [os.path.split(_)[-1] for _ in _]
 
     # Get subdirs and remove items from args.exclude.
-    if args.subdirs == "":
+    if args.subdirs == []:
         subdirs = os.listdir(args.grid_dir)
         subdirs = sorted(subdirs)
-        subdirs = [_ for _ in subdirs if os.path.isdir(os.path.join(args.grid_dir, _))]
+        subdirs = [subdir for subdir in subdirs if os.path.isdir(os.path.join(args.grid_dir, subdir))]
         args.subdirs = subdirs
 
-    _ = [glob.glob(os.path.join(args.grid_dir, _)) for _ in args.subdirs if _ not in args.exclude]
-    args.subdirs = []
-    for expanded in _:
-        args.subdirs += expanded
-    args.subdirs = [os.path.split(_)[-1] for _ in args.subdirs]
+    expanded_subdirs = []
+    for subdir in args.subdirs:
+        if subdir in args.exclude:
+            continue
+
+        expanded = glob.glob(os.path.join(args.grid_dir, subdir))
+        expanded_subdirs += expanded
+
+    args.subdirs = [os.path.split(path)[-1] for path in expanded_subdirs]
+    args.subdirs = list(dict.fromkeys(args.subdirs))  # Remove duplicates
 
     run_info = {}
     run_data = {}
