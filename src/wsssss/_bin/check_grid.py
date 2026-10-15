@@ -136,7 +136,6 @@ def get_termination_code(lines):
     """
     Extract a MESA termination code from the last part of the terminal output.
     """
-    lines = lines[-min(100, len(lines)) :]
     term_code = "Running"
     for line in lines[::-1]:
         if "termination code" in line:
