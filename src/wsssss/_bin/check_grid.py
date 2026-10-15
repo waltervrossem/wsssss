@@ -207,6 +207,27 @@ def count_in_dict(info_dict, key, filter_mainkeys=None):
     return cnt, dct
 
 
+def get_history_path(subdir, args):
+    """
+    Return the history file path for a run.
+    """
+    if "*" in args.history_file:
+        matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
+
+        if len(matches) > 1:
+            raise ValueError(f"Found too many files:\n{matches}")
+        elif len(matches) == 0:
+            return ""
+        else:
+            return matches[0]
+
+    return os.path.join(
+        args.grid_dir,
+        subdir,
+        f"LOGS/{args.history_file.format(subdir, subdir)}",
+    )
+
+
 def run():
     parser = get_parser()
     args = parser.parse_args()
@@ -236,21 +257,7 @@ def run():
     run_data = {}
 
     for subdir in args.subdirs:
-        if "*" in args.history_file:
-            matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
-            if len(matches) > 1:
-                raise ValueError(f"Found too many files:\n{matches}")
-            elif len(matches) == 0:
-                hist_path = ""
-            else:
-                hist_path = matches[0]
-        else:
-            hist_path = os.path.join(
-                args.grid_dir,
-                subdir,
-                f"LOGS/{args.history_file.format(subdir, subdir)}",
-            )
-
+        hist_path = get_history_path(subdir, args)
         mesa_termcode = get_mesa_termcode(subdir, args)[1]
 
         if os.path.isfile(hist_path) and mesa_termcode != "NotRun":
