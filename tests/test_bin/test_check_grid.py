@@ -11,13 +11,6 @@ test_data = os.path.join(os.path.dirname(__file__), "..", "data", "mesa")
 
 
 class TestCheckGrid(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        available_data = os.listdir(test_data)
-        for req_data in ["0000", "0001", "out_0000", "out_0001"]:
-            if not req_data in available_data:
-                raise FileNotFoundError("Run make_data/sh in tests/make_data before running this test.")
-
     def test_check_grid(self):
         os.chdir(test_data)
         output = subprocess.run(
