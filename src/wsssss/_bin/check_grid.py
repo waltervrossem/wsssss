@@ -8,7 +8,6 @@ import sys
 from argparse import ArgumentParser
 from collections import Counter
 from collections import defaultdict
-from datetime import datetime
 
 import numpy as np
 import warnings
@@ -164,41 +163,6 @@ def get_termination_code(lines):
     return term_code
 
 
-def get_timedelta(lines):
-    first = lines[0].strip()
-    last = lines[-1].strip()
-
-    dts = []
-    for timestamp in (first, last):
-        try:
-            _, day, month, hms, tz, year = timestamp.split()
-        except ValueError:
-            return dts[0] - dts[0]
-
-        day = int(day)
-        month = {
-            "Jan": 1,
-            "Feb": 2,
-            "Mar": 3,
-            "Apr": 4,
-            "May": 5,
-            "Jun": 6,
-            "Jul": 7,
-            "Aug": 8,
-            "Sep": 9,
-            "Oct": 10,
-            "Nov": 11,
-            "Dec": 12,
-        }[month]
-        year = int(year)
-
-        hour, minute, second = (int(_) for _ in hms.split(":"))
-        dts.append(datetime(year, month, day, hour, minute, second))
-    timedelta = dts[1] - dts[0]
-
-    return timedelta
-
-
 def get_mesa_termcode(sub_dir, args):
     out_file = os.path.join(args.grid_dir, sub_dir, args.out_file).format(sub_dir)
     if os.path.exists(out_file):
@@ -261,25 +225,6 @@ def get_slurm_stats(stats_lines, args):
     return info_dict
 
 
-def get_cheb_mask(data):
-    """
-    Defined as:
-    have helium in core
-    have convective core
-    hydrogen depleted core
-
-
-    :param data:
-    :return:
-    """
-
-    mask = data.center_he4 > 1e-6
-    mask = np.logical_and(mask, data.mass_conv_core > 0)
-    mask = np.logical_and(mask, data.center_h1 < 1e-6)
-
-    return mask
-
-
 def count_in_dict(info_dict, key, filter_mainkeys=None):
     if filter_mainkeys is not None:
         filtered = dict((k, v[key]) for k, v in info_dict.items() if k in filter_mainkeys)
@@ -290,22 +235,6 @@ def count_in_dict(info_dict, key, filter_mainkeys=None):
     for main_key, value in filtered.items():
         dct[value].append(main_key)
     return cnt, dct
-
-
-def invert_dict(dct, reference_key, filter_dct_keys=None, reverse_filter=False, sort=False):
-    if filter_dct_keys is None:
-        filter_dct_keys = []
-
-    out_dict = defaultdict(list)
-    for key, value in dct.items():
-        if (key in filter_dct_keys) != reverse_filter:  # xor
-            continue
-        out_dict[value[reference_key]].append(key)
-
-    if sort:
-        for key in sorted(out_dict):
-            out_dict[key] = sorted(out_dict[key])
-    return out_dict
 
 
 def run():
@@ -403,7 +332,6 @@ def run():
             data = read_hist_first_last_row(hist_path)
             run_info[subdir]["mesa_termcode"] = mesa_termcode
             run_info[subdir]["mesa_last_model"] = data.model_number[-1]
-            # noinspection PyTypeChecker
             run_info[subdir]["CHeX"] = ["pre-CHeX", "post-CHeX"][int(data.center_he4[-1] < 1e-6)]
             run_info[subdir]["CHX"] = ["pre-CHX", "post-CHX"][int(data.center_h1[-1] < 1e-6)]
             _ = run_info[subdir]["walltime_required"].split(":")
@@ -415,7 +343,6 @@ def run():
         else:
             run_info[subdir]["mesa_termcode"] = mesa_termcode
             run_info[subdir]["mesa_last_model"] = "-1"
-            # noinspection PyTypeChecker
             run_info[subdir]["CHeX"] = mesa_termcode
             run_info[subdir]["CHX"] = mesa_termcode
             run_info[subdir]["short_runtime"] = mesa_termcode
