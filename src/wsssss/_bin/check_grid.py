@@ -85,7 +85,12 @@ def get_parser():
         "Pass `pre-CHeX` to only restart runs which did not finish CHeX, pass `redoRC` to restart"
         "before CHeB or `all` to do for all.",
     )
-    # _parser.add_argument('--good-termination-codes', '-t', nargs='*', type=list, default=['xa_central_lower_limit', 'stop_at_TP'], )
+    _parser.add_argument(
+        "--min-photo-delta",
+        type=int,
+        default=0,
+        help=("Minimum model number difference between last model and photo model number."),
+    )
     _parser.add_argument(
         "--no-slurm", action="store_const", const=True, default=False, help="Run the check ignoring any slurm output."
     )
@@ -514,7 +519,9 @@ def run():
             restart_photo = ""
             try:
                 if photo == "last":
-                    restart_photo = photos[np.where((photo_modelnum[-1] - photo_modelnum) > 200)[0][-1]]
+                    restart_photo = photos[
+                        np.where((photo_modelnum[-1] - photo_modelnum) >= args.min_photo_delta)[0][-1]
+                    ]
                 elif photo == "preRC":
                     if "*" in args.history_file:
                         matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
@@ -532,7 +539,9 @@ def run():
                         hist = ld.History(hist_path, index_name=None)
                         cheb_mask = uf.get_cheb_mask(hist)
                         first_model_rc = hist.data.model_number[cheb_mask][0]
-                        restart_photo = photos[np.where((first_model_rc - photo_modelnum) > 200)[0][-1]]
+                        restart_photo = photos[
+                            np.where((first_model_rc - photo_modelnum) >= args.min_photo_delta)[0][-1]
+                        ]
                     else:
                         restart_photo = "full_restart"
                 elif photo == "full_restart":
