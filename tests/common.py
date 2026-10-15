@@ -31,3 +31,4 @@ def check_if_running_in_CI():
     for key in ["GITHUB_ACTIONS", "GITLAB_CI"]:
         if key in os.environ:
             return True
+    return False
