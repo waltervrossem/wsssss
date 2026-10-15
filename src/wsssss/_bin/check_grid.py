@@ -115,15 +115,19 @@ def read_hist_first_last_row(fpath):
         first_row = f.readline()
         f.seek(0, 2)
         size = f.tell()
-        f.seek(size - len(first_row) * 2)
-        last_row = f.readline()  # .split('\n')[1]
+        f.seek(max(0, size - 3 * len(first_row)))
+        last_rows = f.readlines()
+    # Last row incomplete or mangled, use second to last row
+    if len(last_rows[-1]) == len(first_row):
+        last_row = last_rows[-1]
+    else:
+        last_row = last_rows[-2]
+
     first_row = tuple(first_row.strip().split())
     last_row = tuple(last_row.strip().split())
     columns = columns.strip().split()
     formats = [np.array(ast.literal_eval(_)).dtype if _ != "NaN" else np.float64 for _ in first_row]
-    return np.rec.array(
-        [first_row, last_row], dtype=list(zip(columns, formats))
-    )  # dtype={'names': columns, 'formats': formats})
+    return np.rec.array([first_row, last_row], dtype=list(zip(columns, formats)))
 
 
 def get_termination_code(lines):
