@@ -9,12 +9,9 @@ from collections import Counter
 from collections import defaultdict
 
 import numpy as np
-import warnings
 
 from wsssss import load_data as ld
 from wsssss import functions as uf
-
-warnings.filterwarnings("error")
 
 
 def get_parser():
@@ -228,6 +225,74 @@ def get_history_path(subdir, args):
     )
 
 
+def get_restart_photo(subdir, photo_kind, last_modelnum, args):
+    """
+    Return the photo name to restart from.
+    """
+    photodir = os.path.join(args.grid_dir, subdir, "photos")
+
+    if os.path.isdir(photodir):
+        raw_photos = os.listdir(photodir)
+    else:
+        raw_photos = []
+
+    photos = []
+    for photo_name in raw_photos:
+        photo_model_num = int(photo_name.replace("x", ""))
+        if photo_name.startswith("x"):  # Likely modulo'd model number
+            num_photo_digits = len(photo_name.replace("x", ""))
+            last_model_mod_photo = last_modelnum % 10**num_photo_digits
+            if photo_model_num <= last_model_mod_photo:
+                model_num = photo_model_num + last_modelnum - last_model_mod_photo
+            else:
+                model_num = photo_model_num + last_modelnum - last_model_mod_photo - 10**num_photo_digits
+        else:
+            model_num = photo_model_num
+        photos.append((model_num, photo_name))
+
+    photos = sorted(photos)
+    photo_modelnum = np.array([modelnum for modelnum, _ in photos], dtype=np.int64)
+    photo_names = [name for _, name in photos]
+
+    if len(photo_modelnum) == 0:
+        return "full_restart"
+
+    if photo_kind == "last":
+        idx = np.where((last_modelnum - photo_modelnum) >= args.min_photo_delta)[0]
+        if len(idx) == 0:
+            return "full_restart"
+
+        return photo_names[idx[-1]]
+
+    if photo_kind == "preRC":
+        hist_path = get_history_path(subdir, args)
+
+        if not os.path.isfile(hist_path):
+            return "full_restart"
+
+        try:
+            hist = ld.History(hist_path, index_name=None)
+            cheb_mask = uf.get_cheb_mask(hist)
+            if np.any(cheb_mask):
+                first_model_rc = hist.data.model_number[cheb_mask][0]
+            else:
+                # Not yet reached CHeB, so treat as "last" photo_kind
+                first_model_rc = hist.data.model_number[-1]
+        except Exception:
+            return "full_restart"
+
+        idx = np.where((first_model_rc - photo_modelnum) >= args.min_photo_delta)[0]
+        if len(idx) == 0:
+            return "full_restart"
+
+        return photo_names[idx[-1]]
+
+    if photo_kind in ("full_restart", ""):
+        return "full_restart"
+
+    return "full_restart"
+
+
 def run():
     parser = get_parser()
     args = parser.parse_args()
@@ -351,79 +416,41 @@ def run():
             info = run_info[subdir]
 
             reason = ""
-            photo = ""
+            photo_kind = ""
             mesa_termcode = info["mesa_termcode"]
 
             if info["CHeX"] == "post-CHeX":
                 reason = "redoRC"
-                photo = "preRC"
+                photo_kind = "preRC"
             elif mesa_termcode == "Running":
                 reason = "Running"
-                photo = "last"
+                photo_kind = "last"
             elif info["CHeX"] == "pre-CHeX":
                 reason = "None"
-                photo = "last"
+                photo_kind = "last"
             elif args.make_restart_file == "redoRC":
                 reason = "redoRC"
-                photo = "preRC"
+                photo_kind = "preRC"
             elif mesa_termcode in ["logQ_min_limit", "FileNotFound", "NotRun"]:
                 reason = mesa_termcode
-                photo = "full_restart"
+                photo_kind = "full_restart"
 
-            restart_reason[subdir] = (photo, reason)
+            restart_reason[subdir] = (photo_kind, reason)
 
         grid_restart_photos = []
-        for subdir, (photo, reason) in restart_reason.items():
-            photodir = os.path.join(args.grid_dir, subdir, "photos")
-            if os.path.exists(photodir):
-                photos = sorted(os.listdir(photodir))
-            else:
-                photos = []
-            photos = [_ for _ in photos if _.replace("x", "").isdigit()]
-            photo_modelnum = np.array([int(_.replace("x", "")) for _ in photos])
+        for subdir, (photo_kind, reason) in restart_reason.items():
+            info = run_info[subdir]
 
-            if args.make_restart_file == "pre-CHeX":
-                info = run_info[subdir]
-                if info["CHeX"] == "post-CHeX":
-                    continue
+            # Skip runs which made it through He burning
+            if args.make_restart_file == "pre-CHeX" and info["CHeX"] == "post-CHeX":
+                continue
 
-            restart_photo = ""
-            try:
-                if photo == "last":
-                    restart_photo = photos[
-                        np.where((photo_modelnum[-1] - photo_modelnum) >= args.min_photo_delta)[0][-1]
-                    ]
-                elif photo == "preRC":
-                    if "*" in args.history_file:
-                        matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
-                        if len(matches) > 1:
-                            raise ValueError(f"Found too many files:\n{matches}")
-                        elif len(matches) == 0:
-                            hist_path = ""
-                        else:
-                            hist_path = matches[0]
-                    else:
-                        hist_path = os.path.join(
-                            args.grid_dir,
-                            subdir,
-                            f"LOGS/{args.history_file.format(subdir, subdir)}",
-                        )
-                    if os.path.exists(hist_path) and hist_path != "":
-                        hist = ld.History(hist_path, index_name=None)
-                        cheb_mask = uf.get_cheb_mask(hist)
-                        first_model_rc = hist.data.model_number[cheb_mask][0]
-                        restart_photo = photos[
-                            np.where((first_model_rc - photo_modelnum) >= args.min_photo_delta)[0][-1]
-                        ]
-                    else:
-                        restart_photo = "full_restart"
-                elif photo == "full_restart":
-                    restart_photo = "full_restart"
-                elif photo == "":
-                    restart_photo = "full_restart"
-            except IndexError as e:
-                print(subdir, photo, reason, e)
-                restart_photo = "full_restart"
+            # Skip runs which have not started He burning
+            if args.make_restart_file == "redoRC" and info["CHeX"] == "pre-CHeX":
+                continue
+
+            restart_photo = get_restart_photo(subdir, photo_kind, run_data[subdir].model_number[-1], args)
+
             if args.verbose:
                 print(subdir, restart_photo)
 
