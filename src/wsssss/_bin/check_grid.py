@@ -4,7 +4,6 @@
 import ast
 import glob
 import os
-import sys
 from argparse import ArgumentParser
 from collections import Counter
 from collections import defaultdict
@@ -19,7 +18,9 @@ warnings.filterwarnings("error")
 
 
 def get_parser():
-    """"""
+    """
+    Return argument parser for checking a MESA grid.
+    """
     _parser = ArgumentParser(description="""
     This program will check whether a grid has run successfully.
     """)
@@ -50,14 +51,16 @@ def get_parser():
         "-f",
         type=str,
         default="history.data",
-        help="Name of the MESA history file in the LOGS directory. {} will be expanded to the "
-        "directory name. If it contains a star will glob match.",
+        help=(
+            "Name of the MESA history file in the LOGS directory. {} will be "
+            "expanded to the directory name. If it contains a star will glob match."
+        ),
     )
     _parser.add_argument(
         "--exclude",
         nargs="*",
         type=str,
-        default=["figs", "template_11701", "slurm*"],
+        default=["figs", "slurm*"],
         help="Directory names to exclude from sub-dirs (i.e. do not contain MESA runs).",
     )
     _parser.add_argument(
@@ -65,24 +68,26 @@ def get_parser():
         "-o",
         type=str,
         default="../out_{}",
-        help="File format for MESA out files (from eg ./rn | tee out_file). Curly braces will be "
-        "expanded with with the directory name.",
-    )
-    _parser.add_argument(
         "--slurm-stats-dir",
         "-s",
         type=str,
         default="slurm_out",
         help="Directory containing the slurm output (.err, .stats, .out files) for a job.",
+        help=(
+            "File format for MESA out files (from eg ./rn | tee out_0000). "
+            "Curly braces will be expanded with the directory name."
+        ),
     )
     _parser.add_argument(
         "--make-restart-file",
         "-r",
         type=str,
         default="",
-        help="Make a file which contains which subdir needs to restart from what photo."
-        "Pass `pre-CHeX` to only restart runs which did not finish CHeX, pass `redoRC` to restart"
-        "before CHeB or `all` to do for all.",
+        help=(
+            "Make a file which contains which subdir needs to restart from what photo. "
+            "Pass `pre-CHeX` to only restart runs which did not finish CHeX, pass `redoRC` to "
+            "restart before CHeB or `all` to do for all."
+        ),
     )
     _parser.add_argument(
         "--min-photo-delta",
@@ -94,20 +99,29 @@ def get_parser():
         "--no-slurm", action="store_const", const=True, default=False, help="Run the check ignoring any slurm output."
     )
     _parser.add_argument(
-        "--list-all", action="store_const", const=True, default=False, help="Print all termination reasons."
+        "--list-all",
+        action="store_const",
+        const=True,
+        default=False,
+        help="Print all termination reasons.",
     )
     _parser.add_argument(
         "--full-termcode",
         action="store_const",
         const=True,
         default=False,
-        help="If set, scan the full MESA terminal output file for a termination code, otherwise"
-        "only search in the last part of the file.",
+        help=(
+            "If set, scan the full MESA terminal output file for a termination code, "
+            "otherwise only search in the last part of the file."
+        ),
     )
     return _parser
 
 
 def read_hist_first_last_row(fpath):
+    """
+    Read the first and last full row of a MESA history file.
+    """
     with open(fpath, "r") as f:
         for _ in range(6):
             columns = f.readline()
@@ -130,7 +144,9 @@ def read_hist_first_last_row(fpath):
 
 
 def get_termination_code(lines):
-    # last 100 lines of MESA output
+    """
+    Extract a MESA termination code from the last part of the output.
+    """
     lines = lines[-min(100, len(lines)) :]
     term_code = "Running"
     for line in lines[::-1]:
@@ -164,6 +180,9 @@ def get_termination_code(lines):
 
 
 def get_mesa_termcode(sub_dir, args):
+    """
+    Get the MESA termination code for a given run.
+    """
     out_file = os.path.join(args.grid_dir, sub_dir, args.out_file).format(sub_dir)
     if os.path.exists(out_file):
         with open(out_file, "r") as handle:
@@ -226,6 +245,9 @@ def get_slurm_stats(stats_lines, args):
 
 
 def count_in_dict(info_dict, key, filter_mainkeys=None):
+    """
+    Count values in a nested dictionary, optionally filtered by main keys.
+    """
     if filter_mainkeys is not None:
         filtered = dict((k, v[key]) for k, v in info_dict.items() if k in filter_mainkeys)
     else:
@@ -247,8 +269,7 @@ def run():
     _ = []
     for exclude in args.exclude:
         _ += glob.glob(os.path.join(args.grid_dir, exclude))
-    args.exclude = _
-    args.exclude = [os.path.split(_)[-1] for _ in args.exclude]
+    args.exclude = [os.path.split(_)[-1] for _ in _]
 
     # Get subdirs and remove items from args.exclude.
     if args.subdirs == "":
