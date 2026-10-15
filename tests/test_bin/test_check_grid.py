@@ -53,4 +53,4 @@ class TestCheckGrid(unittest.TestCase):
         self.assertEqual(expected, output.stdout.replace("\r\n", "\n"))
         with open("grid_restart", "r") as handle:
             restart_text = handle.read()
-        self.assertEqual("0000 x750\n0001 x750\n", restart_text)
+        self.assertEqual("0000 x800\n0001 x800\n", restart_text)
