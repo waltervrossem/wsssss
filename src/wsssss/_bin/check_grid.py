@@ -88,7 +88,7 @@ def get_parser():
         "--min-photo-delta",
         type=int,
         default=0,
-        help=("Minimum model number difference between last model and photo model number."),
+        help="Minimum model number difference between last model and photo model number.",
     )
     _parser.add_argument(
         "--list-all",
@@ -137,7 +137,7 @@ def read_hist_first_last_row(fpath):
 
 def get_termination_code(lines):
     """
-    Extract a MESA termination code from the last part of the output.
+    Extract a MESA termination code from the last part of the terminal output.
     """
     lines = lines[-min(100, len(lines)) :]
     term_code = "Running"
@@ -153,7 +153,7 @@ def get_termination_code(lines):
                 break
             if "Backtrace" in line:
                 term_code = "Error"
-            if ("adjust_mesh_failed" in line) or ("mesh_plan problem") in line:
+            if ("adjust_mesh_failed" in line) or ("mesh_plan problem" in line):
                 term_code = "mesh_failed"
                 break
             if "stopping because of problems dt < min_timestep_limit" in line:
@@ -176,7 +176,7 @@ def get_mesa_termcode(sub_dir, args):
     Get the MESA termination code for a given run.
     """
     out_file = os.path.join(args.grid_dir, sub_dir, args.out_file).format(sub_dir)
-    if os.path.exists(out_file):
+    if os.path.isfile(out_file):
         with open(out_file, "r") as handle:
             if not args.full_termcode:
                 # Seek to end of file and look in end of file for termination code
@@ -253,7 +253,7 @@ def run():
 
         mesa_termcode = get_mesa_termcode(subdir, args)[1]
 
-        if os.path.exists(hist_path) and hist_path != "" and mesa_termcode != "NotRun":
+        if os.path.isfile(hist_path) and mesa_termcode != "NotRun":
             data = read_hist_first_last_row(hist_path)
             run_info[subdir] = {
                 "mesa_termcode": mesa_termcode,
