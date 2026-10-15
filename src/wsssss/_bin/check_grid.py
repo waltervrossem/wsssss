@@ -68,11 +68,6 @@ def get_parser():
         "-o",
         type=str,
         default="../out_{}",
-        "--slurm-stats-dir",
-        "-s",
-        type=str,
-        default="slurm_out",
-        help="Directory containing the slurm output (.err, .stats, .out files) for a job.",
         help=(
             "File format for MESA out files (from eg ./rn | tee out_0000). "
             "Curly braces will be expanded with the directory name."
@@ -94,9 +89,6 @@ def get_parser():
         type=int,
         default=0,
         help=("Minimum model number difference between last model and photo model number."),
-    )
-    _parser.add_argument(
-        "--no-slurm", action="store_const", const=True, default=False, help="Run the check ignoring any slurm output."
     )
     _parser.add_argument(
         "--list-all",
@@ -200,50 +192,6 @@ def get_mesa_termcode(sub_dir, args):
     return sub_dir, term_code
 
 
-def get_slurm_stats(stats_lines, args):
-    info_dict = {}
-    if args.no_slurm:
-        info_dict["jobid"] = ""
-        info_dict["jobname"] = "noslurm"
-        info_dict["job_task"] = ""
-        info_dict["taskjob"] = ""
-        info_dict["taskid"] = ""
-        info_dict["walltime_requested"] = "24:0:0"
-        info_dict["walltime_required"] = "24:0:0"
-        info_dict["reason"] = "None"
-        return info_dict
-
-    for line in stats_lines:
-        if "Identity jobid" in line:
-            _, _, _, _jobid, _, _jobname = line.split()
-            info_dict["jobid"] = _jobid
-            info_dict["jobname"] = _jobname
-        if "Array Identity" in line:
-            _, _, _, _job_task = line.split()
-            _taskjob, _taskid = _job_task.split("_")
-            info_dict["job_task"] = _job_task
-            info_dict["taskjob"] = _taskjob
-            info_dict["taskid"] = _taskid
-        else:
-            info_dict["job_task"] = ""
-            info_dict["taskjob"] = ""
-            info_dict["taskid"] = ""
-
-        if "Requested" in line:
-            _, _, _hardware, _, _walltime_requested, _ = line.split()
-            info_dict["hardware"] = _hardware
-            info_dict["walltime_requested"] = _walltime_requested
-        if "Required" in line:
-            _walltime_required = line.split()[-2]
-            info_dict["walltime_required"] = _walltime_required
-        if "JobState" in line:
-            _, _, _jobstate, _, _, _reason = line.split()
-            info_dict["jobstate"] = _jobstate
-            info_dict["reason"] = _reason
-
-    return info_dict
-
-
 def count_in_dict(info_dict, key, filter_mainkeys=None):
     """
     Count values in a nested dictionary, optionally filtered by main keys.
@@ -284,57 +232,8 @@ def run():
         args.subdirs += expanded
     args.subdirs = [os.path.split(_)[-1] for _ in args.subdirs]
 
-    # Get info from slurm stats files.
-    jobid2task = {}
-    task2jobid = {}
     run_info = {}
     run_data = {}
-    slurm_stats_files = []
-    if not args.no_slurm:
-        if args.slurm_stats_dir == "LOGS":
-
-            for subdir in args.subdirs:
-                for fname in os.listdir(os.path.join(args.grid_dir, subdir)):
-                    if fname.endswith(".stats"):
-                        slurm_stats_files.append((os.path.join(args.grid_dir, subdir, fname), subdir))
-        else:
-            for fname in os.listdir(os.path.join(args.grid_dir, args.slurm_stats_dir)):
-                if fname.endswith(".stats"):
-                    slurm_stats_files.append((os.path.join(args.grid_dir, args.slurm_stats_dir, fname), None))
-            # slurm_stats_files = [os.path.join(args.grid_dir, args.slurm_stats_dir, _) )
-    else:
-        for subdir in args.subdirs:
-            slurm_stats_files.append([None, subdir])
-    for i, (slurm_stats_file, subdir) in enumerate(slurm_stats_files):
-        if args.no_slurm:
-            lines = None
-        else:
-            with open(slurm_stats_file, "r") as handle:
-                lines = handle.readlines()
-        _ = get_slurm_stats(lines, args)
-        jobid = _["jobid"]
-        taskjob = _["taskjob"]
-        taskid = _["taskid"]
-        if taskid == "":
-            taskid = f"{i:>04}"
-
-        if subdir is None:
-            subdir = f"{taskid:>04}"
-
-        if subdir in run_info:
-            if int(run_info[subdir]["jobid"]) < int(jobid):  # Take more recent run.
-                run_info[subdir] = _
-        else:
-            run_info[subdir] = _
-
-        jobid2task[jobid] = (taskjob, taskid)
-        if taskid not in task2jobid:
-            task2jobid[taskid] = jobid
-        else:
-            print(
-                f"Key `{taskid}` already in `task2jobid` dictionary with value {task2jobid[taskid]} "
-                f"when inserting value {jobid}."
-            )
 
     for subdir in args.subdirs:
         if "*" in args.history_file:
@@ -346,27 +245,32 @@ def run():
             else:
                 hist_path = matches[0]
         else:
-            hist_path = os.path.join(args.grid_dir, subdir, f"LOGS/{args.history_file.format(subdir, subdir)}")
+            hist_path = os.path.join(
+                args.grid_dir,
+                subdir,
+                f"LOGS/{args.history_file.format(subdir, subdir)}",
+            )
 
         mesa_termcode = get_mesa_termcode(subdir, args)[1]
-        if os.path.exists(hist_path) and hist_path != "" and (mesa_termcode != "NotRun"):
+
+        if os.path.exists(hist_path) and hist_path != "" and mesa_termcode != "NotRun":
             data = read_hist_first_last_row(hist_path)
-            run_info[subdir]["mesa_termcode"] = mesa_termcode
-            run_info[subdir]["mesa_last_model"] = data.model_number[-1]
-            run_info[subdir]["CHeX"] = ["pre-CHeX", "post-CHeX"][int(data.center_he4[-1] < 1e-6)]
-            run_info[subdir]["CHX"] = ["pre-CHX", "post-CHX"][int(data.center_h1[-1] < 1e-6)]
-            _ = run_info[subdir]["walltime_required"].split(":")
-            run_info[subdir]["short_runtime"] = ["", "short_runtime"][
-                int((3600 * int(_[0]) + 60 * int(_[1]) + int(_[0])) < 60)
-            ]
+            run_info[subdir] = {
+                "mesa_termcode": mesa_termcode,
+                "mesa_last_model": data.model_number[-1],
+                "CHeX": ["pre-CHeX", "post-CHeX"][int(data.center_he4[-1] < 1e-6)],
+                "CHX": ["pre-CHX", "post-CHX"][int(data.center_h1[-1] < 1e-6)],
+            }
 
             run_data[subdir] = data
         else:
-            run_info[subdir]["mesa_termcode"] = mesa_termcode
-            run_info[subdir]["mesa_last_model"] = "-1"
-            run_info[subdir]["CHeX"] = mesa_termcode
-            run_info[subdir]["CHX"] = mesa_termcode
-            run_info[subdir]["short_runtime"] = mesa_termcode
+            run_info[subdir] = {
+                "mesa_termcode": mesa_termcode,
+                "mesa_last_model": "-1",
+                "CHeX": mesa_termcode,
+                "CHX": mesa_termcode,
+            }
+
             run_data[subdir] = mesa_termcode
 
     cnt_term_codes_mesa, dct_term_codes_mesa = count_in_dict(run_info, key="mesa_termcode")
@@ -378,63 +282,66 @@ def run():
     status_str += f'{"  termination_code":<32}{"count":>10}\n'
     status_str += string_separator
     for mesa_tc, c_mesa_tc in cnt_term_codes_mesa.items():
-        part = f"{mesa_tc:<32}{c_mesa_tc:>12}\n"
-        status_str += part
-        if mesa_tc in ["None", "min_timestep_limit"]:
-            cnt_term_codes_slurm, dct_term_codes_slurm = count_in_dict(
-                run_info, key="reason", filter_mainkeys=dct_term_codes_mesa[mesa_tc]
-            )
-            for i, (slurm_tc, c_slurm_tc) in enumerate(cnt_term_codes_slurm.items()):
-                part = f"{slurm_tc:<29}{c_slurm_tc:>9}\n"
-                start_part = " ├ "
-                if i == len(cnt_term_codes_slurm) - 1:
-                    start_part = " └ "
-                part = start_part + part
-                status_str += part
+        status_str += f"{mesa_tc:<32}{c_mesa_tc:>12}\n"
 
-                # For each sub section count pre CHeX and post CHeX
-                cnt_, dct_ = count_in_dict(run_info, key="CHeX", filter_mainkeys=dct_term_codes_slurm[slurm_tc])
+        # Count CHeX status for each MESA termination code.
+        cnt_CHeX, dct_CHeX = count_in_dict(
+            run_info,
+            key="CHeX",
+            filter_mainkeys=dct_term_codes_mesa[mesa_tc],
+        )
 
-                for j, key in enumerate(sorted(cnt_)):
-                    part = f"{key:<26}{cnt_[key]:>6}\n"
+        for i, che_x in enumerate(sorted(cnt_CHeX)):
+            part = f"{che_x:<29}{cnt_CHeX[che_x]:>9}\n"
+
+            start_part = " ├ "
+            if i == len(cnt_CHeX) - 1:
+                start_part = " └ "
+
+            status_str += start_part + part
+
+            # For pre-CHeX runs, count CHX status.
+            if che_x == "pre-CHeX":
+                cnt_CHX, dct_CHX = count_in_dict(
+                    run_info,
+                    key="CHX",
+                    filter_mainkeys=dct_CHeX[che_x],
+                )
+
+                for j, ch_x in enumerate(sorted(cnt_CHX)):
+                    part = f"{ch_x:<26}{cnt_CHX[ch_x]:>6}\n"
+
                     start_part = "    ├ "
-                    if j == len(cnt_) - 1:
+                    if j == len(cnt_CHX) - 1:
                         start_part = "    └ "
-                    part = start_part + part
-                    status_str += part
 
-                    # For each pre-CHeX section count pre CHX and post CHX
-                    cnt_CHX, dct_CHX = count_in_dict(run_info, key="CHX", filter_mainkeys=dct_["pre-CHeX"])
-
-                    for j, key in enumerate(sorted(cnt_CHX)):
-                        part = f"{key:<23}{cnt_CHX[key]:>6}\n"
-                        start_part = "       ├ "
-                        if j == len(cnt_CHX) - 1:
-                            start_part = "       └ "
-                        part = start_part + part
-                        status_str += part
+                    status_str += start_part + part
 
     status_str += string_separator
-    cnt, dct = count_in_dict(run_info, "short_runtime")
-    if not args.no_slurm:
-        status_str += f'{"short_runtime":<32} {str(cnt["short_runtime"]):>12}\n'
-        status_str += string_separator
+
     if args.list_all:
         for subdir in args.subdirs:
-            status_str += f'{subdir:<16} {run_info[subdir]["CHeX"]:>10} {run_info[subdir]["mesa_last_model"]:>7} {run_info[subdir]["mesa_termcode"]:<12}\n'
+            status_str += (
+                f"{subdir:<16} "
+                f'{run_info[subdir]["CHeX"]:>10} '
+                f'{run_info[subdir]["mesa_last_model"]:>7} '
+                f'{run_info[subdir]["mesa_termcode"]:<12}\n'
+            )
+
         status_str += string_separator
+
     print(status_str)
 
     if args.make_restart_file:
-        restart_reason = {}  # last photo, redoRC, etc
+        restart_reason = {}
+
         for subdir in args.subdirs:
             info = run_info[subdir]
-            data = run_data[subdir]
+
             reason = ""
             photo = ""
             mesa_termcode = info["mesa_termcode"]
 
-            # print(subdir, info['CHeX'], info['mesa_termcode'])
             if info["CHeX"] == "post-CHeX":
                 reason = "redoRC"
                 photo = "preRC"
@@ -447,8 +354,8 @@ def run():
             elif args.make_restart_file == "redoRC":
                 reason = "redoRC"
                 photo = "preRC"
-            elif mesa_termcode in (["logQ_min_limit", "FileNotFound", "NotRun"]):
-                reason = info["mesa_termcode"]
+            elif mesa_termcode in ["logQ_min_limit", "FileNotFound", "NotRun"]:
+                reason = mesa_termcode
                 photo = "full_restart"
 
             restart_reason[subdir] = (photo, reason)
@@ -477,15 +384,17 @@ def run():
                 elif photo == "preRC":
                     if "*" in args.history_file:
                         matches = glob.glob(os.path.join(args.grid_dir, subdir, args.history_file))
-                        if len(matches) != 1:
+                        if len(matches) > 1:
                             raise ValueError(f"Found too many files:\n{matches}")
-                        elif len(matches) == 0:  # History not found
+                        elif len(matches) == 0:
                             hist_path = ""
                         else:
                             hist_path = matches[0]
                     else:
                         hist_path = os.path.join(
-                            args.grid_dir, subdir, f"LOGS/{args.history_file.format(subdir, subdir)}"
+                            args.grid_dir,
+                            subdir,
+                            f"LOGS/{args.history_file.format(subdir, subdir)}",
                         )
                     if os.path.exists(hist_path) and hist_path != "":
                         hist = ld.History(hist_path, index_name=None)
