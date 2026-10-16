@@ -417,8 +417,13 @@ def run():
             reason = ""
             photo_kind = ""
             mesa_termcode = info["mesa_termcode"]
-
-            if info["CHeX"] == "post-CHeX":
+            if args.make_restart_file == "last":
+                reason = "last"
+                photo_kind = "last"
+            elif args.make_restart_file == "redoRC":
+                reason = "redoRC"
+                photo_kind = "preRC"
+            elif info["CHeX"] == "post-CHeX":
                 reason = "redoRC"
                 photo_kind = "preRC"
             elif mesa_termcode == "Running":
@@ -427,9 +432,6 @@ def run():
             elif info["CHeX"] == "pre-CHeX":
                 reason = "None"
                 photo_kind = "last"
-            elif args.make_restart_file == "redoRC":
-                reason = "redoRC"
-                photo_kind = "preRC"
             elif mesa_termcode in ["logQ_min_limit", "FileNotFound", "NotRun"]:
                 reason = mesa_termcode
                 photo_kind = "full_restart"
@@ -458,6 +460,7 @@ def run():
             grid_restart_photos.append((subdir, restart_photo))
 
         with open(os.path.join(args.grid_dir, "grid_restart"), "w") as f:
+            f.write("")
             f.writelines((" ".join(line) + "\n" for line in grid_restart_photos))
     return 0
 
