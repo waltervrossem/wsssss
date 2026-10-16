@@ -287,24 +287,27 @@ def compare_inlist(path1, path2, show_same=False):
     inlist1 = evaluate_inlist(path1)
     inlist2 = evaluate_inlist(path2)
 
-    star_job = inlist_diff(inlist1["star_job"], inlist2["star_job"])
-    controls = inlist_diff(inlist1["controls"], inlist2["controls"])
-
     print(f"left : {path1}")
     print(f"right: {path2}")
     print("")
-    print("####### star_job differences #######")
-    print_dict(star_job["changed"])
-    if show_same:
-        print("####### star_job same #######")
-        print_dict(star_job["same"])
-    print("")
 
-    print("####### controls differences #######")
-    print_dict(controls["changed"])
-    if show_same:
-        print("####### controls same #######")
-        print_dict(controls["same"])
+    _keys = list(inlist1.keys()) + list(inlist2.keys())
+    keys = list({key: None for key in _keys}.keys())  # Remove duplicates and keep order
+    changes = {}
+    for key in keys:
+        changes[key] = inlist_diff(inlist1.get(key, {}), inlist2.get(key, {}))
+
+    for key, change in changes.items():
+        if change["same"] == {} and change["changed"] == {}:
+            continue
+        print(f"####### {key} differences #######")
+        print_dict(change["changed"])
+        if show_same:
+            print(f"####### {key} same #######")
+            print_dict(change["same"])
+        print("")
+
+    return changes
 
 
 def get_mesa_defaults(mesa_dir):
