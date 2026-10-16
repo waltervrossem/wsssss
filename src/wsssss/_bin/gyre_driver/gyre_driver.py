@@ -140,7 +140,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
     """Create the gyre inlist."""
 
     reduced_name = model_name.name
-    gyre_adin = args.gyre_adin_template + reduced_name + suffix + f"{l}"
+    gyre_adin = pathlib.Path(args.gyre_adin_template + reduced_name + suffix + f"{l}")
     summary_file = summary_path(model_name, l, suffix, args)
     if args.out_dir == "":
         mode_name_base = model_name
@@ -204,7 +204,7 @@ def write_gyre_adin(model_name, l, file_type, suffix, save_modes, grid_type, fre
         mode_output = (
             f"   mode_template = '{mode_name_base}_l%l_%J_np%p_ng%g.mgyre'\n"
             f"   mode_file_format = 'TXT'\n"
-            f"   mode_item_list = '{mode_item_list}'"
+            f"   mode_item_list = '{mode_item_list}'\n"
             f"/"
         )
         if args.gyre >= "G7":
@@ -721,6 +721,9 @@ def run(args=None):
     if args is None:
         parser = get_parser()
         args = parser.parse_args()
+
+    if len(args.files) == 0:
+        raise ValueError("No input files specified.")
 
     if not args.nosort and len(args.files) > 1:
         args.files = sort_files(args.files)
