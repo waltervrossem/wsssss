@@ -21,7 +21,7 @@ if "__file__" not in globals().keys():  # Otherwise doc generation breaks.
 
     __file__ = os.path.join(os.path.dirname(wsssss.__file__), "_bin/gyre_driver/gyre_driver.py")
 
-_version = "0.5.0"
+_version = "0.5.1"
 _this_dir = pathlib.Path(__file__).parent
 
 # MESA values
@@ -97,7 +97,6 @@ def get_nu_max_dnu_dp(args, fpath, l):
 
         num_mesh_points = int(lines[zone_start + 1])
         skip_rows = zone_start + 2
-        print(fpath)
         r, m_div_r3, P, rho, gamma1, A_div_r = np.loadtxt(
             str(fpath), skiprows=skip_rows, usecols=[1, 2, 3, 4, 5, 6], comments="%"
         ).T
@@ -299,7 +298,7 @@ def run_gyre(model_name, l, part_suffix, gyre_adin, args):
 
     gyre_exec = get_gyre(args, True)[0]
     if args.no_output:
-        cmd_end = " > /dev/null 2>& 1"
+        cmd_end = " > /dev/null 2>&1"
         pipe = None
     else:
         cmd_end = ""
