@@ -76,6 +76,10 @@ class TestInlists(unittest.TestCase):
             "####### controls differences #######\n"
             "initial_mass: (3.0, 1.0)\n"
             "initial_z: (None, 0.01)\n"
+            "\n"
+            "####### eos differences #######\n"
+            "this_does_not_exist: (None, 1.0)\n"
+            "\n"
         )
         self.assertEqual(expected, capturedOutput.getvalue())
 
