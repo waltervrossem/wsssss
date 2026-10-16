@@ -366,13 +366,19 @@ class MesaGrid:
         """
         self.name_funcion = function
 
-    def create_grid(self, grid_path, rm_dir=True):
+    def create_grid(
+        self,
+        grid_path,
+        rm_dir=True,
+        dont_copy_calling_file=False,
+    ):
         """
         Create the MESA grid in `grid_path`. The inlist options are validated and extra files and directories copied to
         each run directory.
         Args:
             grid_path: Path to grid directory.
             rmdir (bool, optional): Remove grid directory if it exists. Defaults to `True`.
+            dont_copy_calling_file (bool, optional): Don't place a copy of the script which called MesaGrid into `grid_dir`.
 
         Examples:
 
@@ -407,7 +413,7 @@ class MesaGrid:
         self._validate_files(grid_path)
 
         # Copy file which called create_grid into grid_path
-        if len(inspect.stack()) > 1:
+        if len(inspect.stack()) > 1 and not dont_copy_calling_file:
             calling_file = inspect.stack()[1].filename
             if os.path.isfile(calling_file) and not calling_file.endswith("IPython/core/interactiveshell.py"):
                 shutil.copy2(calling_file, grid_path)

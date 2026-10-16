@@ -69,7 +69,7 @@ class TestMesaGO(unittest.TestCase):
 
         # Compile star so we can skip the compilation step for each test
         cwd = os.path.abspath(".")
-        self.grid.create_grid(f"{self.base_grid_dir}/tmp")
+        self.grid.create_grid(f"{self.base_grid_dir}/tmp", dont_copy_calling_file=True)
         os.chdir(f"{self.base_grid_dir}/tmp/0000")
         subprocess.run("./mk")
         shutil.copy2("star", f"{self.base_grid_dir}/star")
@@ -95,13 +95,15 @@ class TestMesaGO(unittest.TestCase):
 
     def check_output(self):
         os.chdir(self.grid_dir)
-        output = subprocess.run(["check-grid", "--no-slurm", "--out-file", "../out_{}"], stdout=subprocess.PIPE)
+        output = subprocess.run(["check-grid", "--out-file", "../out_{}"], stdout=subprocess.PIPE)
 
         expected = (
             "--------------------------------------------\n"
             "  termination_code                   count\n"
             "--------------------------------------------\n"
             "max_model_number                           2\n"
+            " └ pre-CHeX                             2\n"
+            "    └ pre-CHX                        2\n"
             "--------------------------------------------\n"
             "\n"
         )
