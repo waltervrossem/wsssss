@@ -104,6 +104,7 @@ class TestCheckGridIntegration(unittest.TestCase):
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            encoding="utf-8",
             text=True,
         )
 
@@ -150,6 +151,7 @@ class TestCheckGridIntegration(unittest.TestCase):
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            encoding="utf-8",
             text=True,
         )
 
@@ -196,6 +198,7 @@ class TestCheckGridIntegration(unittest.TestCase):
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            encoding="utf-8",
             text=True,
         )
 
