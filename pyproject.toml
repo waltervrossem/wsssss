@@ -29,6 +29,16 @@ dependencies = [
     "joblib"
 ]
 
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+license = "MIT"
+license-files = ["LICENSE"]
+
 [dependency-groups]
 dev = [
     "pytest-env",
@@ -39,16 +49,6 @@ dev = [
 test = [
     "pytest-env",
 ]
-
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-    "Intended Audience :: Science/Research",
-    "Topic :: Scientific/Engineering :: Astronomy",
-]
-
-license = "MIT"
-license-files = ["LICENSE"]
 
 [tool.pytest_env]
 
