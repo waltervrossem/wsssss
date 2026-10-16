@@ -68,7 +68,7 @@ def inlist_diff(dict1, dict2):
 def evaluate_inlist_str(inlist_str, inlist_dir):
     """
     Fully evaluate `inlist_str` as if it were written in `inlist_dir`, following all ``read_extra_*_inlist`` if
-    they are ``.true..``.
+    they are ``.true.``.
 
     Args:
         inlist_str (str): `str` form of an inlist.
@@ -113,7 +113,7 @@ def get_inlist_type(inlist):
 def _evaluate_inlist(inlist, inlist_dir):
     """
     Fully evaluate `inlist` as if it were written in `inlist_dir`, following all ``read_extra_*_inlist`` if
-    they are ``.true..``.
+    they are ``.true.``.
 
     Args:
         inlist (dict): Inlist dictionary.
@@ -156,30 +156,39 @@ def _evaluate_inlist(inlist, inlist_dir):
 
         for i in range(max_extra_inlists):
             key = read_extra.format(kind, i + 1)
-            if key in inlist[kind].keys():
+            fname_key = read_extra_filename.format(kind, i + 1)
+
+            if key in inlist[kind].keys() and fname_key in inlist[kind].keys():
                 if inlist[kind][key]:
-                    to_read[kind].append(inlist[kind][read_extra_filename.format(kind, i + 1)])
+                    fname = inlist[kind][fname_key]
+                    if fname:
+                        to_read[kind].append(fname)
 
     inlists = {}
     for kind, fnames in to_read.items():
         inlists[kind] = []
         for fname in fnames:
-            sub_inlist = parser.read(os.path.join(inlist_dir, fname))
-            sub_inlist = _evaluate_inlist(sub_inlist, inlist_dir)
+            sub_inlist = evaluate_inlist(os.path.join(inlist_dir, fname))
 
             if kind in sub_inlist.keys():
                 inlists[kind].append(sub_inlist[kind])
 
     for kind, sub_inlists in inlists.items():
-        if kind not in inlist.keys():
+        if kind not in out.keys():
             out[kind] = {}
         for sub_inlist in sub_inlists:
             out[kind].update(sub_inlist)
 
     for kind in out.keys():
-        for key, value in list(out[kind].items()):  # Consume whole generator as we need to change the underlying dict.
-            if "_inlist" in key:  # Don't want read_extra inlist keys anymore.
+        for i in range(max_extra_inlists):
+            key = read_extra.format(kind, i + 1)
+            fname_key = read_extra_filename.format(kind, i + 1)
+
+            if key in out[kind].keys():
                 _ = out[kind].pop(key)
+            if fname_key in out[kind].keys():
+                _ = out[kind].pop(fname_key)
+
     return out
 
 
@@ -219,9 +228,11 @@ def write_inlist(inlist, path, header="", mode="w"):
         mode (str): File mode passed to ``open``.
 
     """
-    if header and not header.startswith("!"):
-        header = "!" + header
-    s = "" + header
+    s = ""
+    if header:
+        if not header.startswith("!"):
+            header = "! " + header
+        s += header.rstrip() + "\n"
 
     for name in inlist.keys():
         s += f"&{name} ! start\n"
@@ -278,7 +289,7 @@ def load_MESA_defaults(mesa_dir):
                 f"   {read_extra_filename.format(namelist, 1)} = '{mesa_dir}/{defaults[namelist]}'\n"
                 f"/\n\n"
             )
-    print(inl_str)
+
     inlist_defaults = evaluate_inlist_str(inl_str, "")
     return inlist_defaults
 
@@ -323,17 +334,10 @@ def get_mesa_defaults(mesa_dir):
     version = get_mesa_version(mesa_dir)
     if compare_version(version, "15140", ">="):
         namelists = ("star_job", "eos", "kap", "controls", "astero", "pgstar")
-        separate_eoskap = True
         astero_index = 1
     else:
         namelists = ("star_job", "controls", "pgstar")
-        separate_eoskap = False
         astero_index = 0
-
-    if compare_version(version, "r23.05.1", ">="):
-        extra_inlist_as_list = True
-    else:
-        extra_inlist_as_list = False
 
     keys_defaults = {}
     for nml_type in namelists:
@@ -349,10 +353,10 @@ def get_mesa_defaults(mesa_dir):
         s = s_raw.lower().splitlines()
         s = [_ for _ in s if not _.strip().startswith("!")]  # Get rid of fortran comments
         s = [_ for _ in s if _.strip()]  # Get rid of ''
-        s_no_com = "\n".join(s)
+        s = [_ for _ in s if "=" in _]  # Get rid of namelist start/end lines
 
         keys = [_.split("=", maxsplit=1)[0].strip() for _ in s]
-        values = [_.split("=", maxsplit=1)[1].split("!")[0].strip() for _ in s]
+        # values = [_.split("=", maxsplit=1)[1].split("!")[0].strip() for _ in s]
         keys_defaults[nml_type] = keys
     return keys_defaults
 
@@ -386,8 +390,6 @@ def check_inlist(path, mesa_dir):
         key_arr = [key for key in sub_nml.keys()]
 
         def_key = keys_defaults[nml_type]
-
-        in_default = {key: key in def_key for key in key_arr}
 
         in_default = {}
         for key in key_arr:
