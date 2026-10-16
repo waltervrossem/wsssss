@@ -8,7 +8,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-wsssss = ["_bin/gyre_driver/*.in"]
+wsssss = ["bin/gyre_driver/*.in"]
 
 [project]
 name = "wsssss"
@@ -64,9 +64,9 @@ MESASDK_VERSION = {value = "dummyx86_64-linux-24.7.1", transform = true}
 line-length = 120
 
 [project.scripts]
-gyre-driver = "wsssss._bin.gyre_driver:gyre_driver.run"
-mesa-go = "wsssss._bin:mesa_go.run"
-check-grid = "wsssss._bin:check_grid.run"
+gyre-driver = "wsssss.bin.gyre_driver:gyre_driver.run"
+mesa-go = "wsssss.bin:mesa_go.run"
+check-grid = "wsssss.bin:check_grid.run"
 
 [project.urls]
 Homepage = "https://github.com/waltervrossem/wsssss"

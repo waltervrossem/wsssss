@@ -10,7 +10,7 @@ from unittest import mock
 
 import numpy as np
 from wsssss import load_data as ld
-from wsssss._bin.gyre_driver import gyre_driver
+from wsssss.bin.gyre_driver import gyre_driver
 from ..common import check_required_environment, check_if_running_in_CI
 
 must_have_environ = ["GYRE_DIR"]

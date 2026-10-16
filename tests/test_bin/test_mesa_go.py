@@ -10,7 +10,7 @@ import unittest
 import subprocess
 from unittest import mock
 
-from wsssss._bin import mesa_go
+from wsssss.bin import mesa_go
 from wsssss.inlists import create_grid as cg
 
 from ..common import check_required_environment, check_if_running_in_CI

@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from collections import Counter
 
-import wsssss._bin.check_grid as cg
+import wsssss.bin.check_grid as cg
 from ..common import have_mesa_data
 
 have_mesa_data()
