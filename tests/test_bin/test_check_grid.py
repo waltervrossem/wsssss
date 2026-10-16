@@ -91,7 +91,8 @@ class TestCheckGridIntegration(unittest.TestCase):
     def test_check_grid(self):
         output = subprocess.run(
             [
-                "check-grid",
+                sys.executable,
+                cg.__file__,
                 ".",
                 "--out-file",
                 "../out_{}",
@@ -136,7 +137,8 @@ class TestCheckGridIntegration(unittest.TestCase):
     def test_check_grid_pre_CHeX(self):
         output = subprocess.run(
             [
-                "check-grid",
+                sys.executable,
+                cg.__file__,
                 ".",
                 "--out-file",
                 "../out_{}",
@@ -181,7 +183,8 @@ class TestCheckGridIntegration(unittest.TestCase):
     def test_check_grid_redoRC(self):
         output = subprocess.run(
             [
-                "check-grid",
+                sys.executable,
+                cg.__file__,
                 ".",
                 "--out-file",
                 "../out_{}",
