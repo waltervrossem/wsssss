@@ -616,6 +616,21 @@ def make_propagation2(
     return f, ax
 
 
+def make_propagation_gyre(gp, ax=None, l=1):
+    f, ax = pu.get_figure(ax)
+    radius = gp.get("radius")
+    brunt_N2 = gp.get("brunt_N2")
+    csound = np.sqrt(gp.get("gamma1") * gp.get("pressure") / gp.get("density"))
+    lamb2 = l * (l + 1) * (csound / radius) ** 2
+
+    ax.plot(radius, np.sqrt(lamb2) * 1e6 / (2 * np.pi), "C0", label=r"$S_{\ell=1}$")
+    ax.plot(radius, np.sqrt(brunt_N2) * 1e6 / (2 * np.pi), "C1", label="$N$")
+
+    ax.set_ylabel(r"Frequency ($\mu$Hz)")
+    ax.loglog()
+    return f, ax
+
+
 def make_echelle(
     gs,
     hist=None,
